@@ -1,0 +1,12 @@
+Flask
+SQLAlchemy
+Werkzeug
+gunicorn
+pandas
+openpyxl
+pywebpush
+cryptography
+requests
+webauthn
+psycopg2-binary
+cloudinary
