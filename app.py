@@ -36,11 +36,10 @@ def process_and_save_evidence(base64_string, branch_id, week_name):
         
         # [QUAN TRỌNG]: Thầy/cô sẽ đăng ký tài khoản Cloudinary miễn phí và điền 3 mã này vào
         cloudinary.config( 
-            cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME", "TEN_CLOUD_CUA_THAY_CO"), 
-            api_key = os.environ.get("CLOUDINARY_API_KEY", "MA_API_KEY"), 
-            api_secret = os.environ.get("CLOUDINARY_API_SECRET", "MA_SECRET_KEY") 
+            cloud_name = "bgjw5m03", 
+            api_key = "438871542918892", 
+            api_secret = "sVU9IhaUUby5XOrR8oNsp_8XF6Q" 
         )
-        
         if base64_string.startswith('['):
             base64_list = json.loads(base64_string)
         else:
