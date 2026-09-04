@@ -50,17 +50,27 @@
         .mobile-red-banner {
             background: linear-gradient(135deg, #e11d48, #be123c);
             color: white; border-radius: 0 0 24px 24px;
-            padding: 12px 20px; padding-top: max(15px, env(safe-area-inset-top));
+            padding: 12px 15px; padding-top: max(15px, env(safe-area-inset-top));
             box-shadow: 0 6px 15px rgba(225, 29, 72, 0.3);
             display: none; flex-direction: row; align-items: center; justify-content: center; 
             width: 100%; position: relative; 
         }
-        .mobile-red-banner .banner-title-wrapper { display: flex; align-items: center; gap: 12px; }
+        .mobile-red-banner .banner-title-wrapper { display: flex; align-items: center; gap: 10px; }
         .mobile-red-banner .banner-title-wrapper div { text-align: center; }
-        .mobile-red-banner h2 { font-size: 18px; font-weight: 800; margin: 0; letter-spacing: 0.5px; }
-        .mobile-red-banner p { font-size: 12px; font-weight: 500; margin: 0; opacity: 0.9; }
+        .mobile-red-banner h2 { font-size: 17px; font-weight: 800; margin: 0; letter-spacing: 0.5px; }
+        .mobile-red-banner p { font-size: 11px; font-weight: 500; margin: 0; opacity: 0.9; }
+        
+        /* NÚT QUAY LẠI CHUẨN NATIVE APP */
+        .mobile-red-banner .btn-back {
+            position: absolute; left: 15px; color: white; background: rgba(255,255,255,0.15);
+            border: none; border-radius: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; text-decoration: none;
+            transition: background 0.2s;
+        }
+        .mobile-red-banner .btn-back:active { background: rgba(255,255,255,0.3); }
+
+        /* NÚT MENU */
         .mobile-red-banner .btn-menu {
-            position: absolute; right: 20px; color: white; background: rgba(255,255,255,0.15);
+            position: absolute; right: 15px; color: white; background: rgba(255,255,255,0.15);
             border: none; border-radius: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
         }
 
@@ -70,7 +80,7 @@
         .table-responsive-scroll {
             max-height: 60vh; 
             overflow-y: auto;
-            overflow-x: auto; /* Bật vuốt ngang nếu cột quá nhiều */
+            overflow-x: auto; 
         }
         .table-modern-sticky { border-collapse: separate; border-spacing: 0; width: 100%; }
         .table-modern-sticky thead th { 
@@ -78,7 +88,7 @@
             background-color: #f8fafc; 
             box-shadow: 0 1px 0px #dee2e6; 
             border-bottom: none !important;
-            white-space: nowrap; /* Ép tiêu đề nằm trên 1 dòng */
+            white-space: nowrap; 
         }
 
         /* =========================================
@@ -111,21 +121,16 @@
             }
         }
         
-        /* =========================================
-           [BẢN VÁ LỖI]: ÉP TRÀN VIỀN BẢNG TRÊN ĐIỆN THOẠI
-           ========================================= */
         @media (max-width: 768px) {
             .bottom-nav { display: flex; }
             .main-content { 
-                padding-left: 5px !important; /* Xóa lề trắng bên trái */
-                padding-right: 5px !important; /* Xóa lề trắng bên phải */
+                padding-left: 5px !important; 
+                padding-right: 5px !important; 
                 padding-bottom: 85px !important; 
             }
             .card { border-radius: 12px !important; margin-bottom: 15px !important;}
-            /* Thu hẹp lề bên trong của Card để nhường diện tích cho Bảng */
             .card-body { padding: 12px 5px !important; }
             .card-header { padding: 12px 10px !important; }
-            /* Thu nhỏ chữ và lề của bảng */
             .table-modern-sticky th, .table-modern-sticky td {
                 padding: 10px 8px !important;
                 font-size: 13px !important;
@@ -140,7 +145,6 @@
             @page { size: A4 portrait; margin: 15mm; }
             body { background: #fff !important; color: #000 !important; font-family: "Times New Roman", Times, serif !important; }
             
-            /* Giấu toàn bộ thành phần không cần thiết */
             .no-print, #desktopSidebar, .bottom-nav, .mobile-sticky-wrapper, .kpi-card, .ai-report-card, .warning-section, .d-none.d-lg-flex { display: none !important; }
             
             .main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; }
@@ -150,7 +154,6 @@
             
             .print-only { display: block !important; }
             
-            /* Chuyển bảng về đen trắng, gỡ bỏ thanh cuộn */
             .table-responsive-scroll { max-height: none !important; overflow: visible !important; }
             .table { border-collapse: collapse !important; width: 100% !important; margin-bottom: 20px !important; }
             .table th, .table td { border: 1px solid #000 !important; padding: 6px !important; color: #000 !important; font-size: 13pt !important;}
@@ -175,24 +178,36 @@
         <!-- HEADER MOBILE (APP BANNER) -->
         <div class="mobile-sticky-wrapper no-print">
             <div class="mobile-red-banner">
+                <!-- NÚT QUAY LẠI CHUẨN APP ĐIỆN THOẠI -->
+                <a href="/dashboard" class="btn-back">
+                    <i class="fa-solid fa-chevron-left fs-5"></i>
+                </a>
+
                 <div class="banner-title-wrapper">
-                    <i class="fa-solid fa-chart-pie fs-3"></i>
+                    <i class="fa-solid fa-chart-pie fs-4"></i>
                     <div>
                         <h2>ĐIỀU HÀNH BGH</h2>
                         <p>Hệ thống Quản lý Kỷ luật & Thi đua</p>
                     </div>
                 </div>
+                
                 <button class="btn-menu" onclick="document.getElementById('desktopSidebar').classList.toggle('show')">
-                    <i class="fa-solid fa-bars fs-4"></i>
+                    <i class="fa-solid fa-bars fs-5"></i>
                 </button>
             </div>
         </div>
 
-        <!-- TIÊU ĐỀ TRANG (DESKTOP) -->
+        <!-- TIÊU ĐỀ TRANG VÀ NÚT QUAY LẠI (DESKTOP) -->
         <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-4 rounded-4 shadow-sm border-start border-5 border-primary d-none d-lg-flex no-print">
-            <div>
-                <h3 class="fw-bold text-primary m-0"><i class="fa-solid fa-building-columns me-2"></i> Trung Tâm Điều Hành Ban Giám Hiệu</h3>
-                <p class="text-muted small m-0 mt-1">Bức tranh tổng thể nề nếp, thi đua và trợ lý AI phân tích dữ liệu toàn trường.</p>
+            <div class="d-flex align-items-center gap-3">
+                <!-- NÚT QUAY LẠI MÁY TÍNH -->
+                <a href="/dashboard" class="btn btn-light shadow-sm d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; border-radius: 12px; color: #64748b; text-decoration: none;" title="Quay lại Trang chủ">
+                    <i class="fa-solid fa-arrow-left fs-5"></i>
+                </a>
+                <div>
+                    <h3 class="fw-bold text-primary m-0"><i class="fa-solid fa-building-columns me-2"></i> Trung Tâm Điều Hành Ban Giám Hiệu</h3>
+                    <p class="text-muted small m-0 mt-1">Bức tranh tổng thể nề nếp, thi đua và trợ lý AI phân tích dữ liệu toàn trường.</p>
+                </div>
             </div>
             <!-- BỘ CHỌN TUẦN -->
             <form method="GET" action="/bgh/dashboard" class="d-flex align-items-center gap-2">
@@ -205,7 +220,7 @@
             </form>
         </div>
 
-        <!-- BỘ CHỌN TUẦN (MOBILE) -->
+        <!-- BỘ CHỌN TUẦN VÀ NÚT QUAY LẠI (MOBILE) ĐÃ LÀM GỌN -->
         <div class="card border-0 shadow-sm p-3 mb-3 d-lg-none no-print">
             <form method="GET" action="/bgh/dashboard" class="row g-2 align-items-center">
                 <div class="col-4"><label class="fw-bold small text-muted">Chọn mốc kỳ:</label></div>
@@ -360,7 +375,6 @@
                                 <span class="badge bg-light text-primary">Sĩ số nhóm: {{ classes|length }} lớp</span>
                             </div>
                             
-                            <!-- ĐÃ SỬA LẠI CSS RESPONSIVE CHO KHU VỰC NÀY -->
                             <div class="table-responsive-scroll border rounded-bottom">
                                 <table class="table table-hover align-middle m-0 text-center table-modern-sticky">
                                     <thead class="small">
