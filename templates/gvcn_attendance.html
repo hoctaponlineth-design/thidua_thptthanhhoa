@@ -9,49 +9,58 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
         .glass-card { background: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        
+        /* [NÂNG CẤP]: CẤU HÌNH KHÓA DÒNG TIÊU ĐỀ (STICKY HEADER) */
+        .table-responsive-scroll {
+            max-height: 65vh; /* Giới hạn chiều cao khung để tạo thanh cuộn */
+            overflow-y: auto;
+        }
         .table-modern { width: 100%; border-collapse: separate; border-spacing: 0; }
-        .table-modern thead th { background: #f1f5f9; color: #64748b; font-size: 13px; font-weight: 600; text-transform: uppercase; padding: 16px; border-bottom: 1px solid #e2e8f0; white-space: nowrap;}
+        .table-modern thead th { 
+            position: sticky; 
+            top: 0; 
+            z-index: 10; 
+            background: #f1f5f9; /* Phải có nền để không bị trong suốt khi cuộn */
+            color: #64748b; 
+            font-size: 13px; 
+            font-weight: 600; 
+            text-transform: uppercase; 
+            padding: 16px; 
+            white-space: nowrap;
+            box-shadow: 0 1px 0px #e2e8f0; /* Tạo viền dưới ảo cho sticky header */
+        }
         .table-modern tbody td { padding: 16px; font-size: 14px; font-weight: 500; border-bottom: 1px solid #e2e8f0; vertical-align: middle;}
         .table-modern tbody tr:hover { background-color: #f8fafc; }
         
-        /* ========================================================= */
         /* CẤU HÌNH GIAO DIỆN XUẤT PDF CHUẨN VĂN BẢN (CHỈ HIỆN KHI IN) */
-        /* ========================================================= */
         @media print {
             @page { size: A4 portrait; margin: 20mm; }
             body { background: #fff !important; color: #000 !important; font-family: "Times New Roman", Times, serif !important; }
             
-            /* 1. Giấu toàn bộ các phần tử tương tác của Web (Nút, Form, Viền) */
             .no-print { display: none !important; }
             .glass-card { border: none !important; box-shadow: none !important; border-radius: 0 !important; }
             .container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
-            
-            /* 2. Hiển thị phần Quốc hiệu - Tiêu ngữ - Chữ ký */
             .print-only { display: block !important; }
             
-            /* 3. Định dạng lại bảng chuẩn Word (Đen trắng, viền mỏng) */
+            /* Tắt thanh cuộn khi in để xuất full danh sách */
+            .table-responsive-scroll { max-height: none !important; overflow: visible !important; }
             .table-modern { border-collapse: collapse !important; margin-top: 15px !important; }
-            .table-modern th, .table-modern td { border: 1px solid #000 !important; padding: 8px 10px !important; font-size: 13pt !important; color: #000 !important; }
-            .table-modern thead th { background: #fff !important; font-weight: bold !important; text-transform: none !important; border-bottom: 1px solid #000 !important;}
+            .table-modern th, .table-modern td { border: 1px solid #000 !important; padding: 8px 10px !important; font-size: 13pt !important; color: #000 !important; box-shadow: none !important;}
+            .table-modern thead th { position: static !important; background: #fff !important; font-weight: bold !important; text-transform: none !important; }
             
-            /* 4. Tắt màu mè của thẻ Badge để in cho sạch sẽ */
             .badge { background: transparent !important; color: #000 !important; border: none !important; padding: 0 !important; font-size: 13pt !important; font-weight: normal !important; }
-            .badge i { display: none !important; } /* Giấu các icon fontawesome */
+            .badge i { display: none !important; } 
         }
-        
-        /* Trên màn hình Web thì giấu các phần tử bản in đi */
         .print-only { display: none; }
     </style>
 </head>
 <body>
     <div class="container py-4">
         
-        <!-- NÚT QUAY LẠI & NÚT XUẤT PDF TRÊN WEB -->
         <div class="d-flex justify-content-between align-items-center mb-4 no-print">
             <a href="/dashboard" class="btn btn-light shadow-sm fw-bold" style="border-radius: 10px;">
                 <i class="fa-solid fa-arrow-left me-2"></i> Quay lại
             </a>
-            
             <button onclick="window.print()" class="btn btn-danger shadow-sm fw-bold" style="border-radius: 10px;">
                 <i class="fa-solid fa-file-pdf me-2"></i> Xuất file PDF
             </button>
@@ -59,7 +68,7 @@
 
         <div class="glass-card overflow-hidden">
             
-            <!-- HEADER BẢN IN: CHUẨN VĂN BẢN HÀNH CHÍNH -->
+            <!-- HEADER BẢN IN -->
             <div class="print-only" style="margin-bottom: 30px;">
                 <table style="width: 100%; border: none;">
                     <tr>
@@ -81,20 +90,18 @@
                 </p>
             </div>
 
-            <!-- HEADER GIAO DIỆN WEB: TƯƠNG TÁC TÌM KIẾM -->
+            <!-- HEADER WEB -->
             <div class="p-4 border-bottom bg-white d-flex justify-content-between align-items-center flex-wrap gap-3 no-print">
                 <div>
                     <h4 class="fw-bold mb-1" style="color: #0f172a;"><i class="fa-solid fa-fingerprint text-success me-2"></i> Báo Cáo Điểm Danh GVCN</h4>
                     <p class="text-muted mb-0" style="font-size: 14px;">Thống kê tần suất lên lớp sinh hoạt 15 phút đầu giờ.</p>
                 </div>
                 
-                <!-- BỘ LỌC THỜI GIAN -->
                 <form action="/gvcn_attendance_stats" method="GET" class="d-flex gap-2">
                     <select name="time_mode" class="form-select fw-bold border-secondary" style="width: 130px;" onchange="this.form.submit()">
                         <option value="week" {% if time_mode == 'week' %}selected{% endif %}>Theo Tuần</option>
                         <option value="month" {% if time_mode == 'month' %}selected{% endif %}>Theo Tháng</option>
                     </select>
-                    
                     <select name="time_value" class="form-select fw-bold text-primary border-primary" style="width: 150px;" onchange="this.form.submit()">
                         {% if time_mode == 'week' %}
                             {% for w in available_weeks %}
@@ -109,8 +116,8 @@
                 </form>
             </div>
 
-            <!-- BẢNG DỮ LIỆU DÙNG CHUNG CHO CẢ WEB & BẢN IN -->
-            <div class="table-responsive">
+            <!-- BẢNG DỮ LIỆU ĐÃ KÍCH HOẠT THANH CUỘN VÀ KHÓA HEADER -->
+            <div class="table-responsive table-responsive-scroll">
                 <table class="table-modern">
                     <thead>
                         <tr>
@@ -131,7 +138,8 @@
                                 {% if item.count >= 3 %}
                                     <span class="badge bg-success fs-6 rounded-pill px-3 py-2"><i class="fa-solid fa-check me-1"></i> {{ item.count }} lần</span>
                                 {% elif item.count > 0 %}
-                                    <span class="badge bg-warning text-dark fs-6 rounded-pill px-3 py-2"><i class="fa-solid fa-exclamation me-1"></i> {{ item.count }} lần</span>
+                                    <!-- [NÂNG CẤP]: Đã gỡ dấu chấm than (!) theo yêu cầu -->
+                                    <span class="badge bg-warning text-dark fs-6 rounded-pill px-3 py-2">{{ item.count }} lần</span>
                                 {% else %}
                                     <span class="badge bg-danger fs-6 rounded-pill px-3 py-2"><i class="fa-solid fa-xmark me-1"></i> 0 lần</span>
                                 {% endif %}
@@ -160,7 +168,7 @@
                 </table>
             </div>
 
-            <!-- FOOTER BẢN IN: CHỮ KÝ ĐÓNG DẤU -->
+            <!-- FOOTER BẢN IN -->
             <div class="print-only" style="margin-top: 30px; font-size: 13pt;">
                 <table style="width: 100%; border: none;">
                     <tr>
