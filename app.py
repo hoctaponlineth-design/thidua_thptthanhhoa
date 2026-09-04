@@ -374,12 +374,14 @@ def gvcn_attendance_stats():
                     'count': 0,
                     'dates': []
                 }
-                
+            day_map = {0: 'T2', 1: 'T3', 2: 'T4', 3: 'T5', 4: 'T6', 5: 'T7', 6: 'CN'}   
             for a in filtered_atts:
-                if a.branch_id in stats:
+                if a.branch_id in stats and a.date:
                     stats[a.branch_id]['count'] += 1
-                    stats[a.branch_id]['dates'].append(a.date.strftime('%d/%m'))
-                    
+                    day_str = day_map.get(a.date.weekday(), '')
+                    # Kết quả hiển thị: VD: T2 (15/09)
+                    date_str = f"{day_str} ({a.date.strftime('%d/%m')})" 
+                    stats[a.branch_id]['dates'].append(date_str)                    
             # Chuyển thành danh sách và xếp hạng (Ai đi nhiều lên đầu)
             stats_list = list(stats.values())
             stats_list.sort(key=lambda x: x['count'], reverse=True)
