@@ -440,7 +440,21 @@
 
 		<!-- 5. THANH CÔNG CỤ DƯỚI ĐÁY -->
         <div class="fixed-bottom-bar">
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-3 align-items-center">
+                <!-- [BẢN NÂNG CẤP LÕI]: THÊM BỘ LỌC CHỌN NGÀY QUÉT SỔ ĐẦU BÀI VÀO DẢI BOTTOM BAR -->
+                <div class="d-flex align-items-center gap-2 bg-light border rounded-pill px-3 py-1 shadow-sm">
+                    <i class="fa-solid fa-filter text-primary"></i>
+                    <select id="target_day" class="form-select form-select-sm border-0 bg-transparent fw-bold text-primary shadow-none" style="width: 140px; cursor: pointer;">
+                        <option value="Tất cả">Quét Cả Tuần</option>
+                        <option value="Thứ 2">Chỉ quét Thứ 2</option>
+                        <option value="Thứ 3">Chỉ quét Thứ 3</option>
+                        <option value="Thứ 4">Chỉ quét Thứ 4</option>
+                        <option value="Thứ 5">Chỉ quét Thứ 5</option>
+                        <option value="Thứ 6">Chỉ quét Thứ 6</option>
+                        <option value="Thứ 7">Chỉ quét Thứ 7</option>
+                    </select>
+                </div>
+
 				<label class="btn-custom btn-purple m-0" style="cursor: pointer;" title="Tải lên hàng loạt nhiều Sổ Đầu Bài cùng lúc">
                     <i class="fa-solid fa-upload"></i> Nhập SĐB Hàng Loạt
                     <input type="file" class="d-none" accept=".xlsx, .xls" multiple onchange="uploadMultipleSDB(this)">
@@ -902,11 +916,16 @@
             
             let formData = new FormData();
             formData.append("excel_file", file);
-            let tr = inputElement.closest('tr');
             
+            let tr = inputElement.closest('tr');
             let branchNameNode = tr.querySelector('.branch-name');
             let cleanBranchName = branchNameNode.textContent.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
             formData.append("expected_branch_name", cleanBranchName);
+            
+            // [BẢN NÂNG CẤP LÕI 1]: TÍCH HỢP BIẾN CHỌN NGÀY KHI QUÉT SĐB LẺ TỪNG LỚP
+            let targetDayVal = document.getElementById('target_day') ? document.getElementById('target_day').value : "Tất cả";
+            formData.append('target_day', targetDayVal);
+            // -------------------------------------------------------------
             
             try {
                 let cleanUrl = window.location.origin + '/api/parse_sodaubai';
@@ -931,23 +950,47 @@
                     setTimeout(() => {
                         const tbody = document.getElementById('subjectsBody');
                         if (tbody) {
-                            tbody.innerHTML = '';
+                            // CỘNG DỒN DỮ LIỆU CŨ THAY VÌ XÓA (GHI ĐÈ)
                             if (result.raw_list && result.raw_list.length > 0) {
-                                result.raw_list.forEach(item => { addSubjectRow(item.subj, item.c10, item.c9, item.c8); });
-                            } else {
-                                addSubjectRow("Chưa có điểm", 0, 0, 0);
+                                result.raw_list.forEach(item => { 
+                                    // Kiểm tra xem môn này đã có trong bảng chưa, nếu có thì cộng dồn, chưa thì thêm dòng mới
+                                    let exists = false;
+                                    document.querySelectorAll('#subjectsBody tr').forEach(row => {
+                                        let subjInput = row.querySelector('.subject-name') || row.querySelector('.sub-name-input');
+                                        if (subjInput && subjInput.value.trim() === item.subj) {
+                                            let c10Input = row.querySelector('.val-c10') || row.querySelector('.sub-c10');
+                                            let c9Input = row.querySelector('.val-c9') || row.querySelector('.sub-c9');
+                                            let c8Input = row.querySelector('.val-c8') || row.querySelector('.sub-c8');
+                                            
+                                            if (c10Input) c10Input.value = parseInt(c10Input.value || 0) + item.c10;
+                                            if (c9Input) c9Input.value = parseInt(c9Input.value || 0) + item.c9;
+                                            if (c8Input && !c8Input.hasAttribute('readonly')) c8Input.value = parseInt(c8Input.value || 0) + item.c8;
+                                            exists = true;
+                                        }
+                                    });
+                                    
+                                    if (!exists) {
+                                        addSubjectRow(item.subj, item.c10, item.c9, item.c8);
+                                    }
+                                });
                             }
                         }
 
+                        // Xếp loại tuần: Ưu tiên Xếp loại tốt nhất
                         const ratingSelect = document.getElementById('detailRating');
-                        if (ratingSelect) ratingSelect.value = result.xep_loai;
+                        if (ratingSelect) {
+                            if (result.xep_loai === "Tuần Tốt") ratingSelect.value = result.xep_loai;
+                            else if (result.xep_loai === "Tuần Khá" && ratingSelect.value !== "Tuần Tốt") ratingSelect.value = result.xep_loai;
+                        }
 
+                        // [BẢN NÂNG CẤP LÕI 2]: CỘNG DỒN GHI CHÚ VI PHẠM (KHÔNG GHI ĐÈ)
                         const noteInput = document.getElementById('detailNote');
                         if (noteInput && result.note) {
                             let currentVal = noteInput.value.trim();
                             noteInput.value = currentVal ? `${currentVal} ; ${result.note}` : result.note;
                             noteInput.dispatchEvent(new Event('input', { bubbles: true }));
                         }
+                        
                         updateLiveTotal();
                     }, 500);
                 } else {
@@ -1457,11 +1500,15 @@
             const maxMon = parseInt(document.getElementById('configMaxMon').value) || 4;
             const maxTot = parseInt(document.getElementById('configMaxTot').value) || 14;
 
+            // [BẢN NÂNG CẤP LÕI 3]: ÁP DỤNG BỘ LỌC NGÀY CHO QUÉT HÀNG LOẠT
+            let targetDayVal = document.getElementById('target_day') ? document.getElementById('target_day').value : "Tất cả";
+
             for (let i = 0; i < files.length; i++) {
                 document.getElementById('batchProgressText').innerText = `Đang phân tích ${i+1} / ${files.length} Sổ đầu bài...`;
                 let file = files[i];
                 let formData = new FormData();
                 formData.append("excel_file", file);
+                formData.append('target_day', targetDayVal);
                 
                 try {
                     let response = await fetch('/api/parse_sodaubai', { method: 'POST', body: formData });
@@ -1475,12 +1522,44 @@
                             let bId = branchInfo.id;
                             let bGroup = branchInfo.group;
 
+                            // CỘNG DỒN DỮ LIỆU ĐIỂM GỐC 
                             if (result.raw_list && result.raw_list.length > 0) {
+                                // Gọi API lấy điểm cũ trước khi đẩy điểm mới
+                                let oldScores = [];
+                                try {
+                                    const resOld = await fetch(`/api/raw_scores/${encodeURIComponent(weekName)}/${bId}`);
+                                    const jsonOld = await resOld.json();
+                                    if(jsonOld.data) oldScores = jsonOld.data;
+                                } catch(e) {}
+                                
+                                let mergedList = [];
+                                result.raw_list.forEach(newItem => {
+                                    let existItem = oldScores.find(o => o.subj === newItem.subj);
+                                    if (existItem) {
+                                        mergedList.push({
+                                            subj: newItem.subj,
+                                            c10: existItem.c10 + newItem.c10,
+                                            c9: existItem.c9 + newItem.c9,
+                                            c8: existItem.c8 + newItem.c8
+                                        });
+                                    } else {
+                                        mergedList.push(newItem);
+                                    }
+                                });
+                                // Các môn cũ chưa có trong file mới vẫn phải giữ lại
+                                oldScores.forEach(oldItem => {
+                                    let existItem = result.raw_list.find(n => n.subj === oldItem.subj);
+                                    if (!existItem) mergedList.push(oldItem);
+                                });
+
                                 await fetch(`/api/raw_scores/${encodeURIComponent(weekName)}/${bId}`, {
                                     method: 'POST',
                                     headers: {'Content-Type': 'application/json'},
-                                    body: JSON.stringify({raw_list: result.raw_list})
+                                    body: JSON.stringify({raw_list: mergedList})
                                 });
+                                
+                                // Gán list mới để chạy thuật toán tính điểm tổng ở dưới
+                                result.raw_list = mergedList; 
                             }
 
                             let t10 = 0, t9 = 0, t8 = 0;
@@ -1492,7 +1571,14 @@
                                     t10 += k10; t9 += k9; t8 += k8;
                                 });
                             } else {
-                                t10 = result.c10 || 0; t9 = result.c9 || 0; t8 = bGroup.includes("1") ? 0 : (result.c8 || 0);
+                                // Lấy giá trị trên UI hiện tại cộng thêm giá trị trả về
+                                let currentC10 = parseInt(document.querySelector(`input[name="c10_${bId}"]`).value) || 0;
+                                let currentC9 = parseInt(document.querySelector(`input[name="c9_${bId}"]`).value) || 0;
+                                let currentC8 = parseInt(document.querySelector(`input[name="c8_${bId}"]`).value) || 0;
+
+                                t10 = currentC10 + (result.c10 || 0); 
+                                t9 = currentC9 + (result.c9 || 0); 
+                                t8 = bGroup.includes("1") ? 0 : (currentC8 + (result.c8 || 0));
                             }
 
                             let sumVal = t10 + t9 + t8;
@@ -1517,11 +1603,14 @@
                                 c10Input.dispatchEvent(new Event('input', { bubbles: true })); 
                             }
                             
+                            // Xếp loại tuần (Ưu tiên tốt nhất)
                             if (ratingSelect) {
-                                ratingSelect.value = result.xep_loai;
+                                if (result.xep_loai === "Tuần Tốt") ratingSelect.value = result.xep_loai;
+                                else if (result.xep_loai === "Tuần Khá" && ratingSelect.value !== "Tuần Tốt") ratingSelect.value = result.xep_loai;
                                 updateRowStyle(ratingSelect);
                             }
 
+                            // [BẢN NÂNG CẤP LÕI 4]: CỘNG DỒN GHI CHÚ
                             if (noteInput && result.note) {
                                 let currentVal = noteInput.value.trim();
                                 noteInput.value = currentVal ? `${currentVal} ; ${result.note}` : result.note;
