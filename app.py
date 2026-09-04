@@ -237,7 +237,8 @@ def restrict_access():
         'export_class_dashboard',        
         'class_monthly_analysis',        
         'class_semester_analysis',       
-        'school_monthly_analysis'        
+        'school_monthly_analysis',
+        'gvcn_attendance_stats'
     ]
     
     # 3. KIỂM TRA QUYỀN TRUY CẬP THEO ROLE
