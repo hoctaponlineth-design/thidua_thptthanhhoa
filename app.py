@@ -321,7 +321,7 @@ def gvcn_checkin():
             # (Tùy chọn) Lưu vết hệ thống để BGH biết
             log_system_action("ĐIỂM DANH GVCN", f"GVCN Lớp ID {branch_id} đã điểm danh sinh hoạt 15p Tuần {week_name}")
             
-            return {"success": True, "message": "✅ Điểm danh thành công! Cảm ơn Thầy/Cô đã lên lớp."}, 200
+            return {"success": True, "message": "✅ Điểm danh thành công! Cảm ơn Thầy/Cô."}, 200
     except Exception as e:
         import traceback; traceback.print_exc()
         return {"success": False, "error": str(e)}, 500
@@ -428,7 +428,7 @@ def gvcn_attendance_stats():
         flash(f"Lỗi tải thống kê: {e}", "error")
         return redirect(url_for('dashboard'))
     
-# API: BÓC TÁCH DỮ LIỆU TỪ FILE SỔ ĐẦU BÀI (TỐI ƯU CHỐNG SÓT ĐIỂM)
+# API: BÓC TÁCH DỮ LIỆU TỪ FILE SỔ ĐẦU BÀI (TỐI ƯU CHỐNG SÓT ĐIỂM VÀ LỌC THEO NGÀY)
 @app.route('/api/parse_sodaubai', methods=['POST'])
 @app.route('/weekly/api/parse_sodaubai', methods=['POST'])
 def parse_sodaubai():
@@ -441,6 +441,9 @@ def parse_sodaubai():
         
     # Lấy tên lớp dự kiến từ giao diện để đối chiếu
     expected_branch = request.form.get('expected_branch_name', '').strip().upper()
+    
+    # [NÂNG CẤP LÕI 1]: Nhận tham số ngày cần quét từ giao diện (Mặc định "Tất cả")
+    target_day_input = request.form.get('target_day', 'Tất cả').strip()
         
     try:
         import pandas as pd
@@ -520,6 +523,15 @@ def parse_sodaubai():
             cot0_clean = cot0_text.strip()
             if cot0_clean and cot0_clean.lower() != 'nan':
                 current_day = cot0_clean.split('\n')[0].strip()
+
+            # =========================================================================
+            # [NÂNG CẤP LÕI 2]: BỘ LỌC CHỈ QUÉT THEO NGÀY CHỈ ĐỊNH
+            # =========================================================================
+            # Trực tiếp bỏ qua tất cả các dòng không khớp với ngày được chọn. 
+            if target_day_input != 'Tất cả' and current_day.lower() != target_day_input.lower():
+                continue 
+            # =========================================================================
+
             # =============================================================================
             # --- [BỔ SUNG BƯỚC 2]: TỰ ĐỘNG BẮT LỖI VẮNG HỌC (CHỈ BẮT KHÔNG PHÉP) ---
             # =============================================================================
@@ -541,7 +553,6 @@ def parse_sodaubai():
                         if not p: continue
                         
                         # [QUY TẮC MỚI]: Chỉ bắt lỗi nếu giáo viên có ghi chữ "không" hoặc "kp"
-                        # Nếu ghi "có phép" hoặc chỉ ghi mỗi cái tên, hệ thống sẽ TỰ ĐỘNG BỎ QUA
                         if 'không' in p.lower() or 'kp' in p.lower():
                             # Xóa phần ghi chú trong ngoặc () và các chữ thừa để lấy được mỗi Tên học sinh
                             stu_name = re.sub(r'\(.*?\)', '', p)
@@ -606,7 +617,7 @@ def parse_sodaubai():
                     
                     if v_name_lower in entry.lower():
                         stu_name = ""
-                        # Ưu tiên 1: Tìm tên học sinh nằm trong ngoặc vuông hoặc tròn (Ví dụ: Ăn trong lớp [Nam])
+                        # Ưu tiên 1: Tìm tên học sinh nằm trong ngoặc vuông hoặc tròn
                         match_bracket = re.search(r'\[(.*?)\]|\((.*?)\)', entry)
                         if match_bracket:
                             stu_name = match_bracket.group(1) or match_bracket.group(2)
@@ -614,7 +625,6 @@ def parse_sodaubai():
                             # Ưu tiên 2: Tìm tên học sinh đứng trước/sau dấu phân cách hoặc lấy phần chữ còn lại
                             clean_name = re.sub(v_name, '', entry, flags=re.IGNORECASE)
                             clean_name = re.sub(r'[:\-x0-9]', '', clean_name).strip()
-                            # Nếu phần chữ còn lại ngắn (dưới 25 ký tự) thì khả năng cao đó là Tên học sinh
                             if len(clean_name) > 0 and len(clean_name) <= 25: 
                                 stu_name = clean_name
                         
@@ -623,7 +633,6 @@ def parse_sodaubai():
                         # [BẢN VÁ LỖI NÒNG CỐT]: Chẻ nhỏ tên học sinh nếu bị dính chùm
                         if stu_name:
                             import re
-                            # Tách bằng dấu phẩy, chấm phẩy, chữ "và", dấu "&", hoặc từ 2 khoảng trắng trở lên
                             split_names = re.split(r'[,;]|\s+và\s+|\s+&\s+|\s{2,}', stu_name, flags=re.IGNORECASE)
                             
                             for s_name in split_names:
