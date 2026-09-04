@@ -2,18 +2,23 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
+    <!-- Đã thêm thẻ viewport để tự động hiển thị tràn viền trên mọi thiết bị -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Thống kê Điểm danh GVCN - Hệ thống Quản lý</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .glass-card { background: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        /* Thêm width: 100% để đảm bảo khung thẻ bung rộng tối đa */
+        .glass-card { background: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; width: 100%; }
         
         /* [NÂNG CẤP]: CẤU HÌNH KHÓA DÒNG TIÊU ĐỀ (STICKY HEADER) */
         .table-responsive-scroll {
             max-height: 65vh; /* Giới hạn chiều cao khung để tạo thanh cuộn */
             overflow-y: auto;
+            overflow-x: auto; /* Thêm tính năng vuốt ngang nếu màn hình hẹp */
+            width: 100%;
         }
         .table-modern { width: 100%; border-collapse: separate; border-spacing: 0; }
         .table-modern thead th { 
@@ -39,7 +44,8 @@
             
             .no-print { display: none !important; }
             .glass-card { border: none !important; box-shadow: none !important; border-radius: 0 !important; }
-            .container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+            /* Cập nhật thành container-fluid cho bản in */
+            .container-fluid { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
             .print-only { display: block !important; }
             
             /* Tắt thanh cuộn khi in để xuất full danh sách */
@@ -55,7 +61,8 @@
     </style>
 </head>
 <body>
-    <div class="container py-4">
+    <!-- [ĐÃ SỬA LỖI TẠI ĐÂY]: Đổi "container" thành "container-fluid px-3 px-xl-5" -->
+    <div class="container-fluid px-3 px-xl-5 py-4">
         
         <div class="d-flex justify-content-between align-items-center mb-4 no-print">
             <a href="/dashboard" class="btn btn-light shadow-sm fw-bold" style="border-radius: 10px;">
