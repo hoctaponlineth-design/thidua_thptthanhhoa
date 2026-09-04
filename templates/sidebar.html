@@ -88,11 +88,13 @@
         <li><a href="/class_monthly_analysis" class="nav-link text-warning"><i class="fa-solid fa-microscope me-2"></i> Phân tích Tháng </a></li>
         <li><a href="/class_semester_analysis" class="nav-link text-warning"><i class="fa-solid fa-graduation-cap me-2"></i> Tổng kết Cuối kỳ </a></li>
         
-        <!-- TRUNG TÂM ĐIỀU HÀNH BGH (Điểm nhấn cho Ban Giám Hiệu) -->
+		<!-- TRUNG TÂM ĐIỀU HÀNH BGH (Điểm nhấn cho Ban Giám Hiệu) -->
         {% if session.get('role') in ['Quản trị viên', 'Admin', 'Ban Giám hiệu', 'Bí thư Đoàn trường', 'Bí thư'] %}
         <li><a href="/bgh/dashboard" class="nav-link text-warning fw-bold"><i class="fa-solid fa-chart-line me-2"></i> Điều Hành BGH</a></li>
+        
+        <!-- [NÂNG CẤP]: Nút xem Thống kê điểm danh GVCN -->
+        <li><a href="/gvcn_attendance_stats" class="nav-link text-info"><i class="fa-solid fa-fingerprint me-2"></i> K.Tra Điểm Danh GVCN</a></li>
         {% endif %}
-
         <!-- BÁO CÁO TOÀN TRƯỜNG -->
         <li><a href="/school_monthly_analysis" class="nav-link text-warning"><i class="fa-solid fa-building-columns me-2"></i> Đánh giá Toàn Trường</a></li>
         
