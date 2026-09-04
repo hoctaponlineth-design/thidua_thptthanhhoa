@@ -69,7 +69,7 @@ from openpyxl.utils import get_column_letter
 
 # Import các thành phần từ thư mục con của dự án
 from database.database import init_db, get_session, session_scope
-from database.models import User, UserRole, SchoolYear, Branch, RedStar, DutyArea, Assignment, StarEvaluation, WeeklyScore, ViolationCategory, WeeklyViolation, RawScore, MonthlyRecord, ActionLog, ScoreSettings
+from database.models import User, UserRole, SchoolYear, Branch, RedStar, DutyArea, Assignment, StarEvaluation, WeeklyScore, ViolationCategory, WeeklyViolation, RawScore, MonthlyRecord, ActionLog, ScoreSettings, GVCNAttendance
 
 # Import hàm kiểm tra đăng nhập từ file account_manager
 from database.account_manager import verify_external_login, sync_account_to_json, remove_account_from_json, load_external_accounts, save_external_accounts
