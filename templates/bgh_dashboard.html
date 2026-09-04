@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#e11d48">
-    <title>Trung Tâm Điều Hành Ban Giám Hiệu</title>
+    <title>Thống kê Điểm danh GVCN - Hệ thống Quản lý</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,16 +36,30 @@
             overflow-x: hidden !important;
         }
 
-        /* SIDEBAR (Desktop) */
+        /* =========================================
+           1. SIDEBAR & MAIN CONTENT (DESKTOP)
+           ========================================= */
         #desktopSidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; background-color: var(--sidebar-bg); color: white; transition: transform 0.3s ease; z-index: 1050; overflow-y: auto;}
         
-        /* MAIN CONTENT DESKTOP */
+        /* [VÁ LỖI]: Bỏ hết class container, dùng main-content trải dài 100% */
         .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 30px; transition: all 0.3s ease; min-height: 100vh; display: block; }
-        .kpi-card { border-radius: 12px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.04); transition: transform 0.2s; background: var(--surface); }
-        .kpi-card:hover { transform: translateY(-3px); }
+        .glass-card { background: var(--surface); border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border); width: 100%; }
 
         /* =========================================
-           1. NÂNG CẤP BANNER ĐỎ TRÊN MOBILE (APP UI)
+           2. BẢNG DỮ LIỆU & KHÓA TIÊU ĐỀ
+           ========================================= */
+        .table-responsive-scroll { max-height: 65vh; overflow-y: auto; overflow-x: auto; width: 100%;}
+        .table-modern { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .table-modern thead th { 
+            position: sticky; top: 0; z-index: 10; 
+            background: #f1f5f9; color: #64748b; font-size: 13px; font-weight: 600; text-transform: uppercase; 
+            padding: 16px; white-space: nowrap; box-shadow: 0 1px 0px #e2e8f0; 
+        }
+        .table-modern tbody td { padding: 16px; font-size: 14px; font-weight: 500; border-bottom: 1px solid #e2e8f0; vertical-align: middle;}
+        .table-modern tbody tr:hover { background-color: #f8fafc; }
+
+        /* =========================================
+           3. BANNER ĐỎ & BOTTOM NAV TRÊN MOBILE
            ========================================= */
         .mobile-red-banner {
             background: linear-gradient(135deg, #e11d48, #be123c);
@@ -68,32 +82,11 @@
         }
         .mobile-red-banner .btn-back:active { background: rgba(255,255,255,0.3); }
 
-        /* NÚT MENU */
         .mobile-red-banner .btn-menu {
             position: absolute; right: 15px; color: white; background: rgba(255,255,255,0.15);
             border: none; border-radius: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
         }
 
-        /* =========================================
-           2. NÂNG CẤP KHÓA TIÊU ĐỀ (STICKY HEADER)
-           ========================================= */
-        .table-responsive-scroll {
-            max-height: 60vh; 
-            overflow-y: auto;
-            overflow-x: auto; 
-        }
-        .table-modern-sticky { border-collapse: separate; border-spacing: 0; width: 100%; }
-        .table-modern-sticky thead th { 
-            position: sticky; top: 0; z-index: 10; 
-            background-color: #f8fafc; 
-            box-shadow: 0 1px 0px #dee2e6; 
-            border-bottom: none !important;
-            white-space: nowrap; 
-        }
-
-        /* =========================================
-           3. NÂNG CẤP THANH BOTTOM NAV TRÊN MOBILE
-           ========================================= */
         .bottom-nav {
             display: none; position: fixed; bottom: 0; left: 0; width: 100%;
             background-color: #ffffff; box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
@@ -110,11 +103,16 @@
         .bottom-nav-item.active { color: #e11d48; }
         .bottom-nav-item.active i { transform: translateY(-2px); }
 
+        /* =========================================
+           4. ĐIỀU CHỈNH ÉP TRÀN VIỀN MOBILE & TABLET
+           ========================================= */
         @media (max-width: 1200px) {
             .mobile-red-banner { display: flex; }
             .mobile-sticky-wrapper { position: fixed; top: 0; left: 0; width: 100%; z-index: 1030; background-color: transparent; }
             #desktopSidebar { transform: translateX(-100%) !important; box-shadow: 10px 0 30px rgba(0,0,0,0.3); }
             #desktopSidebar.show { transform: translateX(0) !important; }
+            
+            /* Máy tính bảng & Màn hình nhỏ (Ép tràn viền) */
             .main-content { 
                 margin-left: 0 !important; width: 100% !important; max-width: 100vw !important;
                 padding: 15px !important; padding-top: 90px !important; 
@@ -128,39 +126,32 @@
                 padding-right: 5px !important; 
                 padding-bottom: 85px !important; 
             }
-            .card { border-radius: 12px !important; margin-bottom: 15px !important;}
-            .card-body { padding: 12px 5px !important; }
-            .card-header { padding: 12px 10px !important; }
-            .table-modern-sticky th, .table-modern-sticky td {
-                padding: 10px 8px !important;
-                font-size: 13px !important;
-            }
-            .badge { font-size: 12px !important; }
+            .glass-card { border-radius: 12px !important; margin-bottom: 15px !important;}
+            .table-modern tbody td { padding: 12px 8px !important; font-size: 13px; }
+            .table-modern thead th { padding: 12px 8px !important; font-size: 12px; }
+            .filter-container { flex-direction: column; align-items: stretch !important; padding: 12px !important; }
+            .filter-container form { width: 100%; justify-content: space-between; margin-top: 10px;}
         }
 
         /* =========================================
-           4. NÂNG CẤP CHẾ ĐỘ IN PDF CHUẨN VĂN BẢN
+           5. CẤU HÌNH GIAO DIỆN XUẤT PDF CHUẨN VĂN BẢN
            ========================================= */
         @media print {
             @page { size: A4 portrait; margin: 15mm; }
-            body { background: #fff !important; color: #000 !important; font-family: "Times New Roman", Times, serif !important; }
+            body { background: #fff !important; color: #000 !important; font-family: "Times New Roman", Times, serif !important; overflow: visible !important; }
             
-            .no-print, #desktopSidebar, .bottom-nav, .mobile-sticky-wrapper, .kpi-card, .ai-report-card, .warning-section, .d-none.d-lg-flex { display: none !important; }
-            
+            .no-print, #desktopSidebar, .bottom-nav, .mobile-sticky-wrapper, .d-none.d-lg-flex { display: none !important; }
             .main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; }
-            .card { border: none !important; box-shadow: none !important; }
-            .card-header { padding: 0 !important; margin-bottom: 10px !important; }
-            .card-body { padding: 0 !important; }
-            
+            .glass-card { border: none !important; box-shadow: none !important; border-radius: 0 !important; }
             .print-only { display: block !important; }
             
             .table-responsive-scroll { max-height: none !important; overflow: visible !important; }
-            .table { border-collapse: collapse !important; width: 100% !important; margin-bottom: 20px !important; }
-            .table th, .table td { border: 1px solid #000 !important; padding: 6px !important; color: #000 !important; font-size: 13pt !important;}
-            .table thead th { position: static !important; background: #fff !important; color: #000 !important; font-weight: bold !important; border-bottom: 1px solid #000 !important; }
+            .table-modern { border-collapse: collapse !important; margin-top: 15px !important; width: 100% !important; }
+            .table-modern th, .table-modern td { border: 1px solid #000 !important; padding: 8px 10px !important; font-size: 13pt !important; color: #000 !important; box-shadow: none !important;}
+            .table-modern thead th { position: static !important; background: #fff !important; font-weight: bold !important; text-transform: none !important; }
             
-            .bg-primary { background: transparent !important; color: #000 !important; font-size: 14pt !important; border-bottom: 2px solid #000 !important;}
-            .badge { color: #000 !important; border: none !important; padding: 0 !important; font-size: 13pt !important; font-weight: bold !important; background: transparent !important; }
+            .badge { background: transparent !important; color: #000 !important; border: none !important; padding: 0 !important; font-size: 13pt !important; font-weight: normal !important; }
+            .badge i { display: none !important; } 
         }
         .print-only { display: none; }
     </style>
@@ -172,7 +163,7 @@
         {% include 'sidebar.html' %}
     </div>
 
-    <!-- MAIN CONTENT -->
+    <!-- MAIN CONTENT (ĐÃ GỠ BỎ THẺ CONTAINER) -->
     <div class="main-content">
         
         <!-- HEADER MOBILE (APP BANNER) -->
@@ -184,10 +175,10 @@
                 </a>
 
                 <div class="banner-title-wrapper">
-                    <i class="fa-solid fa-chart-pie fs-4"></i>
+                    <i class="fa-solid fa-fingerprint fs-4"></i>
                     <div>
-                        <h2>ĐIỀU HÀNH BGH</h2>
-                        <p>Hệ thống Quản lý Kỷ luật & Thi đua</p>
+                        <h2>ĐIỂM DANH GVCN</h2>
+                        <p>Trung Tâm Điều Hành BGH</p>
                     </div>
                 </div>
                 
@@ -197,250 +188,170 @@
             </div>
         </div>
 
-        <!-- TIÊU ĐỀ TRANG VÀ NÚT QUAY LẠI (DESKTOP) -->
-        <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-4 rounded-4 shadow-sm border-start border-5 border-primary d-none d-lg-flex no-print">
+        <!-- TIÊU ĐỀ TRANG (DESKTOP) -->
+        <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-4 rounded-4 shadow-sm border-start border-5 border-success d-none d-lg-flex no-print">
             <div class="d-flex align-items-center gap-3">
-                <!-- NÚT QUAY LẠI MÁY TÍNH -->
                 <a href="/dashboard" class="btn btn-light shadow-sm d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; border-radius: 12px; color: #64748b; text-decoration: none;" title="Quay lại Trang chủ">
                     <i class="fa-solid fa-arrow-left fs-5"></i>
                 </a>
                 <div>
-                    <h3 class="fw-bold text-primary m-0"><i class="fa-solid fa-building-columns me-2"></i> Trung Tâm Điều Hành Ban Giám Hiệu</h3>
-                    <p class="text-muted small m-0 mt-1">Bức tranh tổng thể nề nếp, thi đua và trợ lý AI phân tích dữ liệu toàn trường.</p>
+                    <h3 class="fw-bold text-success m-0"><i class="fa-solid fa-fingerprint me-2"></i> Báo Cáo Điểm Danh GVCN</h3>
+                    <p class="text-muted small m-0 mt-1">Thống kê tần suất lên lớp sinh hoạt 15 phút đầu giờ của Giáo viên chủ nhiệm.</p>
                 </div>
             </div>
-            <!-- BỘ CHỌN TUẦN -->
-            <form method="GET" action="/bgh/dashboard" class="d-flex align-items-center gap-2">
-                <label class="fw-bold text-secondary small">Chọn kỳ:</label>
-                <select name="week" class="form-select fw-bold text-primary shadow-sm" onchange="this.form.submit()" style="width: 140px;">
-                    {% for w in weeks %}
-                        <option value="{{ w }}" {% if w == selected_week %}selected{% endif %}>{{ w }}</option>
-                    {% endfor %}
-                </select>
-            </form>
-        </div>
-
-        <!-- BỘ CHỌN TUẦN VÀ NÚT QUAY LẠI (MOBILE) ĐÃ LÀM GỌN -->
-        <div class="card border-0 shadow-sm p-3 mb-3 d-lg-none no-print">
-            <form method="GET" action="/bgh/dashboard" class="row g-2 align-items-center">
-                <div class="col-4"><label class="fw-bold small text-muted">Chọn mốc kỳ:</label></div>
-                <div class="col-8">
-                    <select name="week" class="form-select form-select-sm fw-bold text-primary" onchange="this.form.submit()">
-                        {% for w in weeks %}
-                            <option value="{{ w }}" {% if w == selected_week %}selected{% endif %}>{{ w }}</option>
-                        {% endfor %}
+            
+            <div class="d-flex align-items-center gap-3">
+                <form action="/gvcn_attendance_stats" method="GET" class="d-flex gap-2 m-0">
+                    <select name="time_mode" class="form-select fw-bold border-secondary" style="width: 130px;" onchange="this.form.submit()">
+                        <option value="week" {% if time_mode == 'week' %}selected{% endif %}>Theo Tuần</option>
+                        <option value="month" {% if time_mode == 'month' %}selected{% endif %}>Theo Tháng</option>
                     </select>
-                </div>
-            </form>
+                    <select name="time_value" class="form-select fw-bold text-success border-success" style="width: 150px;" onchange="this.form.submit()">
+                        {% if time_mode == 'week' %}
+                            {% for w in available_weeks %}
+                                <option value="{{ w }}" {% if time_value == w %}selected{% endif %}>{{ w }}</option>
+                            {% endfor %}
+                        {% else %}
+                            {% for m in available_months %}
+                                <option value="{{ m }}" {% if time_value == m %}selected{% endif %}>{{ m }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </form>
+                <button onclick="window.print()" class="btn btn-danger shadow-sm fw-bold">
+                    <i class="fa-solid fa-file-pdf me-2"></i> Xuất PDF
+                </button>
+            </div>
         </div>
 
-        <!-- THẺ KPI CHỈ SỐ CỐT LÕI -->
-        <div class="row g-3 mb-4 no-print">
-            <div class="col-12 col-md-4">
-                <div class="card kpi-card p-3 p-md-4 border-start border-4 border-primary">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <span class="text-muted fw-bold small text-uppercase d-block mb-1">Điểm TB Toàn Trường</span>
-                            <h2 class="fw-bold text-primary m-0">{{ avg_school_score }} <span class="fs-6 text-muted fw-normal">điểm</span></h2>
-                        </div>
-                        <div class="bg-primary bg-opacity-10 text-primary rounded-4 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px; font-size: 20px;">
-                            <i class="fa-solid fa-chart-line"></i>
-                        </div>
-                    </div>
-                </div>
+        <div class="glass-card overflow-hidden mb-4">
+            
+            <!-- QUỐC HIỆU BẢN IN -->
+            <div class="print-only" style="margin-bottom: 20px;">
+                <table style="width: 100%; border: none;">
+                    <tr>
+                        <td style="width: 45%; text-align: center; vertical-align: top; border: none; font-size: 13pt;">
+                            SỞ GIÁO DỤC VÀ ĐÀO TẠO ĐỒNG NAI<br>
+                            <strong style="text-decoration: underline;">TRƯỜNG THPT THANH HÒA</strong>
+                        </td>
+                        <td style="width: 55%; text-align: center; vertical-align: top; border: none; font-size: 13pt;">
+                            <strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br>
+                            <strong style="text-decoration: underline;">Độc lập - Tự do - Hạnh phúc</strong>
+                        </td>
+                    </tr>
+                </table>
+                <h3 style="text-align: center; font-weight: bold; margin-top: 30px; margin-bottom: 5px; font-size: 16pt;">
+                    BÁO CÁO THỐNG KÊ ĐIỂM DANH GVCN
+                </h3>
+                <p style="text-align: center; font-style: italic; font-size: 13pt; margin-top: 0;">
+                    (Áp dụng: {{ time_value }})
+                </p>
             </div>
-            <div class="col-12 col-md-4">
-                <div class="card kpi-card p-3 p-md-4 border-start border-4 border-danger">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <span class="text-muted fw-bold small text-uppercase d-block mb-1">Tổng Điểm Trừ Vi Phạm</span>
-                            <h2 class="fw-bold text-danger m-0">-{{ total_violations }} <span class="fs-6 text-muted fw-normal">đ</span></h2>
-                        </div>
-                        <div class="bg-danger bg-opacity-10 text-danger rounded-4 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px; font-size: 20px;">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
-                        </div>
-                    </div>
-                </div>
+
+            <!-- BỘ CHỌN THỜI GIAN & IN ẤN (DÀNH RIÊNG CHO MOBILE) -->
+            <div class="p-3 border-bottom bg-white d-flex justify-content-between align-items-center flex-wrap gap-2 no-print filter-container d-lg-none">
+                <button onclick="window.print()" class="btn btn-danger btn-sm shadow-sm fw-bold w-100 mb-2">
+                    <i class="fa-solid fa-file-pdf me-1"></i> Xuất file PDF / In báo cáo
+                </button>
+                <form action="/gvcn_attendance_stats" method="GET" class="d-flex gap-2 w-100 m-0">
+                    <select name="time_mode" class="form-select form-select-sm fw-bold border-secondary w-50" onchange="this.form.submit()">
+                        <option value="week" {% if time_mode == 'week' %}selected{% endif %}>Theo Tuần</option>
+                        <option value="month" {% if time_mode == 'month' %}selected{% endif %}>Theo Tháng</option>
+                    </select>
+                    <select name="time_value" class="form-select form-select-sm fw-bold text-success border-success w-50" onchange="this.form.submit()">
+                        {% if time_mode == 'week' %}
+                            {% for w in available_weeks %}
+                                <option value="{{ w }}" {% if time_value == w %}selected{% endif %}>{{ w }}</option>
+                            {% endfor %}
+                        {% else %}
+                            {% for m in available_months %}
+                                <option value="{{ m }}" {% if time_value == m %}selected{% endif %}>{{ m }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </form>
             </div>
-            <div class="col-12 col-md-4">
-                <div class="card kpi-card p-3 p-md-4 border-start border-4 border-success">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <span class="text-muted fw-bold small text-uppercase d-block mb-1">Lớp Dẫn Đầu {{ selected_week }}</span>
-                            <h6 class="fw-bold text-success m-0 mt-1">
-                                {% if top_classes %}
-                                    {% for tc in top_classes %}
-                                        <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25 me-1 mb-1">
-                                            {{ tc.group }}: Lớp {{ tc.class.branch_name }}
-                                        </span>
-                                    {% endfor %}
+
+            <!-- BẢNG DỮ LIỆU ĐÃ KÍCH HOẠT THANH CUỘN VÀ KHÓA HEADER -->
+            <div class="table-responsive-scroll border-bottom">
+                <table class="table-modern">
+                    <thead>
+                        <tr>
+                            <th class="text-center" style="width: 5%">STT</th>
+                            <th style="width: 15%">Lớp</th>
+                            <th style="width: 25%">Giáo viên Chủ nhiệm</th>
+                            <th class="text-center" style="width: 15%">Số Lần</th>
+                            <th style="width: 40%">Chi tiết các ngày đã điểm danh</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in stats_list %}
+                        <tr>
+                            <td class="text-center fw-bold text-muted">{{ loop.index }}</td>
+                            <td class="fw-bold text-primary">{{ item.branch_name }}</td>
+                            <td class="fw-bold text-dark">{{ item.gvcn }}</td>
+                            <td class="text-center">
+                                {% if item.count >= 3 %}
+                                    <span class="badge bg-success fs-6 rounded-pill px-2 py-1"><i class="fa-solid fa-check d-none d-md-inline me-1"></i> {{ item.count }} lần</span>
+                                {% elif item.count > 0 %}
+                                    <span class="badge bg-warning text-dark fs-6 rounded-pill px-2 py-1">{{ item.count }} lần</span>
                                 {% else %}
-                                    <span>Chưa có dữ liệu</span>
+                                    <span class="badge bg-danger fs-6 rounded-pill px-2 py-1"><i class="fa-solid fa-xmark d-none d-md-inline me-1"></i> 0 lần</span>
                                 {% endif %}
-                            </h6>
-                        </div>
-                        <div class="bg-success bg-opacity-10 text-success rounded-4 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px; font-size: 20px;">
-                            <i class="fa-solid fa-trophy"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-		<!-- TRỢ LÝ AI PHÂN TÍCH -->
-        <div class="card ai-report-card border-0 shadow-sm mb-4 no-print" style="border-radius: 14px; border-left: 5px solid #2563eb !important; background: #ffffff; position: sticky; top: 15px; z-index: 99;">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 38px; height: 38px;">
-                            <i class="fa-solid fa-brain fs-5"></i>
-                        </div>
-                        <div>
-                            <h5 class="fw-bold text-primary m-0" style="font-size: 16px;">Trợ Lý AI Phân Tích & Gợi Ý Quyết Định</h5>
-                            <span class="text-muted" style="font-size: 12px;">Góc nhìn quản lý giáo dục & Đề xuất chỉ đạo</span>
-                        </div>
-                    </div>
-                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill fw-bold" style="font-size: 11px;">
-                        <i class="fa-solid fa-shield-halved me-1"></i> Executive Summary
-                    </span>
-                </div>
-                <div class="ai-report-content" style="font-size: 14.5px; color: #1e293b;">
-                    {{ ai_summary | safe }}
-                </div>
-            </div>
-        </div>
-
-        <!-- BẢNG XẾP HẠNG VÀ THỐNG KÊ CHI TIẾT -->
-        <div class="row">
-            <!-- TOP CẦN LƯU Ý (NÂNG CẤP TƯƠNG TÁC NHANH) -->
-            <div class="col-lg-4 mb-4 warning-section no-print">
-                <div class="card border-0 shadow-sm rounded-4 h-100 p-4">
-                    <h5 class="fw-bold text-danger mb-3"><i class="fa-solid fa-circle-exclamation me-2"></i> Cần Lưu Ý & Chấn Chỉnh</h5>
-                    <div class="list-group list-group-flush">
-                        {% for wc in warning_classes %}
-                        <div class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center">
-                            <div>
-                                <a href="/class-dashboard?branch_id={{ wc.class.branch_id }}" class="text-decoration-none">
-                                    <h6 class="fw-bold text-primary m-0 text-decoration-underline-hover">
-                                        Lớp {{ wc.class.branch_name }} <span class="badge bg-light text-secondary border font-monospace" style="font-size: 11px;">{{ wc.group }}</span>
-                                    </h6>
-                                </a>
-                                <small class="text-muted">GVCN: {{ wc.class.gvcn }}</small>
-                            </div>
-                            <span class="badge bg-danger fs-6 px-3 py-2">{{ wc.class.total_score }}đ</span>
-                        </div>
-                        {% else %}
-                        <p class="text-muted fst-italic">Không có lớp nào dưới chuẩn cảnh báo.</p>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- BẢNG TỔNG HỢP THI ĐUA CHIA THEO NHÓM -->
-            <div class="col-lg-8 mb-4">
-                
-                <!-- QUỐC HIỆU BẢN IN -->
-                <div class="print-only" style="margin-bottom: 20px;">
-                    <table style="width: 100%; border: none;">
-                        <tr>
-                            <td style="width: 45%; text-align: center; vertical-align: top; border: none; font-size: 13pt;">
-                                SỞ GIÁO DỤC VÀ ĐÀO TẠO ĐỒNG NAI<br>
-                                <strong style="text-decoration: underline;">TRƯỜNG THPT THANH HÒA</strong>
                             </td>
-                            <td style="width: 55%; text-align: center; vertical-align: top; border: none; font-size: 13pt;">
-                                <strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br>
-                                <strong style="text-decoration: underline;">Độc lập - Tự do - Hạnh phúc</strong>
-                            </td>
-                        </tr>
-                    </table>
-                    <h3 style="text-align: center; font-weight: bold; margin-top: 30px; margin-bottom: 5px; font-size: 16pt;">
-                        BÁO CÁO XẾP HẠNG THI ĐUA TOÀN TRƯỜNG
-                    </h3>
-                    <p style="text-align: center; font-style: italic; font-size: 13pt; margin-top: 0;">
-                        (Kỳ báo cáo: {{ selected_week }})
-                    </p>
-                </div>
-
-                <div class="card border-0 shadow-sm rounded-4 h-100">
-                    <div class="card-header bg-white border-0 py-3 px-3 px-md-4 d-flex justify-content-between align-items-center flex-wrap gap-2 no-print">
-                        <h5 class="fw-bold text-dark m-0"><i class="fa-solid fa-ranking-star me-2"></i> Bảng Xếp Hạng</h5>
-                        <button class="btn btn-danger btn-sm fw-bold" onclick="window.print()"><i class="fa-solid fa-file-pdf me-1"></i> Xuất PDF</button>
-                    </div>
-                    
-                    <div class="card-body p-3">
-                        {% for group_name, classes in groups_data.items() %}
-                        <div class="mb-4" style="page-break-inside: avoid;">
-                            <div class="bg-primary text-white px-3 py-2 rounded-top fw-bold d-flex justify-content-between align-items-center" style="font-size: 14px;">
-                                <span><i class="fa-solid fa-layer-group me-2 no-print"></i> {{ group_name }}</span>
-                                <span class="badge bg-light text-primary">Sĩ số nhóm: {{ classes|length }} lớp</span>
-                            </div>
-                            
-                            <div class="table-responsive-scroll border rounded-bottom">
-                                <table class="table table-hover align-middle m-0 text-center table-modern-sticky">
-                                    <thead class="small">
-                                        <tr>
-                                            <th>Hạng</th>
-                                            <th>Chi đoàn</th>
-                                            <th>GVCN</th>
-                                            <th>Điểm Trừ</th>
-                                            <th class="text-end pe-4">Tổng Điểm</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for row in classes %}
-                                        <tr>
-                                            <td class="fw-bold">
-                                                {% if row.rank == 1 %}<span class="badge bg-warning text-dark px-2 py-1 border border-warning">1 🥇</span>
-                                                {% elif row.rank == 2 %}<span class="badge bg-secondary px-2 py-1 border border-secondary">2 🥈</span>
-                                                {% elif row.rank == 3 %}<span class="badge bg-danger px-2 py-1 border border-danger">3 🥉</span>
-                                                {% else %}<span class="text-muted">#{{ row.rank }}</span>{% endif %}
-                                            </td>
-                                            <td class="fw-bold text-primary">Lớp {{ row.branch_name }}</td>
-                                            <td class="small text-muted">{{ row.gvcn }}</td>
-                                            <td class="text-danger fw-bold">-{{ row.score_tru }}đ</td>
-                                            <td class="text-end pe-4 fw-bold text-dark fs-6">{{ row.total_score }}đ</td>
-                                        </tr>
+                            <td>
+                                {% if item.dates %}
+                                    <div class="d-flex flex-wrap gap-1">
+                                        {% for d in item.dates %}
+                                            <span class="badge bg-light text-secondary border border-secondary">{{ d }}</span>
                                         {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        {% else %}
-                        <div class="text-center py-4 text-muted">Chưa có dữ liệu phân nhóm lớp học trong hệ thống.</div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <!-- CHỮ KÝ BẢN IN -->
-                <div class="print-only" style="margin-top: 30px; font-size: 13pt;">
-                    <table style="width: 100%; border: none;">
-                        <tr>
-                            <td style="width: 50%; vertical-align: top; border: none; padding-left: 20px;">
-                                <strong style="font-style: italic;">Nơi nhận:</strong><br>
-                                - Ban Giám hiệu (để b/c);<br>
-                                - Các GVCN (để t/h);<br>
-                                - Lưu: VP, Đoàn TN.
-                            </td>
-                            <td style="width: 50%; text-align: center; vertical-align: top; border: none;">
-                                <em style="font-size: 13pt;">Đồng Nai, ngày .... tháng .... năm 202...</em><br>
-                                <strong>TM. BAN GIÁM HIỆU</strong><br>
-                                <span style="font-style: italic; font-size: 11pt;">(Ký và đóng dấu)</span>
-                                <br><br><br><br><br>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted fst-italic" style="font-size: 13px;">Chưa ghi nhận</span>
+                                {% endif %}
                             </td>
                         </tr>
-                    </table>
-                </div>
-
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="fa-regular fa-folder-open fs-1 mb-3 no-print"></i><br>
+                                Chưa có dữ liệu điểm danh nào trong khoảng thời gian này.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
+
+            <!-- CHỮ KÝ BẢN IN -->
+            <div class="print-only" style="margin-top: 30px; font-size: 13pt;">
+                <table style="width: 100%; border: none;">
+                    <tr>
+                        <td style="width: 50%; vertical-align: top; border: none; padding-left: 20px;">
+                            <strong style="font-style: italic;">Nơi nhận:</strong><br>
+                            - Ban Giám hiệu (để b/c);<br>
+                            - Các GVCN (để t/h);<br>
+                            - Lưu: VP, Đoàn TN.
+                        </td>
+                        <td style="width: 50%; text-align: center; vertical-align: top; border: none;">
+                            <em style="font-size: 13pt;">Đồng Nai, ngày .... tháng .... năm 202...</em><br>
+                            <strong>TM. BAN CHẤP HÀNH ĐOÀN TRƯỜNG</strong><br>
+                            <span style="font-style: italic; font-size: 11pt;">(Ký và ghi rõ họ tên)</span>
+                            <br><br><br><br><br>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            
         </div>
     </div>
 
     <!-- THANH ĐIỀU HƯỚNG DƯỚI ĐÁY (BOTTOM NAV) DÀNH CHO BGH TRÊN MOBILE -->
     <div class="bottom-nav d-md-none no-print" id="mobileBottomNav">
-        <a href="/bgh/dashboard" class="bottom-nav-item active">
+        <a href="/bgh/dashboard" class="bottom-nav-item">
             <i class="fa-solid fa-house"></i><span>Trang chủ</span>
         </a>
-        <a href="/gvcn_attendance_stats" class="bottom-nav-item">
+        <a href="/gvcn_attendance_stats" class="bottom-nav-item active">
             <i class="fa-solid fa-fingerprint"></i><span>Điểm danh</span>
         </a>
         <a href="/school_monthly_analysis" class="bottom-nav-item">
@@ -463,6 +374,5 @@
             }
         });
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
