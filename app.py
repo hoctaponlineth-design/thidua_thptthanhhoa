@@ -340,29 +340,58 @@ def gvcn_attendance_stats():
                 flash("Chưa có năm học kích hoạt!", "error")
                 return redirect(url_for('dashboard'))
                 
-            time_mode = request.args.get('time_mode', 'week') # 'week' hoặc 'month'
+            time_mode = request.args.get('time_mode', 'week') 
             time_value = request.args.get('time_value', '')
             
             # Lấy toàn bộ dữ liệu điểm danh của năm học hiện tại
             all_atts = db_session.query(GVCNAttendance).join(Branch).filter(Branch.school_year_id == active_year.id).all()
             
-            # Tự động trích xuất các Tuần và Tháng đã có dữ liệu để làm bộ lọc
+            # Tự động trích xuất các Tuần, Tháng, Học kỳ, Năm học đã có dữ liệu để làm bộ lọc
             available_weeks = sorted(list(set([a.week_name for a in all_atts if a.week_name])), key=lambda x: int(''.join(filter(str.isdigit, x))) if any(c.isdigit() for c in x) else 0)
-            available_months = sorted(list(set([a.date.strftime('Tháng %m/%Y') for a in all_atts if a.date])))
+            available_months = sorted(list(set([a.date.strftime('Tháng %m/%Y') for a in all_atts if a.date])), reverse=True)
             
-            # Đặt giá trị mặc định khi vừa vào trang (Hiển thị tuần mới nhất)
+            available_semesters = set()
+            available_years = set()
+            
+            for a in all_atts:
+                if a.date:
+                    start_year = a.date.year if a.date.month >= 8 else a.date.year - 1
+                    school_year_str = f"{start_year}-{start_year + 1}"
+                    
+                    hk_str = f"Học kỳ 1 ({school_year_str})" if a.date.month >= 8 or a.date.month == 1 else f"Học kỳ 2 ({school_year_str})"
+                    available_semesters.add(hk_str)
+                    available_years.add(f"Năm học {school_year_str}")
+
+            available_semesters = sorted(list(available_semesters), reverse=True)
+            available_years = sorted(list(available_years), reverse=True)
+
+            # Đặt giá trị mặc định khi vừa vào trang
             if time_mode == 'week' and not time_value and available_weeks:
                 time_value = available_weeks[-1] 
             elif time_mode == 'month' and not time_value and available_months:
-                time_value = available_months[-1] 
+                time_value = available_months[0]
+            elif time_mode == 'semester' and not time_value and available_semesters:
+                time_value = available_semesters[0]
+            elif time_mode == 'year' and not time_value and available_years:
+                time_value = available_years[0]
                 
             # Bộ lọc dữ liệu
             filtered_atts = []
             for a in all_atts:
+                if not a.date: continue
                 if time_mode == 'week' and a.week_name == time_value:
                     filtered_atts.append(a)
-                elif time_mode == 'month' and a.date and a.date.strftime('Tháng %m/%Y') == time_value:
+                elif time_mode == 'month' and a.date.strftime('Tháng %m/%Y') == time_value:
                     filtered_atts.append(a)
+                elif time_mode == 'semester':
+                    start_year = a.date.year if a.date.month >= 8 else a.date.year - 1
+                    hk_str = f"Học kỳ 1 ({start_year}-{start_year + 1})" if a.date.month >= 8 or a.date.month == 1 else f"Học kỳ 2 ({start_year}-{start_year + 1})"
+                    if hk_str == time_value:
+                        filtered_atts.append(a)
+                elif time_mode == 'year':
+                    start_year = a.date.year if a.date.month >= 8 else a.date.year - 1
+                    if f"Năm học {start_year}-{start_year + 1}" == time_value:
+                        filtered_atts.append(a)
                     
             # Thống kê tổng hợp theo từng lớp
             stats = {}
@@ -377,19 +406,21 @@ def gvcn_attendance_stats():
             day_map = {0: 'T2', 1: 'T3', 2: 'T4', 3: 'T5', 4: 'T6', 5: 'T7', 6: 'CN'}   
             for a in filtered_atts:
                 if a.branch_id in stats and a.date:
-                    stats[a.branch_id]['count'] += 1
+                    stats[a.branch_id]['count'] += 1 # Đếm cộng dồn thành Tổng số buổi
                     day_str = day_map.get(a.date.weekday(), '')
-                    # Kết quả hiển thị: VD: T2 (15/09)
                     date_str = f"{day_str} ({a.date.strftime('%d/%m')})" 
                     stats[a.branch_id]['dates'].append(date_str)                    
-            # Chuyển thành danh sách và xếp hạng (Ai đi nhiều lên đầu)
+            
+            # Chuyển thành danh sách và xếp hạng (Xếp theo Lớp A-Z để dễ theo dõi)
             stats_list = list(stats.values())
-            stats_list.sort(key=lambda x: x['count'], reverse=True)
+            stats_list.sort(key=lambda x: x['branch_name'])
             
             return render_template('gvcn_attendance.html', 
                                    stats_list=stats_list,
                                    available_weeks=available_weeks,
                                    available_months=available_months,
+                                   available_semesters=available_semesters,
+                                   available_years=available_years,
                                    time_mode=time_mode,
                                    time_value=time_value)
     except Exception as e:
