@@ -285,6 +285,45 @@ def restrict_access():
 def ping():
     return "<h1>Kết nối thành công! Máy chủ đang hoạt động.</h1>"
 
+@app.route('/api/gvcn_checkin', methods=['POST'])
+def gvcn_checkin():
+    # Chỉ GVCN mới được phép điểm danh
+    if session.get('role') != 'Giáo viên chủ nhiệm':
+        return {"success": False, "error": "Không có quyền thực hiện!"}, 403
+
+    data = request.get_json(force=True, silent=True) or request.form.to_dict()
+    branch_id = data.get('branch_id')
+    week_name = data.get('week_name')
+
+    if not branch_id or not week_name:
+        return {"success": False, "error": "Thiếu thông tin lớp hoặc tuần!"}, 400
+
+    try:
+        from datetime import date
+        with session_scope() as db_session:
+            today_date = date.today()
+            
+            # Kiểm tra xem hôm nay thầy cô đã bấm chưa
+            exist = db_session.query(GVCNAttendance).filter_by(branch_id=branch_id, date=today_date).first()
+            if exist:
+                return {"success": False, "error": "Thầy/Cô đã điểm danh cho ngày hôm nay rồi!"}, 400
+
+            # Ghi nhận vào DB
+            new_attendance = GVCNAttendance(
+                branch_id=branch_id, 
+                week_name=week_name, 
+                date=today_date
+            )
+            db_session.add(new_attendance)
+            
+            # (Tùy chọn) Lưu vết hệ thống để BGH biết
+            log_system_action("ĐIỂM DANH GVCN", f"GVCN Lớp ID {branch_id} đã điểm danh sinh hoạt 15p Tuần {week_name}")
+            
+            return {"success": True, "message": "✅ Điểm danh thành công! Cảm ơn Thầy/Cô đã lên lớp."}, 200
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return {"success": False, "error": str(e)}, 500
+    
 # API: BÓC TÁCH DỮ LIỆU TỪ FILE SỔ ĐẦU BÀI (TỐI ƯU CHỐNG SÓT ĐIỂM)
 @app.route('/api/parse_sodaubai', methods=['POST'])
 @app.route('/weekly/api/parse_sodaubai', methods=['POST'])
