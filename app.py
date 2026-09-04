@@ -215,7 +215,8 @@ def restrict_access():
         'api_gvcn_leaderboard',
         'api_gvcn_get_months',
         'update_branch_info',
-        'api_weekly_scores_json'
+        'api_weekly_scores_json',
+        'gvcn_checkin'
     ]
     
     allowed_for_saodo = [
@@ -323,6 +324,75 @@ def gvcn_checkin():
     except Exception as e:
         import traceback; traceback.print_exc()
         return {"success": False, "error": str(e)}, 500
+    
+@app.route('/gvcn_attendance_stats')
+def gvcn_attendance_stats():
+    # Chỉ Admin, BGH hoặc Bí thư mới được xem thống kê này
+    if session.get('role') not in ['Quản trị viên', 'Admin', 'Bí thư Đoàn trường', 'Bí thư', 'Ban Giám hiệu']:
+        flash("Bạn không có quyền xem bảng thống kê này!", "error")
+        return redirect(url_for('dashboard'))
+        
+    try:
+        with session_scope() as db_session:
+            active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
+            if not active_year:
+                flash("Chưa có năm học kích hoạt!", "error")
+                return redirect(url_for('dashboard'))
+                
+            time_mode = request.args.get('time_mode', 'week') # 'week' hoặc 'month'
+            time_value = request.args.get('time_value', '')
+            
+            # Lấy toàn bộ dữ liệu điểm danh của năm học hiện tại
+            all_atts = db_session.query(GVCNAttendance).join(Branch).filter(Branch.school_year_id == active_year.id).all()
+            
+            # Tự động trích xuất các Tuần và Tháng đã có dữ liệu để làm bộ lọc
+            available_weeks = sorted(list(set([a.week_name for a in all_atts if a.week_name])), key=lambda x: int(''.join(filter(str.isdigit, x))) if any(c.isdigit() for c in x) else 0)
+            available_months = sorted(list(set([a.date.strftime('Tháng %m/%Y') for a in all_atts if a.date])))
+            
+            # Đặt giá trị mặc định khi vừa vào trang (Hiển thị tuần mới nhất)
+            if time_mode == 'week' and not time_value and available_weeks:
+                time_value = available_weeks[-1] 
+            elif time_mode == 'month' and not time_value and available_months:
+                time_value = available_months[-1] 
+                
+            # Bộ lọc dữ liệu
+            filtered_atts = []
+            for a in all_atts:
+                if time_mode == 'week' and a.week_name == time_value:
+                    filtered_atts.append(a)
+                elif time_mode == 'month' and a.date and a.date.strftime('Tháng %m/%Y') == time_value:
+                    filtered_atts.append(a)
+                    
+            # Thống kê tổng hợp theo từng lớp
+            stats = {}
+            branches = db_session.query(Branch).filter_by(school_year_id=active_year.id).all()
+            for b in branches:
+                stats[b.id] = {
+                    'branch_name': b.name,
+                    'gvcn': b.gvcn or "Chưa cập nhật",
+                    'count': 0,
+                    'dates': []
+                }
+                
+            for a in filtered_atts:
+                if a.branch_id in stats:
+                    stats[a.branch_id]['count'] += 1
+                    stats[a.branch_id]['dates'].append(a.date.strftime('%d/%m'))
+                    
+            # Chuyển thành danh sách và xếp hạng (Ai đi nhiều lên đầu)
+            stats_list = list(stats.values())
+            stats_list.sort(key=lambda x: x['count'], reverse=True)
+            
+            return render_template('gvcn_attendance.html', 
+                                   stats_list=stats_list,
+                                   available_weeks=available_weeks,
+                                   available_months=available_months,
+                                   time_mode=time_mode,
+                                   time_value=time_value)
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        flash(f"Lỗi tải thống kê: {e}", "error")
+        return redirect(url_for('dashboard'))
     
 # API: BÓC TÁCH DỮ LIỆU TỪ FILE SỔ ĐẦU BÀI (TỐI ƯU CHỐNG SÓT ĐIỂM)
 @app.route('/api/parse_sodaubai', methods=['POST'])
