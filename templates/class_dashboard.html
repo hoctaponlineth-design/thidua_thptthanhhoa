@@ -493,6 +493,70 @@
         </div>
 
         {% if selected_branch %}
+        <!-- BẮT ĐẦU: KHỐI ĐIỂM DANH GVCN 15 PHÚT -->
+        {% if is_gvcn %}
+        <div class="glass-card mb-4 border-0" style="background: linear-gradient(135deg, #10b981, #047857); color: white; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);">
+            <div class="p-3 p-md-4 d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-3 w-100">
+                    <div class="bg-white text-success rounded-circle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 50px; height: 50px;">
+                        <i class="fa-solid fa-fingerprint fs-4 fa-pulse"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1" style="font-size: 16px;">Điểm danh Sinh hoạt 15 phút</h5>
+                        <p class="mb-0 opacity-75" style="font-size: 13px;">Xác nhận sự có mặt của GVCN tại lớp hôm nay.</p>
+                    </div>
+                </div>
+                <button id="btn-checkin" class="btn btn-light text-success fw-bold px-4 py-2 shadow-sm w-100 w-md-auto" style="border-radius: 12px; font-size: 14px; white-space: nowrap;" 
+                        onclick="diemDanh15Phut({{ selected_branch.id }}, 'Tuần hiện tại')">
+                    <i class="fa-solid fa-check-circle me-1"></i> XÁC NHẬN CÓ MẶT
+                </button>
+            </div>
+        </div>
+
+        <script>
+        function diemDanh15Phut(branchId, weekName) {
+            if(!confirm("Xác nhận Thầy/Cô đang có mặt sinh hoạt 15 phút đầu giờ tại lớp?")) return;
+            
+            let btn = document.getElementById('btn-checkin');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
+
+            fetch('/api/gvcn_checkin', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({branch_id: branchId, week_name: weekName})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    // Hiển thị thông báo và khóa nút bằng giao diện xám
+                    alert(data.message);
+                    btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ĐÃ ĐIỂM DANH';
+                    btn.classList.remove('text-success');
+                    btn.style.color = '#64748b';
+                    btn.style.background = '#e2e8f0';
+                } else {
+                    // Báo lỗi nếu hôm nay đã điểm danh rồi
+                    alert("⚠️ " + data.error);
+                    if(data.error.includes("rồi")) {
+                        btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ĐÃ ĐIỂM DANH';
+                        btn.style.color = '#64748b';
+                        btn.style.background = '#e2e8f0';
+                    } else {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i> XÁC NHẬN CÓ MẶT';
+                    }
+                }
+            })
+            .catch(err => {
+                alert("Lỗi kết nối mạng!");
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i> XÁC NHẬN CÓ MẶT';
+            });
+        }
+        </script>
+        {% endif %}
+        <!-- KẾT THÚC: KHỐI ĐIỂM DANH GVCN 15 PHÚT -->
         <!-- WIDGETS THÔNG TIN -->
         <div class="widget-grid">
             <div class="widget-card">
