@@ -34,11 +34,13 @@ def process_and_save_evidence(base64_string, branch_id, week_name):
         import cloudinary
         import cloudinary.uploader
         
-        # [QUAN TRỌNG]: Thầy/cô sẽ đăng ký tài khoản Cloudinary miễn phí và điền 3 mã này vào
+        # TỰ ĐỘNG NẠP CẤU HÌNH TỪ BIẾN MÔI TRƯỜNG TRÊN RENDER
+        import os
         cloudinary.config( 
-            cloud_name = "bgjw5m03", 
-            api_key = "438871542918892", 
-            api_secret = "sVU9IhaUUby5XOrR8oNsp_8XF6Q" 
+            cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME"), 
+            api_key = os.environ.get("CLOUDINARY_API_KEY"), 
+            api_secret = os.environ.get("CLOUDINARY_API_SECRET"),
+            secure = True
         )
         if base64_string.startswith('['):
             base64_list = json.loads(base64_string)
