@@ -216,7 +216,9 @@ def restrict_access():
         'api_gvcn_get_months',
         'update_branch_info',
         'api_weekly_scores_json',
-        'gvcn_checkin'
+        'gvcn_checkin',
+        'api_class_blacklist',      # <--- BỔ SUNG DÒNG NÀY
+        'export_class_blacklist'    # <--- BỔ SUNG DÒNG NÀY
     ]
     
     allowed_for_saodo = [
@@ -8177,6 +8179,185 @@ def clear_action_logs():
         flash(f"Lỗi khi xóa nhật ký: {str(e)}", "error")
         
     return redirect(url_for('action_logs'))
+# ==========================================
+# MODULE: GVCN TRA CỨU & XUẤT SỔ ĐEN CỦA LỚP
+# ==========================================
+@app.route('/api/class_blacklist')
+def api_class_blacklist():
+    if session.get('role') not in ['Giáo viên chủ nhiệm', 'Quản trị viên', 'Admin', 'Ban Giám hiệu', 'Bí thư Đoàn trường', 'Bí thư']:
+        return {"success": False, "error": "Không có quyền truy cập"}
+        
+    branch_id = request.args.get('branch_id', type=int)
+    time_mode = request.args.get('time_mode', 'week') 
+    time_value = request.args.get('time_value', '')
+
+    try:
+        with session_scope() as db_session:
+            query = db_session.query(
+                WeeklyViolation, WeeklyScore, ViolationCategory
+            ).join(WeeklyScore, WeeklyViolation.weekly_score_id == WeeklyScore.id)\
+             .join(ViolationCategory, WeeklyViolation.violation_id == ViolationCategory.id)\
+             .filter(
+                WeeklyScore.branch_id == branch_id,
+                WeeklyViolation.student_name != None,
+                WeeklyViolation.student_name != ''
+             )
+
+            if time_mode == 'week' and time_value:
+                query = query.filter(WeeklyScore.week == time_value)
+            elif time_mode == 'month' and time_value:
+                active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
+                if active_year:
+                    m_rec_general = db_session.query(MonthlyRecord).filter_by(
+                        school_year_id=active_year.id, month_name=time_value
+                    ).first()
+                    
+                    if m_rec_general and m_rec_general.weeks_used:
+                        valid_weeks = [w.strip() for w in m_rec_general.weeks_used.split(',') if w.strip()]
+                        query = query.filter(WeeklyScore.week.in_(valid_weeks))
+                    else:
+                        query = query.filter(WeeklyScore.week == 'NONE')
+
+            results = query.order_by(WeeklyScore.id.desc()).all()
+            
+            data = []
+            for v, sc, c in results:
+                raw_names = str(v.student_name).replace(';', ',').split(',')
+                for raw_n in raw_names:
+                    n_clean = raw_n.strip().title()
+                    if n_clean:
+                        data.append({
+                            'week': sc.week,
+                            'student_name': n_clean,
+                            'violation_name': c.name,
+                            'quantity': v.quantity,
+                            'penalty': float(c.penalty_points * v.quantity) if getattr(c, 'point_type', 'Điểm trừ') != 'Điểm cộng' else 0
+                        })
+            return {"success": True, "data": data}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.route('/export_class_blacklist')
+def export_class_blacklist():
+    if session.get('role') not in ['Giáo viên chủ nhiệm', 'Quản trị viên', 'Admin', 'Ban Giám hiệu', 'Bí thư Đoàn trường', 'Bí thư']:
+        flash("Bạn không có quyền!", "error")
+        return redirect(url_for('class_dashboard'))
+        
+    branch_id = request.args.get('branch_id', type=int)
+    time_mode = request.args.get('time_mode', 'week')
+    time_value = request.args.get('time_value', '')
+    
+    try:
+        with session_scope() as db_session:
+            branch = db_session.query(Branch).filter_by(id=branch_id).first()
+            if not branch:
+                flash("Không tìm thấy lớp!", "error")
+                return redirect(url_for('class_dashboard'))
+                
+            query = db_session.query(
+                WeeklyViolation, WeeklyScore, ViolationCategory
+            ).join(WeeklyScore, WeeklyViolation.weekly_score_id == WeeklyScore.id)\
+             .join(ViolationCategory, WeeklyViolation.violation_id == ViolationCategory.id)\
+             .filter(
+                WeeklyScore.branch_id == branch_id,
+                WeeklyViolation.student_name != None,
+                WeeklyViolation.student_name != ''
+             )
+
+            if time_mode == 'week' and time_value:
+                query = query.filter(WeeklyScore.week == time_value)
+            elif time_mode == 'month' and time_value:
+                active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
+                if active_year:
+                    m_rec = db_session.query(MonthlyRecord).filter_by(
+                        school_year_id=active_year.id, month_name=time_value
+                    ).first()
+                    if m_rec and m_rec.weeks_used:
+                        valid_weeks = [w.strip() for w in m_rec.weeks_used.split(',') if w.strip()]
+                        query = query.filter(WeeklyScore.week.in_(valid_weeks))
+                    else:
+                        query = query.filter(WeeklyScore.week == 'NONE')
+
+            results = query.order_by(WeeklyScore.id.desc()).all()
+            
+            violation_data = []
+            for v, sc, c in results:
+                raw_names = str(v.student_name).replace(';', ',').split(',')
+                for raw_n in raw_names:
+                    n_clean = raw_n.strip().title()
+                    if n_clean:
+                        violation_data.append({
+                            'week': sc.week,
+                            'student_name': n_clean,
+                            'violation_name': c.name,
+                            'quantity': v.quantity
+                        })
+                        
+            # Tạo Excel
+            import openpyxl
+            from openpyxl.styles import Font, Alignment, Border, Side
+            import io
+            from flask import send_file
+            
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "So_Den_Cua_Lop"
+            
+            ws.merge_cells('A1:E1')
+            ws['A1'] = "ĐOÀN TRƯỜNG THPT THANH HÒA"
+            ws['A1'].font = Font(name="Times New Roman", size=11, bold=True)
+            
+            ws.merge_cells('A3:E3')
+            ws['A3'] = f"DANH SÁCH HỌC SINH VI PHẠM KỶ LUẬT - LỚP {branch.name}"
+            ws['A3'].font = Font(name="Times New Roman", size=14, bold=True)
+            ws['A3'].alignment = Alignment(horizontal="center")
+            
+            ws.merge_cells('A4:E4')
+            ws['A4'] = f"Thời gian thống kê: {time_value}"
+            ws['A4'].font = Font(name="Times New Roman", size=12, italic=True)
+            ws['A4'].alignment = Alignment(horizontal="center")
+            
+            headers = ["STT", "Thời gian", "Họ và Tên", "Lỗi Vi Phạm", "Số Lần"]
+            thin = Side(border_style="thin", color="000000")
+            border = Border(left=thin, right=thin, top=thin, bottom=thin)
+            
+            for col, h in enumerate(headers, 1):
+                c = ws.cell(row=6, column=col, value=h)
+                c.font = Font(name="Times New Roman", size=12, bold=True)
+                c.alignment = Alignment(horizontal="center", vertical="center")
+                c.border = border
+                
+            for idx, item in enumerate(violation_data, 1):
+                row_idx = idx + 6
+                c1 = ws.cell(row=row_idx, column=1, value=idx)
+                c2 = ws.cell(row=row_idx, column=2, value=item['week'])
+                c3 = ws.cell(row=row_idx, column=3, value=item['student_name'])
+                c4 = ws.cell(row=row_idx, column=4, value=item['violation_name'])
+                c5 = ws.cell(row=row_idx, column=5, value=item['quantity'])
+                
+                for cell in [c1, c2, c3, c4, c5]:
+                    cell.font = Font(name="Times New Roman", size=12)
+                    cell.border = border
+                c1.alignment = Alignment(horizontal="center")
+                c2.alignment = Alignment(horizontal="center")
+                c5.alignment = Alignment(horizontal="center")
+                
+            ws.column_dimensions['A'].width = 6
+            ws.column_dimensions['B'].width = 15
+            ws.column_dimensions['C'].width = 25
+            ws.column_dimensions['D'].width = 35
+            ws.column_dimensions['E'].width = 10
+            
+            out = io.BytesIO()
+            wb.save(out)
+            out.seek(0)
+            
+            filename = f"So_Den_{branch.name}_{time_value}.xlsx".replace(" ", "_")
+            return send_file(out, download_name=filename, as_attachment=True)
+            
+    except Exception as e:
+        flash(f"Lỗi xuất Excel: {str(e)}", "error")
+        return redirect(url_for('class_dashboard'))
 
 if __name__ == "__main__":
     auto_init_accounts()
