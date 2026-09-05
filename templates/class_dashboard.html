@@ -159,9 +159,9 @@
             display: none;
             flex-direction: row;
             align-items: center;
-            justify-content: center; /* [SỬA Ở ĐÂY]: Đẩy toàn bộ cụm Logo + Chữ vào chính giữa màn hình */
+            justify-content: center;
             width: 100%;
-            position: relative; /* [SỬA Ở ĐÂY]: Tạo điểm neo để ghim nút Menu */
+            position: relative;
         }
         
         .mobile-red-banner .banner-title-wrapper {
@@ -170,7 +170,6 @@
             gap: 12px;
         }
 
-        /* [SỬA Ở ĐÂY]: ÉP các dòng chữ căn giữa với nhau (Dòng trên và dòng dưới đối xứng) */
         .mobile-red-banner .banner-title-wrapper div {
             text-align: center; 
         }
@@ -194,7 +193,7 @@
         }
 
         .mobile-red-banner .btn-menu {
-            position: absolute; /* [SỬA Ở ĐÂY]: Ghim chặt nút menu vào lề phải */
+            position: absolute;
             right: 20px;
             color: white;
             background: rgba(255,255,255,0.15);
@@ -220,7 +219,7 @@
                 position: fixed;
                 top: 0; left: 0; width: 100%;
                 z-index: 1030;
-                background-color: transparent; /* Bỏ lót nền vì Banner đã ốp sát trần */
+                background-color: transparent;
             }
 
             #desktopSidebar { transform: translateX(-100%) !important; box-shadow: 10px 0 30px rgba(0,0,0,0.3); }
@@ -229,7 +228,7 @@
             .main-content { 
                 margin-left: 0 !important; width: 100% !important; max-width: 100vw !important;
                 padding: 0 !important; 
-                padding-top: 90px !important; /* GIẢM ĐƯỢC 1 NỬA KHOẢNG TRỐNG (Từ 180px -> 90px) */
+                padding-top: 90px !important; 
                 display: block !important;
             }
             
@@ -247,15 +246,14 @@
         }
         
 		@media (max-width: 480px) {
-            /* [BẢN VÁ]: BỐ CỤC 2x2 CHO WIDGET TRÊN ĐIỆN THOẠI (TIẾT KIỆM 50% CHIỀU CAO) */
             .widget-grid { 
-                grid-template-columns: 1fr 1fr; /* Ép thành 2 cột */
-                gap: 10px; /* Thu hẹp khoảng cách giữa các thẻ */
+                grid-template-columns: 1fr 1fr; 
+                gap: 10px; 
             }
             .widget-card { 
                 padding: 12px 8px; 
                 gap: 8px; 
-                flex-direction: column; /* Chuyển icon lên trên, chữ xuống dưới */
+                flex-direction: column; 
                 align-items: center; 
                 text-align: center; 
                 border-radius: 14px;
@@ -308,7 +306,7 @@
         .bottom-nav-item {
             flex: 1;
             text-align: center;
-            color: #94a3b8; /* Màu xám nhạt mặc định */
+            color: #94a3b8;
             text-decoration: none;
             display: flex;
             flex-direction: column;
@@ -329,20 +327,19 @@
             font-weight: 600;
         }
         
-        /* Hiệu ứng khi được chọn (Active) */
         .bottom-nav-item.active {
-            color: #e11d48; /* Màu Đỏ nổi bật */
+            color: #e11d48;
         }
         .bottom-nav-item.active i {
-            transform: translateY(-2px); /* Nảy icon lên một chút */
+            transform: translateY(-2px);
         }
         
         @media (max-width: 768px) {
             .bottom-nav {
-                display: flex; /* Chỉ kích hoạt trên màn hình điện thoại */
+                display: flex;
             }
             .main-content {
-                padding-bottom: 85px !important; /* Đẩy nội dung lên để không bị menu che khuất */
+                padding-bottom: 85px !important;
             }
         }
 		/* =========================================
@@ -364,24 +361,24 @@
 		/* Tùy chỉnh cụm 3 nút hành động GVCN bằng nhau tuyệt đối */
     .gvcn-action-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr); /* Chia đều 3 cột bằng nhau */
-        gap: 8px; /* Khoảng cách giữa các nút */
+        grid-template-columns: repeat(4, 1fr); /* [NÂNG CẤP LƯỚI] Thay thành 4 cột */
+        gap: 8px;
         margin-top: 12px;
         width: 100%;
     }
     .btn-gvcn-equal {
         display: flex;
-        flex-direction: column; /* Icon ở trên, chữ ở dưới */
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         width: 100%;
-        height: 75px; /* Cố định chiều cao để các nút vuông vắn bằng nhau */
+        height: 75px; 
         padding: 4px;
         border-radius: 12px;
         border: none;
         color: white;
         font-weight: 700;
-        font-size: 11px; /* Cỡ chữ vừa vặn cho mobile */
+        font-size: 11px; 
         text-align: center;
         text-decoration: none;
         box-shadow: 0 4px 10px rgba(0,0,0,0.08);
@@ -425,7 +422,7 @@
             </div>
         </div>
 
-		<!-- BỘ LỌC TÌM KIẾM VÀ HÀNH ĐỘNG (ĐÃ TỐI ƯU KHÔNG GIAN) -->
+		<!-- BỘ LỌC TÌM KIẾM VÀ HÀNH ĐỘNG -->
         <div class="glass-card mb-3">
             <div class="card-header-modern py-3">
                 <h2 class="card-title-modern"><i class="fa-solid fa-magnifying-glass text-primary"></i> Tra Cứu Dữ Liệu</h2>
@@ -434,7 +431,6 @@
                 </div>
             </div>
             
-            <!-- Dùng p-3 thay vì filter-section để bóp nhỏ viền trắng -->
             <div class="p-3">
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
@@ -448,7 +444,6 @@
 
                 <form method="GET" action="/class-dashboard" class="row g-2 align-items-end w-100 m-0">
                     
-                    <!-- 1. CỘT CHỌN LỚP (Bóp padding nhỏ lại) -->
                     <div class="col-12 col-md-6 px-0 pe-md-2">
                         <label class="widget-label d-block mb-1">Lớp / Chi đoàn</label>
 						<select class="form-select w-100 form-select-modern py-2" name="branch_id" onchange="this.form.submit()" {% if is_gvcn %}disabled{% endif %}>
@@ -460,7 +455,6 @@
                         </select>
                     </div>
                     
-					<!-- 2. CỘT NÚT BẤM (ĐÃ THIẾT KẾ LƯỚI 3 CỘT ĐỀU NHAU) -->
                     <div class="col-12 px-0 mt-2">
                         {% if selected_branch %}
                         <div class="gvcn-action-grid">
@@ -469,6 +463,12 @@
                                 <i class="fa-solid fa-file-pdf"></i>
                                 <span>Xuất Hồ Sơ</span>
                             </a>
+
+                            <!-- [NÂNG CẤP LÕI]: SỬA LẠI NÚT TRA SỔ ĐEN ĐỂ GỌI ĐÚNG TAB MỚI -->
+                            <button type="button" class="btn-gvcn-equal" style="background: linear-gradient(135deg, #ef4444, #dc2626);" onclick="document.querySelector('[data-bs-target=\'#blacklist-pane\']').click()" title="Tra cứu Sổ Đen của lớp">
+                                <i class="fa-solid fa-book-skull"></i>
+                                <span>Tra Sổ Đen</span>
+                            </button>
                             
                             <!-- 2. Nút Sửa Thông Tin -->
                             {% if is_gvcn or session.get('role') in ['Quản trị viên', 'Admin', 'Bí thư Đoàn trường'] %}
@@ -478,7 +478,7 @@
                             </button>
                             {% endif %}
                             
-                            <!-- 3. Nút Bật/Tắt Thông Báo (Toggle) -->
+                            <!-- 3. Nút Bật/Tắt Thông Báo -->
                             {% if is_gvcn %}
                             <button type="button" class="btn-gvcn-equal" id="btnPushNotifyGVCN" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);" onclick="enablePushNotifications()" title="Bật/Tắt thông báo vi phạm">
                                 <i class="fa-solid fa-bell"></i>
@@ -529,14 +529,12 @@
             .then(res => res.json())
             .then(data => {
                 if(data.success) {
-                    // Hiển thị thông báo và khóa nút bằng giao diện xám
                     alert(data.message);
                     btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ĐÃ ĐIỂM DANH';
                     btn.classList.remove('text-success');
                     btn.style.color = '#64748b';
                     btn.style.background = '#e2e8f0';
                 } else {
-                    // Báo lỗi nếu hôm nay đã điểm danh rồi
                     alert("⚠️ " + data.error);
                     if(data.error.includes("rồi")) {
                         btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ĐÃ ĐIỂM DANH';
@@ -557,6 +555,7 @@
         </script>
         {% endif %}
         <!-- KẾT THÚC: KHỐI ĐIỂM DANH GVCN 15 PHÚT -->
+
         <!-- WIDGETS THÔNG TIN -->
         <div class="widget-grid">
             <div class="widget-card">
@@ -619,6 +618,12 @@
 					<li class="nav-item" role="presentation">
                         <button class="modern-tab" data-bs-toggle="tab" data-bs-target="#violation-bank-pane" type="button" role="tab">
                             <i class="fa-solid fa-scale-balanced"></i> Ngân Hàng Lỗi
+                        </button>
+                    </li>
+                    <!-- TAB SỔ ĐEN CỦA LỚP ĐƯỢC TÍCH HỢP -->
+                    <li class="nav-item" role="presentation">
+                        <button class="modern-tab text-danger" data-bs-toggle="tab" data-bs-target="#blacklist-pane" type="button" role="tab" style="border-color: #fecaca; background-color: #fef2f2;">
+                            <i class="fa-solid fa-book-skull"></i> Sổ Đen Của Lớp
                         </button>
                     </li>
                 </ul>
@@ -696,7 +701,6 @@
 									<td data-label="Ghi Chú Lỗi" class="col-details">
                                         <div class="text-main fw-bold mb-2 auto-color-note" style="line-height: 1.5;">{{ sc.note }}</div>
 										
-                                        <!-- [BẢN VÁ LỖI TỐI THƯỢNG]: NÚT XEM ẢNH GỌI ĐÚNG HÀM SLIDER -->
                                         {% if sc.evidence_image %}
                                         <div class="mb-2 mt-1">
                                             <button type="button" class="btn btn-sm fw-bold shadow-sm" style="color: #dc3545; border: 1px solid #dc3545; background: #fff5f5; border-radius: 8px;" onclick="viewEvidenceSafe(event, '{{ sc.evidence_image }}', '{{ sc.week }}')">
@@ -705,7 +709,6 @@
                                         </div>
                                         {% endif %}
                                         
-										<!-- HIỂN THỊ LỊCH SỬ PHÚC KHẢO -->
                                         {% if sc.appeal_reason %}
                                             <div class="p-3 bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded-3 mt-2 mb-2">
                                                 <div class="widget-label text-dark mb-1"><i class="fa-solid fa-scale-balanced text-warning"></i> Lịch sử khiếu nại:</div>
@@ -714,7 +717,6 @@
                                                 </div>
                                                 
                                                 {% if sc.appeal_response %}
-                                                    <!-- [NÂNG CẤP LÕI]: HIỂN THỊ TRẠNG THÁI TICKET -->
                                                     {% if "[ĐÃ DUYỆT]" in sc.appeal_response %}
                                                         <div class="alert alert-success mt-2 py-2 px-3 border-0 shadow-sm d-flex gap-2 align-items-start mb-0">
                                                             <i class="fa-solid fa-circle-check fs-5 mt-1 text-success"></i>
@@ -732,7 +734,6 @@
                                                             </div>
                                                         </div>
                                                     {% else %}
-                                                        <!-- Dành cho các phản hồi cũ -->
                                                         <div class="alert alert-info mt-2 py-2 px-3 border-0 shadow-sm d-flex gap-2 align-items-start mb-0">
                                                             <i class="fa-solid fa-circle-info fs-5 mt-1"></i>
                                                             <div>
@@ -756,7 +757,6 @@
                                             </div>
                                         {% endif %}
 
-                                        <!-- ĐIỀU KHIỂN NÚT BẤM DÀNH CHO GVCN -->
                                         {% if is_gvcn and not sc.is_locked %}
                                             {% if sc.is_appeal_expired %}
                                                 <div class="badge-soft mt-2 w-100 justify-content-center py-2" style="background: #f1f5f9; color: #94a3b8; border: 1px dashed #cbd5e1; cursor: not-allowed;" title="Đã quá 3 ngày kể từ khi công bố điểm">
@@ -798,7 +798,7 @@
                     </div>
                 </div>
 
-                <!-- TAB: BẢNG XẾP HẠNG TOÀN TRƯỜNG (CÓ CHỌN TUẦN / THÁNG / HỌC KỲ) -->
+                <!-- TAB: BẢNG XẾP HẠNG TOÀN TRƯỜNG -->
                 <div class="tab-pane fade" id="leaderboard-pane" role="tabpanel">
                     <div class="p-4 pb-2">
                         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
@@ -807,7 +807,6 @@
                                 <small class="text-muted">Thống kê vị thế các chi đoàn phân theo nhóm và chu kỳ thời gian.</small>
                             </div>
                             
-                            <!-- BỘ CHỌN LOẠI CHU KỲ VÀ MỐC THỜI GIAN -->
                             <div class="d-flex align-items-center gap-2 flex-wrap">
                                 <select class="form-select form-select-sm fw-bold text-secondary" id="bxhPeriodType" style="width: 130px;" onchange="updateBxhTimeOptions()">
                                     <option value="Tuan">Theo Tuần</option>
@@ -820,7 +819,6 @@
                             </div>
                         </div>
 
-                        <!-- THANH CHUYỂN ĐỔI NHÓM (TABS) -->
                         <ul class="nav nav-pills nav-fill mb-3 bg-white p-1 rounded shadow-sm border" id="groupTabs" role="tablist">
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link active fw-bold py-2" id="group1-tab" data-bs-toggle="pill" data-bs-target="#group1Pane" type="button" role="tab">
@@ -835,9 +833,7 @@
                         </ul>
                     </div>
 
-                    <!-- NỘI DUNG 2 NHÓM -->
                     <div class="tab-content px-4 pb-4" id="groupTabsContent">
-                        <!-- TAB NHÓM 1 -->
                         <div class="tab-pane fade show active" id="group1Pane" role="tabpanel">
                             <div class="table-responsive-custom border rounded-3 bg-white">
                                 <table class="table-modern">
@@ -856,7 +852,6 @@
                             </div>
                         </div>
 
-                        <!-- TAB NHÓM 2 -->
                         <div class="tab-pane fade" id="group2Pane" role="tabpanel">
                             <div class="table-responsive-custom border rounded-3 bg-white">
                                 <table class="table-modern">
@@ -877,7 +872,7 @@
                     </div>
                 </div>
 
-<!-- TAB 2: SAO ĐỎ CHẤM ĐIỂM -->
+                <!-- TAB 2: SAO ĐỎ CHẤM ĐIỂM -->
                 <div class="tab-pane fade" id="monitor-pane" role="tabpanel">
                     <div class="p-4 pb-0">
                         <div class="alert alert-primary bg-opacity-10 border-0 text-primary fw-bold rounded-3 small mb-0 d-flex gap-2">
@@ -1025,6 +1020,58 @@
                     </div>
                 </div>
 
+                <!-- ========================================= -->
+                <!-- [BẢN VÁ LỖI TỐI THƯỢNG]: TAB SỔ ĐEN CỦA LỚP ĐƯỢC CHUẨN HÓA -->
+                <!-- ========================================= -->
+                <div class="tab-pane fade" id="blacklist-pane" role="tabpanel">
+                    <div class="p-4 pb-0">
+                        <div class="alert alert-danger bg-opacity-10 border-0 text-danger fw-bold rounded-3 small mb-3 d-flex gap-2">
+                            <i class="fa-solid fa-triangle-exclamation mt-1"></i> Danh sách chi tiết các học sinh lớp {{ selected_branch.name }} vi phạm kỷ luật được ghi nhận trên hệ thống.
+                        </div>
+                        
+                        <!-- Bộ lọc Tuần/Tháng -->
+                        <div class="d-flex flex-wrap gap-3 mb-4 bg-white p-3 rounded-3 shadow-sm border">
+                            <select id="bl_time_mode" class="form-select border-danger text-danger fw-bold" style="width: 150px;" onchange="updateBlTimeValues()">
+                                <option value="week">Theo Tuần</option>
+                                <option value="month">Theo Tháng</option>
+                            </select>
+                            <select id="bl_time_value" class="form-select border-secondary fw-bold text-dark flex-fill" style="min-width: 150px;">
+                                <!-- Options Tuần/Tháng nạp tự động bằng JS -->
+                            </select>
+                            <button class="btn-modern btn-modern-primary fw-bold px-4" onclick="loadClassBlacklist()">
+                                <i class="fa-solid fa-magnifying-glass me-1"></i> Lọc dữ liệu
+                            </button>
+                            <button class="btn-modern btn-modern-warning fw-bold px-4" style="background: #10b981; color: white;" onclick="exportClassBlacklist()">
+                                <i class="fa-solid fa-file-excel me-1"></i> Tải Excel
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Bảng dữ liệu Sổ Đen -->
+                    <div class="table-responsive-custom mt-2 border-top">
+                        <table class="table-modern">
+                            <thead>
+                                <tr>
+                                    <th style="width: 8%;">STT</th>
+                                    <th style="width: 15%;">Thời gian</th>
+                                    <th style="text-align: left;">Họ tên Học sinh</th>
+                                    <th style="text-align: left;">Lỗi Vi phạm</th>
+                                    <th class="text-center" style="width: 10%;">Số lần</th>
+                                    <!-- THÊM CỘT ĐIỂM TRỪ THEO YÊU CẦU -->
+                                    <th class="text-center" style="width: 15%;">Điểm trừ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="blTableBody">
+                                <tr>
+                                    <td colspan="6" class="col-details text-center py-5 text-muted fst-italic">
+                                        Vui lòng bấm "Lọc dữ liệu" để xem danh sách vi phạm...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
             </div>
         </div>
         
@@ -1038,6 +1085,8 @@
         </div>
         {% endif %}
     </div>
+
+    <!-- MODAL PHÚC KHẢO -->
     <div class="modal fade" id="appealModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
@@ -1048,15 +1097,13 @@
                 <form action="/submit_appeal" method="POST" id="appealForm">
                     <div class="modal-body px-4 pb-4 mt-3">
                         <input type="hidden" name="score_id" id="appealScoreId">
-                        <input type="hidden" name="reason" id="finalReason"> <!-- Ẩn: Biến này sẽ chứa dữ liệu tổng hợp gửi về Server -->
+                        <input type="hidden" name="reason" id="finalReason">
                         
                         <div class="widget-label mb-2 text-muted">Đang khiếu nại cho:</div>
                         <input type="text" class="form-control fw-bold text-primary bg-primary bg-opacity-10 border-0 mb-4" id="appealWeekName" readonly style="font-size: 15px; padding: 12px 16px; border-radius: 12px;">
                         
-                        <!-- KHU VỰC CHỌN LỖI CỤ THỂ SẼ ĐƯỢC JAVASCRIPT SINH RA -->
                         <div class="widget-label mb-2 text-danger" id="appealViolationsLabel" style="display:none;"><i class="fa-solid fa-list-check me-1"></i> Tích chọn các lỗi bị ghi nhận sai (Nếu có):</div>
                         <div id="appealViolationsContainer" class="mb-4 d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto; overflow-x: hidden;">
-                            <!-- Checkbox lỗi sẽ nạp vào đây -->
                         </div>
 
                         <div class="widget-label mb-2 text-muted"><i class="fa-solid fa-pen-to-square me-1"></i> Nội dung/ Minh chứng bổ sung:</div>
@@ -1071,7 +1118,7 @@
         </div>
     </div>
     
-	<!-- MODAL TRẢ LỜI PHÚC KHẢO (BCH) ĐÃ NÂNG CẤP LUỒNG TICKETING -->
+	<!-- MODAL TRẢ LỜI PHÚC KHẢO (BCH) -->
     {% if not is_gvcn %}
     <div class="modal fade" id="resolveModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -1089,15 +1136,12 @@
                             <input type="text" class="form-control fw-bold text-primary bg-light border-0" id="resolveBranch" readonly style="font-size: 15px; padding: 12px 16px; border-radius: 12px;">
                         </div>
 
-                        <!-- LÝ DO GVCN -->
                         <div class="mb-4">
                             <label class="widget-label text-dark mb-2">Nội dung khiếu nại của GVCN:</label>
                             <div class="p-3 bg-light border border-secondary border-opacity-25 rounded-3 text-danger fst-italic shadow-sm" id="resolveReason" style="border-radius: 12px; font-size: 14px;">
-                                <!-- JS sẽ đẩy nội dung vào đây -->
                             </div>
                         </div>
 
-                        <!-- Ô NHẬP ĐIỂM HOÀN LẠI (TỰ ĐỘNG) -->
                         <div class="mb-4 p-3 bg-primary bg-opacity-10 border border-primary border-opacity-50 rounded-3" style="border-radius: 12px;">
                             <label class="widget-label text-primary mb-2"><i class="fa-solid fa-rotate-left me-1"></i> Số điểm hoàn lại (Chỉ nhập nếu Duyệt):</label>
                             <input type="number" step="0.5" min="0" class="form-control border-primary fw-bold fs-5 text-primary" name="refund_points" value="0" placeholder="VD: 2.0" style="border-radius: 12px;">
@@ -1110,11 +1154,9 @@
                         </div>
                     </div>
                     <div class="modal-footer border-0 px-4 pb-4 pt-0 d-flex gap-2">
-                        <!-- NÚT TỪ CHỐI -->
                         <button type="submit" name="action" value="reject" class="btn-modern btn-danger fw-bold flex-grow-1" style="background: #ef4444; color: white;">
                             <i class="fa-solid fa-ban me-1"></i> Từ chối
                         </button>
-                        <!-- NÚT ĐỒNG Ý -->
                         <button type="submit" name="action" value="approve" class="btn-modern btn-success fw-bold flex-grow-1" style="background: #22c55e; color: white;">
                             <i class="fa-solid fa-check-double me-1"></i> Duyệt & Hoàn Điểm
                         </button>
@@ -1276,13 +1318,11 @@
                 <div class="modal-body p-4">
                     <input type="hidden" id="editBranchId" value="{{ selected_branch.id }}">
                     
-                    <!-- [BỔ SUNG]: KHỐI NHẬP SĨ SỐ LỚP -->
                     <h6 class="fw-bold text-secondary mb-3"><i class="fa-solid fa-users me-2"></i>Thông tin chung</h6>
                     <div class="mb-4">
                         <label class="form-label fw-bold small text-muted">Sĩ số lớp (Hiện tại: {{ selected_branch.si_so }} HS):</label>
                         <input type="number" class="form-control fw-bold text-primary" id="editSiSo" value="{{ selected_branch.si_so or '' }}" placeholder="VD: 45">
                     </div>
-                    <!-- ============================ -->
 
                     <h6 class="fw-bold text-secondary mb-3 border-top pt-3"><i class="fa-solid fa-chalkboard-user me-2"></i>Thông tin Giáo viên chủ nhiệm</h6>
                     <div class="mb-3">
@@ -1314,15 +1354,12 @@
         </div>
     </div>
 
-    <!-- ========================================================================= -->
-    <!-- [NÂNG CẤP]: KHUNG XEM ẢNH MINH CHỨNG CÓ CHỨC NĂNG VUỐT / CHUYỂN TRANG -->
-    <!-- ========================================================================= -->
+    <!-- KHUNG XEM ẢNH MINH CHỨNG -->
     <div id="customEvidenceOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.95); z-index: 999999; align-items: center; justify-content: center; flex-direction: column;">
         <div style="position: absolute; top: 15px; right: 25px; color: white; font-size: 40px; cursor: pointer; font-weight: bold; z-index: 9999999;" onclick="closeEvidenceSafe()">&times;</div>
         
         <h4 id="customEvidenceTitle" style="color: white; margin-bottom: 15px; font-weight: bold; font-family: 'Inter', sans-serif;"><i class="fa-regular fa-images me-2"></i>Ảnh Minh Chứng</h4>
         
-        <!-- Khung Slider Bootstrap -->
         <div id="evidenceCarousel" class="carousel slide" data-bs-ride="false" style="width: 100%; max-width: 700px; padding: 0 15px;">
             <div class="carousel-indicators" id="carouselIndicators" style="bottom: -40px;"></div>
             <div class="carousel-inner" id="customEvidenceImgContainer" style="border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
@@ -1337,7 +1374,6 @@
             </button>
         </div>
         
-        <!-- Bộ đếm số lượng ảnh -->
         <div id="mobileImageCounter" class="text-white fw-bold mt-4" style="font-size: 16px; letter-spacing: 1px;"></div>
     </div>
 
@@ -1345,7 +1381,6 @@
         function viewEvidenceSafe(event, imagePaths, weekName) {
             if(event) { event.preventDefault(); event.stopPropagation(); }
             
-            // Tách chuỗi nhiều ảnh và lọc các chuỗi rỗng
             let paths = imagePaths.split('|').filter(p => p.trim() !== '');
             if(paths.length === 0) {
                 alert("Không tìm thấy dữ liệu ảnh minh chứng!");
@@ -1355,12 +1390,9 @@
             let imgHtml = '';
             let indHtml = '';
             
-            // Tạo các trang ảnh trong Slider
             paths.forEach((p, index) => {
                 let activeClass = index === 0 ? 'active' : '';
-                
                 indHtml += `<button type="button" data-bs-target="#evidenceCarousel" data-bs-slide-to="${index}" class="${activeClass}" aria-current="${index === 0 ? 'true' : 'false'}"></button>`;
-                
                 imgHtml += `
                 <div class="carousel-item ${activeClass}">
                     <img src="${p.trim()}" class="d-block w-100" style="max-height: 75vh; object-fit: contain; background: transparent;">
@@ -1375,14 +1407,9 @@
             if(counterEl) counterEl.innerHTML = `Ảnh 1 / ${paths.length}`;
             
             let myCarousel = document.getElementById('evidenceCarousel');
-            // Cần khởi tạo lại Carousel để tránh kẹt trạng thái cũ
             let bsCarousel = bootstrap.Carousel.getInstance(myCarousel);
-            if (bsCarousel) {
-                bsCarousel.dispose();
-            }
-            new bootstrap.Carousel(myCarousel, {
-                interval: false // Tắt tự động chạy
-            });
+            if (bsCarousel) { bsCarousel.dispose(); }
+            new bootstrap.Carousel(myCarousel, { interval: false });
 
             myCarousel.addEventListener('slide.bs.carousel', function (e) {
                 if(counterEl) counterEl.innerHTML = `Ảnh ${e.to + 1} / ${paths.length}`;
@@ -1408,9 +1435,7 @@
         }
     </script>
 
-	<!-- =========================================
-         THANH ĐIỀU HƯỚNG DƯỚI ĐÁY (BOTTOM NAV) - NATIVE APP
-         ========================================= -->
+	<!-- THANH ĐIỀU HƯỚNG DƯỚI ĐÁY (BOTTOM NAV) - NATIVE APP -->
     <div class="bottom-nav d-md-none" id="mobileBottomNav" role="tablist">
         <!-- 1. Trang chủ -->
         <button class="bottom-nav-item active" data-bs-toggle="tab" data-bs-target="#scores-pane" type="button" role="tab">
@@ -1424,10 +1449,10 @@
             <span>Xếp hạng</span>
         </button>
         
-        <!-- 3. Tra cứu -->
-        <button class="bottom-nav-item" data-bs-toggle="tab" data-bs-target="#violation-bank-pane" type="button" role="tab">
-            <i class="fa-solid fa-scale-balanced"></i>
-            <span>Tra cứu</span>
+        <!-- 3. Tra cứu Sổ Đen -->
+        <button class="bottom-nav-item" data-bs-toggle="tab" data-bs-target="#blacklist-pane" type="button" role="tab">
+            <i class="fa-solid fa-book-skull"></i>
+            <span>Sổ Đen</span>
         </button>
         
         <!-- 4. Đăng xuất -->
@@ -1436,6 +1461,7 @@
             <span>Đăng xuất</span>
         </button>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Mở Popup đánh giá
@@ -1531,14 +1557,12 @@
             const currentDayCode = dayMap[jsDay];
             const currentRank = dayOrder[currentDayCode] !== undefined ? dayOrder[currentDayCode] : 99;
 
-            // Cắt chuỗi ghi chú bằng dấu chấm phẩy và sinh ra các Checkbox
             if (noteText && noteText.trim() !== '' && noteText.trim() !== 'Không có vi phạm' && noteText.trim() !== 'Không có') {
                 label.style.display = 'block';
                 let violations = noteText.split(';');
                 violations.forEach((v, index) => {
                     let vClean = v.trim();
                     if(vClean) {
-                        // KIỂM TRA XEM LỖI NÀY THUỘC THỨ MẤY (VD: [T2], [T3]...)
                         let matchDay = vClean.match(/\[?(T[2-7]|CN)\]?/i);
                         let isPastDay = false;
                         
@@ -1546,19 +1570,16 @@
                             let violationDayCode = matchDay[1].toUpperCase();
                             let violationRank = dayOrder[violationDayCode];
                             
-                            // Nếu thứ của lỗi đứng TRƯỚC thứ hiện tại -> Lỗi của ngày hôm trước
                             if (violationRank !== undefined && violationRank < currentRank) {
                                 isPastDay = true;
                             }
                         }
 
-                        // Tạo thẻ Label bao bọc: Nếu là ngày trước thì làm mờ và chặn click
                         let labelNode = document.createElement('label');
                         labelNode.className = 'd-flex align-items-start p-3 border rounded-3 shadow-sm w-100 ' + (isPastDay ? 'bg-light opacity-75' : 'bg-white');
                         labelNode.style.cursor = isPastDay ? 'not-allowed' : 'pointer';
                         labelNode.style.borderColor = isPastDay ? '#cbd5e1' : '#fca5a5';
                         
-                        // Chỉ thêm hiệu ứng hover cho lỗi trong ngày hợp lệ
                         if (!isPastDay) {
                             labelNode.onmouseenter = function() { this.style.backgroundColor = '#fef2f2'; this.style.borderColor = '#ef4444'; };
                             labelNode.onmouseleave = function() { this.style.backgroundColor = '#ffffff'; this.style.borderColor = '#fca5a5'; };
@@ -1580,48 +1601,36 @@
                 label.style.display = 'none';
             }
             
-            document.getElementById('appealReasonText').value = ''; // Reset ô nhập chữ
+            document.getElementById('appealReasonText').value = ''; 
             var myModal = new bootstrap.Modal(document.getElementById('appealModal'));
             myModal.show();
         }
 
-        // THUẬT TOÁN ĐÓNG GÓI DỮ LIỆU KHI BẤM NÚT "GỬI YÊU CẦU"
         document.getElementById('appealForm').addEventListener('submit', function(e) {
             let selected = [];
             let container = document.getElementById('appealViolationsContainer');
             let checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
             
-            // Gom tất cả các lỗi được tích chọn
-            checkboxes.forEach(cb => {
-                selected.push(cb.value);
-            });
+            checkboxes.forEach(cb => { selected.push(cb.value); });
             
             let textReason = document.getElementById('appealReasonText').value;
             let finalReason = "";
             
-            // Định dạng lại thành 1 đoạn text chuẩn để gửi cho Backend
             if(selected.length > 0) {
                 finalReason = "Phúc khảo các lỗi: [" + selected.join("] & [") + "] | Lý do: " + textReason;
             } else {
                 finalReason = textReason;
             }
-            
-            // Đổ dữ liệu đã gộp vào thẻ Input Ẩn để Flask nhận diện
             document.getElementById('finalReason').value = finalReason;
         });
         
-		// =========================================================
-        // 1. NẠP DỮ LIỆU BAREM LỖI TỪ SERVER XUỐNG ĐỂ JS TRA CỨU
-        // =========================================================
+		// NẠP DỮ LIỆU BAREM LỖI TỪ SERVER XUỐNG ĐỂ JS TRA CỨU
         const violationBankData = [
             {% for cat in violation_bank %}
             { name: "{{ cat.name | safe }}", points: parseFloat('{{ cat.penalty_points }}') || 0 },
             {% endfor %}
         ];
 
-        // =========================================================
-        // 2. HÀM MỞ TICKET VÀ TỰ ĐỘNG TÍNH TOÁN ĐIỂM HOÀN TRẢ
-        // =========================================================
         function openResolveModal(btn) {
             document.getElementById('resolveScoreId').value = btn.getAttribute('data-score-id');
             document.getElementById('resolveBranch').value = "Lớp " + btn.getAttribute('data-branch-name') + " (" + btn.getAttribute('data-week') + ")";
@@ -1629,60 +1638,47 @@
             let reasonText = btn.getAttribute('data-reason') || '';
             let reasonDiv = document.getElementById('resolveReason');
             if (reasonDiv) {
-                // Xử lý xuống dòng cho các lỗi gửi trong nhiều ngày khác nhau
                 reasonDiv.innerHTML = '"' + reasonText.replace(/ \| /g, '<br>') + '"';
             }
 
-            // --- THUẬT TOÁN TỰ ĐỘNG TÍNH TOÁN ĐIỂM HOÀN TRẢ DỰA VÀO BAREM ---
             let refundInput = document.querySelector('input[name="refund_points"]');
             if (refundInput) {
                 let totalRefund = 0.0;
-                
                 try {
-                    // Dùng matchAll để quét sạch các lỗi kể cả khi GVCN gửi khiếu nại nối tiếp trong nhiều ngày
                     let regex = /Phúc khảo các lỗi:\s*\[(.*?)\]\s*\|/g;
                     let matches = [...reasonText.matchAll(regex)];
                     
                     matches.forEach(match => {
-                        let errorsStr = match[1]; // Lấy nội dung bên trong cặp ngoặc vuông tổng
-                        let appealedErrors = errorsStr.split("] & ["); // Tách từng lỗi riêng biệt
+                        let errorsStr = match[1]; 
+                        let appealedErrors = errorsStr.split("] & ["); 
                         
                         appealedErrors.forEach(errStr => {
                             let cleanErr = errStr.trim();
                             if (!cleanErr) return;
                             
-                            // B1: Tìm số lượng (VD: x2, x3). Nếu không ghi thì mặc định là x1.
                             let qtyMatch = cleanErr.match(/(?:x|:|-)\s*(\d+)/i);
                             let qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
                             
-                            // B2: Tra cứu điểm trừ tương ứng trong Barem
                             let foundPoints = 0.0;
                             for (let i = 0; i < violationBankData.length; i++) {
-                                // So sánh tên lỗi (bỏ qua viết hoa/thường)
                                 if (cleanErr.toLowerCase().includes(violationBankData[i].name.toLowerCase())) {
                                     foundPoints = violationBankData[i].points;
                                     break;
                                 }
                             }
-                            
-                            // B3: Cộng dồn (Điểm của 1 lỗi * Số lượng vi phạm)
                             totalRefund += (foundPoints * qty);
                         });
                     });
                 } catch (e) {
                     console.error("Lỗi tự động tính điểm hoàn trả:", e);
                 }
-                
-                // Tự động điền số liệu tính được vào ô Input (Nếu > 0 thì ép hiển thị số thập phân)
                 refundInput.value = totalRefund > 0 ? totalRefund.toFixed(1) : "0.0";
             }
-            // ----------------------------------------------------------------
             
             var myModal = new bootstrap.Modal(document.getElementById('resolveModal'));
             myModal.show();
         }
 
-        // ĐIỀU KHIỂN CẬP NHẬT MỐC THỜI GIAN BXH (TUẦN / THÁNG / HỌC KỲ)
         async function updateBxhTimeOptions() {
             const periodType = document.getElementById('bxhPeriodType').value;
             const timeSelect = document.getElementById('bxhWeekSelector');
@@ -1699,7 +1695,6 @@
                 }
                 loadSchoolLeaderboard();
             } else if (periodType === 'Thang') {
-                // Gọi API lấy danh sách tháng đồng bộ từ Điểm thi đua tháng
                 timeSelect.innerHTML = '<option value="">Đang tải tháng...</option>';
                 try {
                     const response = await fetch('/api/gvcn/get_months');
@@ -1739,35 +1734,28 @@
         }
 
 		document.addEventListener("DOMContentLoaded", function() {
-            // Kiểm tra xem trên thanh địa chỉ có gắn thẻ #hash nào không để bật đúng Tab đó
             let hash = window.location.hash;
             if (hash) {
                 let targetTabButton = document.querySelector(`[data-bs-target="${hash}"]`);
                 if (targetTabButton) {
-                    // Kích hoạt Tab tương ứng bằng Bootstrap Tab API
                     let tabInstance = new bootstrap.Tab(targetTabButton);
                     tabInstance.show();
                     
-                    // [BẢN VÁ QUAN TRỌNG]: TỰ ĐỘNG KÍCH HOẠT HÀM TẢI DỮ LIỆU NẾU LÀ TAB XẾP HẠNG
                     if (hash === '#leaderboard-pane') {
                         if (typeof loadSchoolLeaderboard === 'function') {
                             loadSchoolLeaderboard();
                         }
                     }
                     
-                    // Đồng thời cập nhật lại class active cho thanh menu dưới
                     document.querySelectorAll('.bottom-nav .bottom-nav-item').forEach(el => el.classList.remove('active'));
-                    let activeNav = document.querySelector(`.bottom-nav-item[href*="${hash}"]`);
+                    let activeNav = document.querySelector(`.bottom-nav-item[data-bs-target="${hash}"]`);
                     if(activeNav) activeNav.classList.add('active');
                 }
             }
         });
 
-		// HÀM TẢI BẢNG XẾP HẠNG TOÀN TRƯỜNG CHO APP GVCN
         async function loadSchoolLeaderboard() {
             const selector = document.getElementById('bxhWeekSelector');
-            
-            // [VÁ LỖI 404]: Nếu ô chọn tuần đang trống (chưa nạp kịp options), tự động gọi hàm nạp danh sách và dừng lại
             if (selector && selector.options.length === 0) {
                 if (typeof updateBxhTimeOptions === 'function') {
                     updateBxhTimeOptions(); 
@@ -1778,7 +1766,6 @@
             const body1 = document.getElementById('leaderboardGroup1Body');
             const body2 = document.getElementById('leaderboardGroup2Body');
             
-            // [VÁ LỖI 404]: Bảo vệ biến weekName, nếu rỗng thì ép về "Tuần 1" để link API không bị cụt
             let weekName = "Tuần 1";
             if (selector && selector.value.trim() !== '') {
                 weekName = selector.value.trim();
@@ -1794,7 +1781,7 @@
                 </td>
                 <td class="text-center"><div class="skeleton skeleton-badge mx-auto"></div></td>
                 <td class="text-end pe-4"><div class="skeleton skeleton-text ms-auto" style="width: 50px; height: 20px;"></div></td>
-            </tr>`.repeat(4); // Lặp lại 4 dòng ảo
+            </tr>`.repeat(4); 
             body1.innerHTML = loadingHtml;
             body2.innerHTML = loadingHtml;
 
@@ -1844,6 +1831,7 @@
                 body2.innerHTML = errorHtml;
             }
         }
+        
 		function renderLeaderboardTable(tbodyId, listData) {
             let tbody = document.getElementById(tbodyId);
             if (!tbody) return;
@@ -1878,7 +1866,6 @@
                     <td data-label="Tổng điểm" class="text-md-end pe-md-4 fw-bold text-danger fs-6">${item.total_score} đ</td>
                 `;
 
-                // Gắn sự kiện click bằng thuần JavaScript (An toàn tuyệt đối với mọi loại ký tự đặc biệt trong ghi chú)
                 const btn = tr.querySelector('.class-detail-btn');
                 btn.addEventListener('click', function() {
                     showLeaderboardDetail(
@@ -1955,7 +1942,7 @@
                     if (!cleanErr) return;
                     
                     let matchDay = cleanErr.match(/\[?(T[2-7]|CN)\]?/i);
-                    let color = '#475569'; // Mặc định xám đen
+                    let color = '#475569';
                     
                     if (matchDay && matchDay[1]) {
                         let dayKey = matchDay[1].toUpperCase();
@@ -2018,11 +2005,8 @@
     </script>
 
 	<script>
-        // ======================================================
         // THUẬT TOÁN ĐỒNG BỘ TAB & TẢI DỮ LIỆU ĐỘNG (AJAX)
-        // ======================================================
         document.addEventListener("DOMContentLoaded", function() {
-            // 1. Kiểm tra thanh địa chỉ có gắn thẻ #hash nào không để bật đúng Tab đó khi vừa vào trang
             let hash = window.location.hash;
             if (hash) {
                 let targetTabButton = document.querySelector(`button[data-bs-target="${hash}"]`);
@@ -2032,65 +2016,126 @@
                 }
             }
 
-            // 2. Lắng nghe sự kiện BẤM CHUYỂN TAB (Bấm ở thanh trên hay thanh dưới đều bắt được)
             var triggerTabList = [].slice.call(document.querySelectorAll('button[data-bs-toggle="tab"]'));
-            
             triggerTabList.forEach(function (tabEl) {
                 tabEl.addEventListener('shown.bs.tab', function (event) {
-                    // Lấy ID của Tab vừa được mở ra
                     var targetId = event.target.getAttribute('data-bs-target');
-                    
-                    // Đổi URL trên trình duyệt nhưng KHÔNG tải lại trang (Giúp người dùng F5 không bị mất Tab)
                     history.pushState(null, null, targetId);
                     
-                    // Tắt sáng tất cả các nút
                     document.querySelectorAll('.modern-tab, .bottom-nav-item').forEach(btn => {
                         btn.classList.remove('active');
                     });
 
-                    // Bật sáng đúng các nút trỏ về Tab đang mở (Đồng bộ cả nút trên Desktop và Mobile)
                     document.querySelectorAll(`button[data-bs-target="${targetId}"]`).forEach(btn => {
                         btn.classList.add('active');
                     });
                     
-                    // [TÍNH NĂNG LÕI]: Tự động tải lại Bảng xếp hạng mới nhất từ máy chủ khi bấm vào Tab Xếp Hạng
                     if (targetId === '#leaderboard-pane') {
                         if (typeof loadSchoolLeaderboard === 'function') {
-                            // Gọi hàm API AJAX đã có sẵn trong file của thầy/cô
                             loadSchoolLeaderboard(); 
+                        }
+                    }
+                    
+                    // [BẢN VÁ LỖI TỐI THƯỢNG]: TỰ ĐỘNG GỌI HÀM LỌC SỔ ĐEN KHI CHUYỂN TAB
+                    if (targetId === '#blacklist-pane') {
+                        if (document.getElementById('bl_time_value').options.length === 0) {
+                            updateBlTimeValues();
+                        }
+                        if (typeof loadClassBlacklist === 'function') {
+                            loadClassBlacklist();
                         }
                     }
                 });
             });
         });
     </script>
+
+    <!-- [BẢN NÂNG CẤP LÕI]: CÁC HÀM XỬ LÝ LỌC SỔ ĐEN LỚP VÀ XUẤT EXCEL -->
+    <script>
+        function updateBlTimeValues() {
+            let mode = document.getElementById('bl_time_mode').value;
+            let select = document.getElementById('bl_time_value');
+            select.innerHTML = '';
+            if (mode === 'week') {
+                for (let i = 1; i <= 40; i++) {
+                    select.innerHTML += `<option value="Tuần ${i}">Tuần ${i}</option>`;
+                }
+            } else {
+                let months = ["Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12", "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5"];
+                months.forEach(m => { select.innerHTML += `<option value="${m}">${m}</option>`; });
+            }
+        }
+
+        async function loadClassBlacklist() {
+            const branchId = '{{ selected_branch.id if selected_branch else "" }}';
+            if (!branchId) return;
+
+            const timeMode = document.getElementById('bl_time_mode').value;
+            const timeValue = document.getElementById('bl_time_value').value;
+            const tbody = document.getElementById('blTableBody');
+            
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-primary fw-bold"><i class="fa-solid fa-spinner fa-spin me-2"></i> Đang tải dữ liệu...</td></tr>';
+            
+            try {
+                const res = await fetch(`/api/class_blacklist?branch_id=${branchId}&time_mode=${timeMode}&time_value=${timeValue}`);
+                const result = await res.json();
+                
+                if (result.success) {
+                    if (result.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-success fw-bold"><i class="fa-regular fa-face-smile fs-3 d-block mb-2"></i> Tuyệt vời! Không có học sinh nào bị ghi nhận vi phạm trong khoảng thời gian này.</td></tr>';
+                        return;
+                    }
+                    
+                    let html = '';
+                    result.data.forEach((item, index) => {
+                        html += `
+                            <tr>
+                                <td data-label="STT" class="fw-bold text-muted text-md-center">${index + 1}</td>
+                                <td data-label="Thời gian"><span class="badge-soft badge-secondary shadow-sm">${item.week}</span></td>
+                                <td data-label="Học sinh" class="fw-bold text-primary" style="text-align: left !important;">${item.student_name}</td>
+                                <td data-label="Lỗi vi phạm" class="text-danger fw-bold" style="text-align: left !important;">${item.violation_name}</td>
+                                <td data-label="Số lần" class="text-md-center"><span class="badge bg-danger rounded-pill px-3 py-1 shadow-sm">${item.quantity}</span></td>
+                                <td data-label="Điểm trừ" class="text-md-center"><span class="text-danger fw-bold">-${item.penalty} đ</span></td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger">Lỗi: ${result.error}</td></tr>`;
+                }
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Lỗi kết nối máy chủ!</td></tr>';
+            }
+        }
+
+        function exportClassBlacklist() {
+            const branchId = '{{ selected_branch.id if selected_branch else "" }}';
+            if (!branchId) { alert("Không nhận diện được Lớp!"); return; }
+
+            const timeMode = document.getElementById('bl_time_mode').value;
+            const timeValue = document.getElementById('bl_time_value').value;
+            window.location.href = `/export_class_blacklist?branch_id=${branchId}&time_mode=${timeMode}&time_value=${timeValue}`;
+        }
+    </script>
+
 	<!-- THƯ VIỆN HIỆU ỨNG PHÁO HOA (GAMIFICATION) -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // Kiểm tra xem lớp có đang đạt Top 1 trong tuần mới nhất không
             {% if weekly_scores and weekly_scores[0].rank == 1 %}
-                
-                // Trì hoãn 0.5s để giao diện load xong rồi mới bắn pháo hoa
                 setTimeout(function() {
-                    var duration = 4 * 1000; // Bắn liên tục trong 4 giây
+                    var duration = 4 * 1000; 
                     var animationEnd = Date.now() + duration;
                     var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
 
-                    function randomInRange(min, max) {
-                      return Math.random() * (max - min) + min;
-                    }
+                    function randomInRange(min, max) { return Math.random() * (max - min) + min; }
 
                     var interval = setInterval(function() {
                       var timeLeft = animationEnd - Date.now();
-
-                      if (timeLeft <= 0) {
-                        return clearInterval(interval);
-                      }
+                      if (timeLeft <= 0) return clearInterval(interval);
 
                       var particleCount = 50 * (timeLeft / duration);
                       
-                      // Bắn từ 2 mép màn hình
                       confetti(Object.assign({}, defaults, { particleCount,
                         origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
                       }));
@@ -2098,16 +2143,12 @@
                         origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
                       }));
                     }, 250);
-                    
                 }, 500);
             {% endif %}
         });
     </script>
-	<!-- =========================================
-         THUẬT TOÁN ĐĂNG KÝ THÔNG BÁO ĐẨY (WEB PUSH) CHO GVCN
-         ========================================= -->
+	<!-- THUẬT TOÁN ĐĂNG KÝ THÔNG BÁO ĐẨY (WEB PUSH) CHO GVCN -->
 	<script>
-        // Hàm chuyển đổi VAPID Key sang dạng nhị phân
         function urlBase64ToUint8Array(base64String) {
             const padding = '='.repeat((4 - base64String.length % 4) % 4);
             const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
@@ -2117,7 +2158,6 @@
             return outputArray;
         }
 
-        // 1. TỰ ĐỘNG KIỂM TRA TRẠNG THÁI KHI VỪA MỞ TRANG
         document.addEventListener("DOMContentLoaded", async function() {
             if ('serviceWorker' in navigator && 'PushManager' in window) {
                 const registration = await navigator.serviceWorker.ready;
@@ -2126,19 +2166,16 @@
                 const btn = document.getElementById('btnPushNotifyGVCN');
                 if (btn) {
                     if (subscription) {
-                        // Nếu đã đăng ký trước đó -> Đổi nút thành trạng thái "Đang bật"
-                        btn.innerHTML = '<i class="fa-solid fa-bell-slash me-1"></i> Tắt Thông Báo';
-                        btn.style.backgroundColor = '#64748b'; // Màu xám/tím dịu
+                        btn.innerHTML = '<i class="fa-solid fa-bell-slash"></i><span>Tắt Thông Báo</span>';
+                        btn.style.background = 'linear-gradient(135deg, #64748b, #475569)'; 
                     } else {
-                        // Chưa đăng ký -> Trạng thái "Chưa bật"
-                        btn.innerHTML = '<i class="fa-solid fa-bell fa-shake me-1"></i> Bật Thông Báo';
-                        btn.style.backgroundColor = '#0ea5e9'; // Màu xanh dương
+                        btn.innerHTML = '<i class="fa-solid fa-bell"></i><span>Thông Báo</span>';
+                        btn.style.background = 'linear-gradient(135deg, #0ea5e9, #0284c7)'; 
                     }
                 }
             }
         });
 
-        // 2. HÀM XỬ LÝ BẬT / TẮT KHI BẤM VÀO NÚT (TOGGLE)
         async function enablePushNotifications() {
             if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
                 alert("❌ Trình duyệt của bạn không hỗ trợ Thông báo đẩy!"); return;
@@ -2148,29 +2185,25 @@
                 const registration = await navigator.serviceWorker.register('/sw.js');
                 await navigator.serviceWorker.ready;
                 
-                // Kiểm tra xem thiết bị đã đăng ký nhận thông báo chưa
                 let subscription = await registration.pushManager.getSubscription();
                 const btn = document.getElementById('btnPushNotifyGVCN');
 
                 if (subscription) {
-                    // --- NẾU ĐÃ BẬT -> TIẾN HÀNH TẮT (UNSUBSCRIBE) ---
                     const success = await subscription.unsubscribe();
                     if (success) {
                         if (btn) {
-                            btn.innerHTML = '<i class="fa-solid fa-bell fa-shake me-1"></i> Bật Thông Báo Vi Phạm';
-                            btn.style.backgroundColor = '#0ea5e9';
+                            btn.innerHTML = '<i class="fa-solid fa-bell"></i><span>Thông Báo</span>';
+                            btn.style.background = 'linear-gradient(135deg, #0ea5e9, #0284c7)';
                         }
                         alert("🔕 Đã tắt thông báo thành công. Bạn sẽ không nhận được tin nhắn vi phạm nữa.");
                     }
                 } else {
-                    // --- NẾU ĐANG TẮT -> TIẾN HÀNH BẬT (SUBSCRIBE) ---
                     const permission = await Notification.requestPermission();
                     if (permission !== 'granted') {
                         alert("❌ Bạn đã từ chối nhận thông báo. Vui lòng cấp quyền trong cài đặt trình duyệt."); 
                         return;
                     }
 
-                    // PUBLIC KEY VAPID (Khóa thầy/cô vừa lấy từ VapidKeys.com)
                     const publicVapidKey = "BGL6lcaXMAK5VhqdjWBO9IZ0ECiKYu47oE_RQE7rCpRinW2Je0IyrnNQi35glDiMPAMzIh0ynLUHxu4aZFCIWSs"; 
                     
                     subscription = await registration.pushManager.subscribe({
@@ -2178,7 +2211,6 @@
                         applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
                     });
                     
-                    // Gửi mã đăng ký về Backend Flask
                     await fetch('/api/save_subscription', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -2186,8 +2218,8 @@
                     });
 
                     if (btn) {
-                        btn.innerHTML = '<i class="fa-solid fa-bell-slash me-1"></i> Tắt Thông Báo';
-                        btn.style.backgroundColor = '#64748b';
+                        btn.innerHTML = '<i class="fa-solid fa-bell-slash"></i><span>Tắt Thông Báo</span>';
+                        btn.style.background = 'linear-gradient(135deg, #64748b, #475569)';
                     }
                     alert("✅ Đã bật thông báo thành công! Điện thoại của thầy/cô sẽ nhận tin nhắn thời gian thực.");
                 }
