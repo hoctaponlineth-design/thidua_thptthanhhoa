@@ -678,10 +678,10 @@ def parse_sodaubai():
                         
                     elif score_val == 0:
                         key = f"{name_part} (Môn {mon})" if name_part else f"Môn {mon}"
-                        bad_marks_list.append({'type': cat_khb, 'key': key, 'mon': mon}) # Dùng biến cat_khb chuẩn xác
-                    elif score_val > 0 and score_val < 5:
+                        bad_marks_list.append({'type': cat_khb, 'key': key, 'mon': mon}) # Lỗi 0 điểm (Không học bài)
+                    elif score_val in [1, 2]: # <--- ĐÃ SỬA: Chỉ tính điểm 1 và điểm 2 là điểm kém
                         key = f"{name_part} (Môn {mon})" if name_part else f"Môn {mon}"
-                        bad_marks_list.append({'type': cat_dk, 'key': key, 'mon': mon}) # Dùng biến cat_dk chuẩn xác
+                        bad_marks_list.append({'type': cat_dk, 'key': key, 'mon': mon}) # Lỗi điểm kém
             
             # THUẬT TOÁN DỰ PHÒNG: Nếu không tách được theo tên, quét toàn bộ số nguyên hợp lệ trong ô
             if not parsed_any:
@@ -706,7 +706,7 @@ def parse_sodaubai():
                         
                     elif num == 0:
                         bad_marks_list.append({'type': 'Không học bài', 'key': f"Môn {mon}", 'mon': mon})
-                    elif num in [1, 2, 3, 4]:
+                    elif num in [1, 2]:
                         bad_marks_list.append({'type': 'Bị điểm kém', 'key': f"Môn {mon}", 'mon': mon})
 
         # THUẬT TOÁN XẾP LOẠI TUẦN THEO QUY CHẾ CỦA TRƯỜNG
