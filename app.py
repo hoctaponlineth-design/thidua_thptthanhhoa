@@ -24,7 +24,7 @@ VAPID_CLAIMS = {
 global_subscriptions = {}
  
 def process_and_save_evidence(base64_string, branch_id, week_name):
-    """Hàm hứng chuỗi/mảng Base64 và đẩy thẳng lên Đám mây Cloudinary, ném lỗi chi tiết nếu thất bại"""
+    """Hàm hứng chuỗi Base64 (Data URI) và đẩy lên Cloudinary một cách an toàn"""
     if not base64_string or base64_string.strip() in ["", "[]"]:
         return None
         
@@ -36,7 +36,7 @@ def process_and_save_evidence(base64_string, branch_id, week_name):
         import cloudinary
         import cloudinary.uploader
         
-        # Tự động nhận diện cấu hình Cloudinary (Hỗ trợ cả chuỗi CLOUDINARY_URL hoặc 3 biến rời rạc)
+        # Tự động nhận diện cấu hình Cloudinary
         if os.environ.get("CLOUDINARY_URL"):
             cloudinary.config(secure=True)
         else:
@@ -47,7 +47,7 @@ def process_and_save_evidence(base64_string, branch_id, week_name):
                 secure = True
             )
             
-        # Xử lý dữ liệu đầu vào dạng đơn hoặc danh sách JSON
+        # Xử lý danh sách hoặc chuỗi đơn
         if base64_string.startswith('['):
             base64_list = json.loads(base64_string)
         else:
@@ -55,14 +55,14 @@ def process_and_save_evidence(base64_string, branch_id, week_name):
             
         saved_paths = []
         
-        # Chuẩn hóa tên tuần an toàn (Xóa dấu tiếng Việt và ký tự đặc biệt)
+        # Chuẩn hóa tên tuần không dấu
         safe_week = unicodedata.normalize('NFKD', str(week_name)).encode('ASCII', 'ignore').decode('utf-8')
         safe_week = re.sub(r'[^a-zA-Z0-9]', '_', safe_week)
         
         for b64 in base64_list:
             if not b64: continue
             
-            # Đẩy ảnh trực tiếp lên Cloudinary không cần lưu file trung gian
+            # Đảm bảo chuỗi base64 giữ nguyên định dạng Data URI chuẩn từ FileReader
             upload_result = cloudinary.uploader.upload(b64, folder=f"thidua_doantruong/{safe_week}")
             saved_paths.append(upload_result['secure_url'])
             
@@ -71,7 +71,6 @@ def process_and_save_evidence(base64_string, branch_id, week_name):
     except Exception as e:
         error_detail = str(e)
         print(f"❌ LỖI UPLOAD ẢNH LÊN ĐÁM MÂY: {error_detail}")
-        # Ném lỗi ra ngoài để hiển thị thông báo trực quan cho GVCN
         raise Exception(error_detail)
     
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
@@ -6072,6 +6071,7 @@ def auto_generate_gvcn():
             log_system_action("CẤP TÀI KHOẢN", f"Đã tự động tạo {count} tài khoản GVCN.")
             flash(f"✅ Đã cấp phát tự động {count} tài khoản cho GVCN! (Tên đăng nhập = Mật khẩu = Tên lớp)", "success")
             return redirect(url_for('users'))
+        
     except Exception as e:
         flash(f"Lỗi hệ thống: {e}", "error")
         return redirect(url_for('users'))
@@ -6182,7 +6182,9 @@ def submit_appeal():
             flash("✅ Đã gửi Báo cáo sai sót / Phúc khảo kèm HÌNH ẢNH đến Đoàn trường thành công!", "success")
             
     except Exception as e: 
-        flash(f"Lỗi xử lý phúc khảo: {e}", "error")
+        # Cắt ngắn thông báo lỗi tối đa 150 ký tự để không làm tràn Cookie của trình duyệt
+        err_msg = str(e)[:150]
+        flash(f"Lỗi hệ thống: {err_msg}", "error")
         import traceback; traceback.print_exc() 
         
     return redirect(url_for('class_dashboard'))
