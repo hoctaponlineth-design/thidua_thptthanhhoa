@@ -24,25 +24,30 @@ VAPID_CLAIMS = {
 global_subscriptions = {}
  
 def process_and_save_evidence(base64_string, branch_id, week_name):
-    """Hàm hứng mảng Base64 và đẩy thẳng lên Đám mây Cloudinary"""
+    """Hàm hứng chuỗi/mảng Base64 và đẩy thẳng lên Đám mây Cloudinary, ném lỗi chi tiết nếu thất bại"""
     if not base64_string or base64_string.strip() in ["", "[]"]:
         return None
         
     try:
         import json
-        import cloudinary
-        import cloudinary.uploader
         import unicodedata
         import re
-        
-        # TỰ ĐỘNG NẠP CẤU HÌNH TỪ BIẾN MÔI TRƯỜNG TRÊN RENDER
         import os
-        cloudinary.config( 
-            cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME"), 
-            api_key = os.environ.get("CLOUDINARY_API_KEY"), 
-            api_secret = os.environ.get("CLOUDINARY_API_SECRET"),
-            secure = True
-        )
+        import cloudinary
+        import cloudinary.uploader
+        
+        # Tự động nhận diện cấu hình Cloudinary (Hỗ trợ cả chuỗi CLOUDINARY_URL hoặc 3 biến rời rạc)
+        if os.environ.get("CLOUDINARY_URL"):
+            cloudinary.config(secure=True)
+        else:
+            cloudinary.config( 
+                cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME"), 
+                api_key = os.environ.get("CLOUDINARY_API_KEY"), 
+                api_secret = os.environ.get("CLOUDINARY_API_SECRET"),
+                secure = True
+            )
+            
+        # Xử lý dữ liệu đầu vào dạng đơn hoặc danh sách JSON
         if base64_string.startswith('['):
             base64_list = json.loads(base64_string)
         else:
@@ -50,24 +55,24 @@ def process_and_save_evidence(base64_string, branch_id, week_name):
             
         saved_paths = []
         
-        # [BẢN VÁ LỖI TỐI THƯỢNG]: Tự động xóa dấu tiếng Việt và khoảng trắng (VD: "Tuần 1" -> "Tuan_1")
+        # Chuẩn hóa tên tuần an toàn (Xóa dấu tiếng Việt và ký tự đặc biệt)
         safe_week = unicodedata.normalize('NFKD', str(week_name)).encode('ASCII', 'ignore').decode('utf-8')
         safe_week = re.sub(r'[^a-zA-Z0-9]', '_', safe_week)
         
-        for idx, b64 in enumerate(base64_list):
+        for b64 in base64_list:
             if not b64: continue
             
-            # API Cloudinary nhận thẳng định dạng Base64, không cần lưu file trung gian
+            # Đẩy ảnh trực tiếp lên Cloudinary không cần lưu file trung gian
             upload_result = cloudinary.uploader.upload(b64, folder=f"thidua_doantruong/{safe_week}")
-            
-            # Lấy đường link HTTPS tĩnh của bức ảnh trên đám mây để lưu vào CSDL
             saved_paths.append(upload_result['secure_url'])
             
         return "|".join(saved_paths) if saved_paths else None
+        
     except Exception as e:
-        # Hệ thống ghi nhận lỗi để tra cứu
-        print(f"❌ LỖI UPLOAD ẢNH LÊN ĐÁM MÂY: {str(e)}")
-        return None
+        error_detail = str(e)
+        print(f"❌ LỖI UPLOAD ẢNH LÊN ĐÁM MÂY: {error_detail}")
+        # Ném lỗi ra ngoài để hiển thị thông báo trực quan cho GVCN
+        raise Exception(error_detail)
     
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 import openpyxl
