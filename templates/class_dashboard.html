@@ -1116,6 +1116,12 @@
                         <!-- Section 2: Lý do / Minh chứng -->
                         <label class="fw-bold text-secondary mb-2" style="font-size: 13px; letter-spacing: 0.5px;">2. NỘI DUNG / LÝ DO CHI TIẾT</label>
                         <textarea class="form-control shadow-none" id="appealReasonText" rows="4" placeholder="Ví dụ: Em Hân lớp tôi hôm qua có đi học, có giấy phép của y tế..." required style="border-radius: 12px; resize: none; padding: 14px; font-size: 14.5px; background: #f8fafc; border: 1.5px solid var(--border); transition: all 0.2s;"></textarea>
+						<!-- Section 3: Ảnh minh chứng (Bắt buộc) -->
+                        <label class="fw-bold text-secondary mb-2 mt-3" style="font-size: 13px; letter-spacing: 0.5px;">3. ẢNH MINH CHỨNG (BẮT BUỘC)</label>
+                        <input type="file" class="form-control shadow-none" id="appealImageInput" accept="image/*" required style="border-radius: 12px; padding: 10px; background: #f8fafc; border: 1.5px solid var(--border);">
+                        
+                        <!-- Ống ngầm chứa dữ liệu ảnh gửi về Server -->
+                        <input type="hidden" name="appeal_evidence_base64" id="appealEvidenceBase64">
                     </div>
                     
                     <!-- Footer: Nút bấm tràn viền chuẩn Mobile App -->
@@ -1639,17 +1645,53 @@
             myModal.show();
         }
 
+		// BẮT SỰ KIỆN CHỌN ẢNH VÀ NÉN THÀNH BASE64
+        document.getElementById('appealImageInput').addEventListener('change', function(e) {
+            let file = e.target.files[0];
+            if (!file) {
+                document.getElementById('appealEvidenceBase64').value = "";
+                return;
+            }
+            
+            // Chặn ảnh dung lượng quá lớn (> 5MB) bảo vệ máy chủ
+            if (file.size > 5 * 1024 * 1024) {
+                alert("⛔ Dung lượng ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.");
+                this.value = ""; 
+                document.getElementById('appealEvidenceBase64').value = "";
+                return;
+            }
+
+            let reader = new FileReader();
+            reader.onload = function(event) {
+                // Đổ dữ liệu ảnh đã mã hóa vào ống ngầm
+                document.getElementById('appealEvidenceBase64').value = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // BẮT SỰ KIỆN GỬI FORM PHÚC KHẢO
         document.getElementById('appealForm').addEventListener('submit', function(e) {
+            let base64Data = document.getElementById('appealEvidenceBase64').value;
+            
+            // Khiên bảo vệ: Ép buộc phải có ảnh đã được mã hóa xong
+            if (!base64Data) {
+                e.preventDefault();
+                alert("⏳ Hệ thống đang xử lý ảnh minh chứng, vui lòng chờ 1 giây rồi bấm gửi lại!");
+                return;
+            }
+
             let selected = [];
             let container = document.getElementById('appealViolationsContainer');
-            let checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
-            
-            checkboxes.forEach(cb => { selected.push(cb.value); });
+            if (container) {
+                let checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+                checkboxes.forEach(cb => { selected.push(cb.value); });
+            }
             
             let textReason = document.getElementById('appealReasonText').value;
             let finalReason = "";
             
             if(selected.length > 0) {
+                // Đổi chữ "Lý do" thành "Giải trình" để đồng bộ với thuật toán tự động hoàn điểm của BGH
                 finalReason = "Phúc khảo các lỗi: [" + selected.join("] & [") + "] | Lý do: " + textReason;
             } else {
                 finalReason = textReason;
