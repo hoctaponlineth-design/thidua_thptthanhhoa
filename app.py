@@ -22,24 +22,32 @@ VAPID_CLAIMS = {
 # (Tùy chọn) Thầy/cô có thể tạo thêm bảng `PushSubscription` trong Models 
 # để lưu thông tin đăng ký của từng GVCN. Tạm thời chúng ta dùng Session/Dict để test.
 global_subscriptions = {}
-
-    
+ 
 def process_and_save_evidence(base64_string, branch_id, week_name):
-    """Hàm hứng mảng Base64 và đẩy thẳng lên Đám mây Cloudinary"""
+    """Hàm hứng chuỗi Base64 (Data URI) và đẩy lên Cloudinary một cách an toàn"""
     if not base64_string or base64_string.strip() in ["", "[]"]:
         return None
         
     try:
         import json
+        import unicodedata
+        import re
+        import os
         import cloudinary
         import cloudinary.uploader
         
-        # [QUAN TRỌNG]: Thầy/cô sẽ đăng ký tài khoản Cloudinary miễn phí và điền 3 mã này vào
-        cloudinary.config( 
-            cloud_name = "bgjw5m03", 
-            api_key = "438871542918892", 
-            api_secret = "sVU9IhaUUby5XOrR8oNsp_8XF6Q" 
-        )
+        # Tự động nhận diện cấu hình Cloudinary
+        if os.environ.get("CLOUDINARY_URL"):
+            cloudinary.config(secure=True)
+        else:
+            cloudinary.config( 
+                cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME"), 
+                api_key = os.environ.get("CLOUDINARY_API_KEY"), 
+                api_secret = os.environ.get("CLOUDINARY_API_SECRET"),
+                secure = True
+            )
+            
+        # Xử lý danh sách hoặc chuỗi đơn
         if base64_string.startswith('['):
             base64_list = json.loads(base64_string)
         else:
@@ -47,19 +55,23 @@ def process_and_save_evidence(base64_string, branch_id, week_name):
             
         saved_paths = []
         
-        for idx, b64 in enumerate(base64_list):
+        # Chuẩn hóa tên tuần không dấu
+        safe_week = unicodedata.normalize('NFKD', str(week_name)).encode('ASCII', 'ignore').decode('utf-8')
+        safe_week = re.sub(r'[^a-zA-Z0-9]', '_', safe_week)
+        
+        for b64 in base64_list:
             if not b64: continue
             
-            # API Cloudinary nhận thẳng định dạng Base64, không cần lưu file trung gian
-            upload_result = cloudinary.uploader.upload(b64, folder=f"thidua_doantruong/{week_name}")
-            
-            # Lấy đường link HTTPS tĩnh của bức ảnh trên đám mây để lưu vào CSDL
+            # Đảm bảo chuỗi base64 giữ nguyên định dạng Data URI chuẩn từ FileReader
+            upload_result = cloudinary.uploader.upload(b64, folder=f"thidua_doantruong/{safe_week}")
             saved_paths.append(upload_result['secure_url'])
             
         return "|".join(saved_paths) if saved_paths else None
+        
     except Exception as e:
-        print(f"❌ LỖI UPLOAD ẢNH LÊN ĐÁM MÂY: {str(e)}")
-        return None
+        error_detail = str(e)
+        print(f"❌ LỖI UPLOAD ẢNH LÊN ĐÁM MÂY: {error_detail}")
+        raise Exception(error_detail)
     
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 import openpyxl
@@ -1676,10 +1688,17 @@ def delete_red_star(id):
             star = db_session.query(RedStar).filter(RedStar.id == id).first()
             if star:
                 name = star.full_name
+                
+                # 1. Thu hồi các lịch trực liên quan đến học sinh này
                 db_session.query(Assignment).filter(Assignment.red_star_id == id).delete()
-                db_session.query(StarEvaluation).filter(StarEvaluation.red_star_id == id).delete()
+                
+                # 2. [ĐÃ VÁ LỖI]: Đổi 'red_star_id' thành 'evaluatee_id' cho chuẩn khớp với CSDL
+                db_session.query(StarEvaluation).filter(StarEvaluation.evaluatee_id == id).delete()
+                
+                # 3. Xóa sổ vĩnh viễn hồ sơ của học sinh
                 db_session.delete(star)
-                log_system_action("ĐỘI SAO ĐỎ", f"Đã xóa vĩnh viễn Sao đỏ {name} và các lịch trực liên quan")
+                
+                log_system_action("ĐỘI SAO ĐỎ", f"Đã xóa vĩnh viễn Sao đỏ {name} và các lịch trực, phiếu đánh giá liên quan")
                 flash(f"Đã xóa vĩnh viễn Sao đỏ {name} và các lịch trực liên quan!", "success")
     except Exception as e:
         flash(f"Lỗi xóa sao đỏ: {e}", "error")
@@ -6052,12 +6071,14 @@ def auto_generate_gvcn():
             log_system_action("CẤP TÀI KHOẢN", f"Đã tự động tạo {count} tài khoản GVCN.")
             flash(f"✅ Đã cấp phát tự động {count} tài khoản cho GVCN! (Tên đăng nhập = Mật khẩu = Tên lớp)", "success")
             return redirect(url_for('users'))
+        
     except Exception as e:
         flash(f"Lỗi hệ thống: {e}", "error")
         return redirect(url_for('users'))
 
+
 # ==========================================
-# API: GVCN GỬI PHÚC KHẢO ĐIỂM
+# API: GVCN GỬI PHÚC KHẢO ĐIỂM (BẮT BUỘC KÈM HÌNH ẢNH)
 # ==========================================
 @app.route('/submit_appeal', methods=['POST'])
 def submit_appeal():
@@ -6066,8 +6087,14 @@ def submit_appeal():
         
     score_id = request.form.get('score_id', type=int)
     reason = request.form.get('reason', '').strip()
+    evidence_base64 = request.form.get('appeal_evidence_base64', '').replace(' ', '+')
     
     if not score_id or not reason: 
+        return redirect(url_for('class_dashboard'))
+        
+    # KHIÊN BẢO VỆ MÁY CHỦ: Nếu dùng tool hack không gửi ảnh thì chặn lại
+    if not evidence_base64:
+        flash("⛔ Yêu cầu phúc khảo BẮT BUỘC phải có hình ảnh minh chứng đính kèm!", "error")
         return redirect(url_for('class_dashboard'))
         
     try:
@@ -6082,61 +6109,82 @@ def submit_appeal():
                 flash("⛔ Tuần này đã chốt cứng, không thể gửi yêu cầu phúc khảo!", "error")
                 return redirect(url_for('class_dashboard'))
             
-            # =========================================================================
-            # [NÂNG CẤP]: THUẬT TOÁN TỰ ĐỘNG KHÓA PHÚC KHẢO VÀO NGÀY CHỦ NHẬT CỦA TUẦN
-            # =========================================================================
+            # --- LUẬT KHÓA CHỦ NHẬT ---
             from datetime import datetime, date, timedelta
             is_expired_dynamic = False
             
             if score.start_date:
                 try:
-                    # Lấy ngày bắt đầu tuần (thường là Thứ 2)
                     start_d_clean = score.start_date.split()[0]
                     if "-" in start_d_clean:
                         start_date_obj = datetime.strptime(start_d_clean, '%Y-%m-%d').date()
                     else:
                         start_date_obj = datetime.strptime(start_d_clean, '%d/%m/%Y').date()
                         
-                    # Tính ngày Chủ nhật trong tuần đó (Cộng thêm 6 ngày từ ngày bắt đầu)
                     sunday_obj = start_date_obj + timedelta(days=6)
-                    
-                    # Nếu ngày hiện tại (date.today()) đã vượt qua ngày Chủ nhật của tuần đó
                     if date.today() > sunday_obj:
                         is_expired_dynamic = True
                 except Exception as e:
-                    print("Lỗi tính toán hạn phúc khảo Chủ nhật:", e)
+                    pass
             
             if score.is_appeal_expired or is_expired_dynamic:
                 flash("⛔ Đã hết thời hạn! Hệ thống tự động khóa quyền khiếu nại vào ngày Chủ nhật của tuần thi đua.", "error")
                 return redirect(url_for('class_dashboard'))
-            # =========================================================================
 
-            # --- [THUẬT TOÁN ĐẾM]: KIỂM TRA SỐ LẦN GỬI TRONG NGÀY (TỐI ĐA 2 LẦN) ---
-            today_date_str = datetime.now().strftime("%d/%m/%Y") # Lấy ngày để đếm
-            now_str = datetime.now().strftime("%d/%m/%Y %H:%M")  # Gắn thêm giờ:phút cho BGH dễ theo dõi
-            new_entry = f"[{now_str}] {reason}"
+            # --- LUẬT KHÓA LỖI QUÁ NGÀY ---
+            import re
+            days_vn = {0: '[T2]', 1: '[T3]', 2: '[T4]', 3: '[T5]', 4: '[T6]', 5: '[T7]', 6: '[CN]'}
+            today_pfx = days_vn[datetime.now().weekday()]
+            
+            match_errors = re.search(r'Phúc khảo các lỗi:\s*\[(.*?)\]', reason)
+            if match_errors:
+                errors_str = match_errors.group(1)
+                appealed_errors = [e.strip() for e in errors_str.split("] & [")]
+                
+                for err in appealed_errors:
+                    day_match = re.search(r'\[(T[2-7]|CN)\]', err)
+                    if day_match:
+                        err_day = day_match.group(0)
+                        if err_day != today_pfx:
+                            flash(f"⛔ TỪ CHỐI: Lỗi thuộc ngày {err_day} đã quá hạn! Chỉ tiếp nhận khiếu nại trong cùng ngày xảy ra vi phạm.", "error")
+                            return redirect(url_for('class_dashboard'))
+
+            # =================================================================
+            # TẢI ẢNH LÊN CLOUDINARY VÀ GẮN LINK VÀO GHI CHÚ
+            # =================================================================
+            saved_image_url = process_and_save_evidence(evidence_base64, score.branch_id, score.week)
+            if not saved_image_url:
+                flash("⛔ Có lỗi xảy ra khi tải ảnh lên đám mây Cloudinary. Vui lòng thử lại!", "error")
+                return redirect(url_for('class_dashboard'))
+            
+            # Gắn link ảnh tuyệt đẹp vào đoạn text để BGH click vào là xem được
+            reason_with_img = f"{reason} <br><a href='{saved_image_url}' target='_blank' style='color: #2563eb; text-decoration: none; display: inline-block; margin-top: 8px;'><i class='fa-regular fa-image'></i> <b>Xem ảnh minh chứng GVCN gửi</b></a>"
+
+            # --- KIỂM TRA SỐ LẦN GỬI (TỐI ĐA 2 LẦN/NGÀY) ---
+            today_date_str = datetime.now().strftime("%d/%m/%Y") 
+            now_str = datetime.now().strftime("%d/%m/%Y %H:%M")  
+            new_entry = f"[{now_str}] {reason_with_img}" # <--- Dùng reason đã có gắn link ảnh
             
             if score.appeal_reason:
-                # Đếm số lần ngày hôm nay xuất hiện trong chuỗi lý do
                 count_today = score.appeal_reason.count(f"[{today_date_str}")
-                
                 if count_today >= 2:
-                    flash("⛔ Thầy/cô đã dùng hết 2 lượt gửi phúc khảo trong ngày hôm nay! Vui lòng chờ phản hồi hoặc quay lại vào ngày mai.", "error")
+                    flash("⛔ Thầy/cô đã dùng hết 2 lượt gửi phúc khảo trong ngày hôm nay!", "error")
                     return redirect(url_for('class_dashboard'))
                 
-                # Nếu chưa đủ 2 lần, cộng dồn lý do mới vào lý do cũ
                 score.appeal_reason = score.appeal_reason + " | " + new_entry
             else:
                 score.appeal_reason = new_entry
             
             score.is_appealed = True
-            score.appeal_response = None # Xóa phản hồi cũ để báo cáo nổi lại trên màn hình của BGH
+            score.appeal_response = None 
             
-            log_system_action("PHÚC KHẢO", f"GVCN Lớp {score.branch.name} gửi khiếu nại Tuần {score.week}: {reason[:30]}...")
-            flash("✅ Đã gửi Báo cáo sai sót / Phúc khảo đến Đoàn trường thành công!", "success")
+            log_system_action("PHÚC KHẢO", f"GVCN Lớp {score.branch.name} gửi khiếu nại (Kèm hình ảnh).")
+            flash("✅ Đã gửi Báo cáo sai sót / Phúc khảo kèm HÌNH ẢNH đến Đoàn trường thành công!", "success")
             
     except Exception as e: 
-        flash(f"Lỗi xử lý phúc khảo: {e}", "error")
+        # Cắt ngắn thông báo lỗi tối đa 150 ký tự để không làm tràn Cookie của trình duyệt
+        err_msg = str(e)[:150]
+        flash(f"Lỗi hệ thống: {err_msg}", "error")
         import traceback; traceback.print_exc() 
         
     return redirect(url_for('class_dashboard'))
@@ -6374,9 +6422,8 @@ def mobile_sao_do():
     except Exception as e:
         return f"Lỗi hệ thống Mobile: {e}"
 
-
 # ==========================================
-# MODULE: TRỢ LÝ AI PHÂN TÍCH VÀ VIẾT BÁO CÁO TUẦN (ĐÃ NÂNG CẤP CHUẨN QUẢN LÝ)
+# MODULE: TRỢ LÝ AI PHÂN TÍCH VÀ VIẾT BÁO CÁO TUẦN (CHUẨN QUẢN LÝ GIÁO DỤC THỰC THỤ)
 # ==========================================
 @app.route('/api/ai_weekly_report/<week_name>')
 def api_ai_weekly_report(week_name):
@@ -6399,19 +6446,15 @@ def api_ai_weekly_report(week_name):
             avg_school_score = sum([float(sc.total_score or 0) for sc in scores]) / total_classes if total_classes > 0 else 0
             total_penalty_school = sum([float(sc.score_tru or 0) for sc in scores])
             
-            top_classes = sorted(scores, key=lambda x: float(x.total_score or 0), reverse=True)[:3]
-            bottom_classes = sorted(scores, key=lambda x: float(x.total_score or 0))[:3]
-            
-            # Tìm lớp bị trừ điểm nhiều nhất (Điểm nóng)
+            # Tìm lớp bị trừ điểm nhiều nhất
             worst_class_score = min(scores, key=lambda x: float(x.total_score or 0))
             
             summary_lines = []
             for sc in scores:
                 b_name = sc.branch.name
                 tot = sc.total_score
-                rating = sc.week_rating
                 note = sc.note or "Không có"
-                summary_lines.append(f"- Lớp {b_name}: Tổng điểm {tot}, Xếp loại {rating}, Ghi chú: {note}")
+                summary_lines.append(f"- Lớp {b_name}: {tot}đ, Lỗi: {note}")
                 
             data_context = "\n".join(summary_lines)
             
@@ -6426,7 +6469,7 @@ def api_ai_weekly_report(week_name):
             if not api_key:
                 return {"error": "Chưa cấu hình Groq API Key trong hệ thống!"}
                 
-            # 4. Gọi API Groq AI với Prompt chuẩn phong cách Nhà quản lý giáo dục
+            # 4. GỌI API GROQ VỚI PROMPT SẮC BÉN CỦA NHÀ QUẢN TRỊ
             import requests
             url = "https://api.groq.com/openai/v1/chat/completions"
             headers = {
@@ -6435,56 +6478,52 @@ def api_ai_weekly_report(week_name):
             }
             
             prompt = f"""
-            Bạn là một Chuyên gia Quản lý Giáo dục và Cố vấn Cấp cao cho Ban Giám hiệu trường THPT Thanh Hòa. Dựa trên dữ liệu tổng kết nề nếp của {week_name} dưới đây, hãy đưa ra bản phân tích mang tầm nhìn chiến lược, khách quan, sắc sảo và mang tính xây dựng cao:
+            Đóng vai trò là Trưởng ban Thi đua / Phó Hiệu trưởng phụ trách nề nếp của trường THPT Thanh Hòa.
+            Dựa trên số liệu thống kê {week_name}, hãy viết một bản "Đánh giá và Chỉ đạo công tác chủ nhiệm".
             
-            DỮ LIỆU THI ĐUA:
-            - Tổng số lớp tham gia: {total_classes}
-            - Điểm trung bình toàn trường: {avg_school_score:.1f} điểm
-            - Tổng mức điểm trừ kỷ luật toàn trường: {total_penalty_school}đ
-            - Lớp thấp điểm nhất (Điểm nóng): Lớp {worst_class_score.branch.name} (GVCN: {worst_class_score.branch.gvcn or 'Chưa cập nhật'}, Tổng điểm: {worst_class_score.total_score}, Lỗi: {worst_class_score.note})
+            DỮ LIỆU:
+            - Điểm trung bình toàn trường: {avg_school_score:.1f}/100đ
+            - Tổng điểm bị trừ toàn trường: {total_penalty_school}đ
+            - Lớp vi phạm kỷ luật nặng nhất: Lớp {worst_class_score.branch.name} (GVCN: {worst_class_score.branch.gvcn or 'Chưa cập nhật'}, Điểm: {worst_class_score.total_score}, Lỗi: {worst_class_score.note})
             
             CHI TIẾT CÁC LỚP:
             {data_context}
             
-            YÊU CẦU TRÌNH BÀY (BẮT BUỘC TRẢ VỀ ĐỊNH DẠNG HTML SẠCH SẼ):
-            Hãy chia nội dung thành đúng 3 phần với các thẻ HTML sau (tuyệt đối không dùng dấu ** hay ký tự Markdown thô):
+            YÊU CẦU VĂN PHONG QUẢN LÝ (RẤT QUAN TRỌNG):
+            - Tuyệt đối KHÔNG dùng các từ sáo rỗng, bay bổng (như: bức tranh tổng thể, tín hiệu tích cực, điểm nóng, nhìn chung).
+            - Bắt buộc dùng ngôn từ hành chính, chỉ đạo: "Đánh giá chung tình hình", "Tồn đọng cần chấn chỉnh", "Yêu cầu GVCN đôn đốc", "Nghiêm túc rút kinh nghiệm".
+            - Giọng điệu: Khách quan, nghiêm khắc, đi thẳng vào vấn đề, giao việc rõ ràng.
             
-            1. Phần Bức tranh tổng quan (Tiêu đề dùng icon fa-chart-line): Nhận xét khái quát về biên độ điểm số, ý thức kỷ luật chung của học sinh toàn trường trong tuần.
-            2. Phần Điểm nóng cần lưu ý (Tiêu đề dùng icon fa-triangle-exclamation): Chỉ ra tập thể lớp đang gặp vấn đề trầm trọng về nề nếp (ví dụ lớp {worst_class_score.branch.name}), phân tích nguyên nhân sơ bộ từ dữ liệu lỗi.
-            3. Phần Đề xuất hướng giải quyết (Tiêu đề dùng icon fa-circle-check): Đưa ra các mốc giải pháp cụ thể dành cho Ban Giám hiệu, Đoàn trường phối hợp với Giáo viên chủ nhiệm để chấn chỉnh kỷ kỷ luật và duy trì phong trào.
+            YÊU CẦU ĐỊNH DẠNG (BẮT BUỘC):
+            - TUYỆT ĐỐI KHÔNG SỬ DỤNG DẤU MARKDOWN (Không dùng **, *, #).
+            - Trả về CHỈ MÃ HTML THEO ĐÚNG KHUNG DƯỚI ĐÂY, không thêm bất kỳ dòng chữ nào bên ngoài khung này:
+            
+            <div style="font-family: 'Inter', sans-serif; font-size: 14.5px; color: #334155; line-height: 1.6; text-align: justify;">
+                <p><b style="color: #0f172a;"><i class="fa-solid fa-chart-bar me-1"></i> 1. Đánh giá tình hình nề nếp:</b><br>[Viết nhận xét ngắn gọn về ĐTB và kỷ cương toàn trường]</p>
+                <p><b style="color: #dc2626;"><i class="fa-solid fa-circle-exclamation me-1"></i> 2. Các mặt tồn đọng cần chấn chỉnh:</b><br>[Phê bình thẳng thắn lớp {worst_class_score.branch.name} và các lỗi vi phạm phổ biến hiện nay]</p>
+                <p><b style="color: #166534;"><i class="fa-solid fa-clipboard-check me-1"></i> 3. Đề xuất & Chỉ đạo thực hiện:</b><br>[Giao nhiệm vụ cụ thể, đanh thép cho Đoàn trường và GVCN]</p>
+            </div>
             """
             
             payload = {
-                "model": "openai/gpt-oss-120b",
+                "model": "llama3-70b-8192",  # Sử dụng mô hình Llama3-70B thông minh và tuân thủ lệnh tốt hơn
                 "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.7
+                "temperature": 0.4  # Hạ nhiệt độ xuống thấp để văn phong nghiêm túc, bớt bay bổng
             }
             
             response = requests.post(url, json=payload, headers=headers, timeout=30)
             if response.status_code == 200:
                 res_json = response.json()
-                ai_text = res_json['choices'][0]['message']['content']
+                ai_text = res_json['choices'][0]['message']['content'].strip()
                 
-                # [THUẬT TOÁN LỌC VÀ XÓA DẤU SAO]: 
+                # --- THUẬT TOÁN "BỌC THÉP" CHỐNG LỖI ĐỊNH DẠNG ---
                 import re
-                # 1. Chuyển đổi định dạng **chữ đậm** thành thẻ <strong> của HTML
-                ai_text = re.sub(r'\*\*(.*?)\*\*', r'<strong style="color: #0f172a;">\1</strong>', ai_text)
-                # 2. Xóa bỏ hoàn toàn bất kỳ dấu sao đơn lẻ nào còn sót lại
-                ai_text = ai_text.replace('*', '')
+                # 1. Nếu AI vẫn ngoan cố xuất **chữ**, đổi nó thành thẻ in đậm <b>
+                ai_text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', ai_text)
+                # 2. Quét sạch mọi dấu sao (*) đơn lẻ và thẻ bao bọc code ```html thừa thãi
+                ai_text = ai_text.replace('*', '').replace('```html', '').replace('```', '')
                 
-                # Xử lý ký tự xuống dòng an toàn tránh lỗi backslash
-                replaced_text = ai_text.replace('\n', '<br>')
-                
-                if not ai_text.startswith("<div"):
-                    formatted_html = f"""
-                    <div style="font-family: 'Inter', sans-serif; color: #1e293b; line-height: 1.6;">
-                        <div style="font-size: 14.5px; text-align: justify;">{replaced_text}</div>
-                    </div>
-                    """
-                else:
-                    formatted_html = ai_text
-                
-                return {"success": True, "report": formatted_html}
+                return {"success": True, "report": ai_text}
             else:
                 return {"error": f"Lỗi kết nối AI API: {response.text}"}
                 
@@ -7673,9 +7712,7 @@ def school_monthly_analysis():
         import traceback; traceback.print_exc()
         flash(f"Lỗi tải trang báo cáo toàn trường: {e}", "error")
         return redirect(url_for('dashboard'))
-# =====================================================================
-# API: XEM BẢNG XẾP HẠNG TOÀN TRƯỜNG (HỖ TRỢ TUẦN, THÁNG, HỌC KỲ KÈM CHI TIẾT)
-# =====================================================================
+    
 @app.route('/api/gvcn/leaderboard', methods=['GET'])
 @app.route('/api/gvcn/leaderboard/<week_name>', methods=['GET'])
 def api_gvcn_leaderboard(week_name=None):
@@ -7802,12 +7839,17 @@ def api_gvcn_leaderboard(week_name=None):
             group_1_data.sort(key=lambda x: x["total_score"], reverse=True)
             group_2_data.sort(key=lambda x: x["total_score"], reverse=True)
 
-            return {"success": True, "week_name": week_name, "group_1": group_1_data, "group_2": group_2_data}, 200
+            # [NÂNG CẤP ĐÚNG CHUẨN ĐỒNG BỘ]: Trả về cấu trúc JSON chứa đầy đủ thành phần mà Javascript đang cần
+            return {
+                "success": True, 
+                "week_name": week_name, 
+                "group_1": group_1_data, 
+                "group_2": group_2_data
+            }, 200
 
     except Exception as e:
         import traceback; traceback.print_exc()
         return {"success": False, "error": f"{type(e).__name__}: {str(e)}"}, 500
-
 # =====================================================================
 # API: TẢI DANH SÁCH THÁNG CHO BỘ LỌC
 # =====================================================================
