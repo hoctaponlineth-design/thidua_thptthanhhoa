@@ -8551,7 +8551,124 @@ def export_class_blacklist():
     except Exception as e:
         flash(f"Lỗi xuất Excel: {str(e)}", "error")
         return redirect(url_for('class_dashboard'))
+# ==========================================
+# MODULE: TRUNG TÂM QUẢN LÝ HỒ SƠ PHÚC KHẢO TOÀN TRƯỜNG
+# ==========================================
+@app.route('/appeals', methods=['GET'])
+def manage_appeals():
+    # Chỉ cho phép Admin, BGH và Bí thư truy cập
+    if session.get('role') not in ['Quản trị viên', 'Admin', 'Ban Giám hiệu', 'Bí thư Đoàn trường', 'Bí thư']:
+        flash("Bạn không có quyền truy cập trang quản lý phúc khảo!", "error")
+        return redirect(url_for('dashboard'))
 
+    try:
+        with session_scope() as db_session:
+            active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
+            if not active_year:
+                flash("Chưa có năm học kích hoạt!", "error")
+                return redirect(url_for('dashboard'))
+
+            # Lấy dữ liệu cho bộ lọc
+            branches = db_session.query(Branch).filter_by(school_year_id=active_year.id).all()
+            import re
+            weeks_db = db_session.query(WeeklyScore.week).join(Branch).filter(Branch.school_year_id == active_year.id).distinct().all()
+            available_weeks = sorted([w[0] for w in weeks_db], key=lambda x: int(re.search(r'\d+', x).group()) if re.search(r'\d+', x) else 0)
+
+            # Lấy tham số tìm kiếm từ giao diện
+            search_name = request.args.get('search_name', '').strip().lower()
+            search_branch = request.args.get('search_branch', '')
+            search_week = request.args.get('search_week', '')
+            search_status = request.args.get('search_status', 'all') # all, pending, resolved
+
+            # Truy vấn cơ sở dữ liệu các Tuần CÓ đánh dấu phúc khảo
+            query = db_session.query(WeeklyScore).join(Branch).filter(
+                Branch.school_year_id == active_year.id,
+                WeeklyScore.is_appealed == True
+            )
+
+            # Áp dụng bộ lọc cơ sở
+            if search_branch and search_branch.isdigit():
+                query = query.filter(Branch.id == int(search_branch))
+            if search_week:
+                query = query.filter(WeeklyScore.week == search_week)
+            if search_name:
+                query = query.filter(WeeklyScore.appeal_reason.ilike(f"%{search_name}%"))
+
+            if search_status == 'pending':
+                query = query.filter((WeeklyScore.appeal_response == None) | (WeeklyScore.appeal_response == ""))
+            elif search_status == 'resolved':
+                query = query.filter(WeeklyScore.appeal_response != None, WeeklyScore.appeal_response != "")
+
+            appealed_scores = query.order_by(WeeklyScore.id.desc()).all()
+
+            # Bóc tách chuỗi phúc khảo thành các bản ghi chi tiết
+            appeal_records = []
+            
+            # Khởi tạo data Ngân hàng lỗi để Javascript dùng tính điểm hoàn tự động
+            violation_bank = db_session.query(ViolationCategory).filter_by(school_year_id=active_year.id).all()
+
+            for sc in appealed_scores:
+                if not sc.appeal_reason: continue
+                
+                pattern = r'\[\d{2}/\d{2}/\d{4} \d{2}:\d{2}\]'
+                timestamps = re.findall(pattern, sc.appeal_reason)
+                segments = re.split(pattern, sc.appeal_reason)[1:] 
+                
+                # Chạy ngược để hiển thị khiếu nại mới nhất lên đầu
+                for i in range(len(timestamps)-1, -1, -1):
+                    time_str = timestamps[i].strip('[]')
+                    content = segments[i].strip().strip('|').strip()
+                    
+                    errors_part = ""
+                    reason_part = content
+                    
+                    match = re.search(r'Phúc khảo các lỗi:\s*(.*?)\s*\|\s*Lý do:(.*)', content, re.IGNORECASE)
+                    if match:
+                        errors_part = match.group(1).strip()
+                        reason_part = match.group(2).strip()
+
+                    # Lọc lại Tên học sinh một lần nữa trên chuỗi đã bóc tách cho chính xác
+                    if search_name and search_name not in errors_part.lower() and search_name not in reason_part.lower():
+                        continue
+                    
+                    status_text = "Đang chờ xử lý"
+                    badge_class = "warning text-dark"
+                    if sc.appeal_response:
+                        if "ĐÃ DUYỆT" in sc.appeal_response:
+                            status_text = "Đã duyệt"
+                            badge_class = "success"
+                        elif "TỪ CHỐI" in sc.appeal_response:
+                            status_text = "Từ chối"
+                            badge_class = "danger"
+                    
+                    appeal_records.append({
+                        'score_id': sc.id,
+                        'branch_name': sc.branch.name,
+                        'week': sc.week,
+                        'time': time_str,
+                        'errors_raw': errors_part,
+                        'reason': reason_part,
+                        'status': status_text,
+                        'badge': badge_class,
+                        'response': sc.appeal_response if sc.appeal_response else "",
+                        'raw_reason': sc.appeal_reason # Dùng để nhét vào form Xử lý
+                    })
+
+            return render_template('appeals.html', 
+                                   branches=branches,
+                                   available_weeks=available_weeks,
+                                   appeal_records=appeal_records,
+                                   search_name=search_name,
+                                   search_branch=search_branch,
+                                   search_week=search_week,
+                                   search_status=search_status,
+                                   violation_bank=violation_bank,
+                                   active_year=active_year)
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        flash(f"Lỗi tải danh sách phúc khảo: {e}", "error")
+        return redirect(url_for('dashboard'))
+    
 if __name__ == "__main__":
     auto_init_accounts()
     init_db()
