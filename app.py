@@ -6109,7 +6109,7 @@ def auto_generate_gvcn():
         flash(f"Lỗi hệ thống: {e}", "error")
         return redirect(url_for('users'))
 # ==========================================
-# API: GVCN GỬI PHÚC KHẢO ĐIỂM
+# API: GVCN GỬI PHÚC KHẢO ĐIỂM (BẢN VÁ LỖI MÚI GIỜ UTC+7 TỐI THƯỢNG)
 # ==========================================
 @app.route('/submit_appeal', methods=['POST'])
 def submit_appeal():
@@ -6123,8 +6123,6 @@ def submit_appeal():
     if not score_id or not reason: 
         return redirect(url_for('class_dashboard'))
         
-    # ĐÃ GỠ BỎ KHIÊN CHẶN "BẮT BUỘC PHẢI CÓ ẢNH" THEO YÊU CẦU
-        
     try:
         with session_scope() as db_session:
             score = db_session.query(WeeklyScore).filter_by(id=score_id).first()
@@ -6137,11 +6135,17 @@ def submit_appeal():
                 flash("⛔ Tuần này đã chốt cứng, không thể gửi yêu cầu phúc khảo!", "error")
                 return redirect(url_for('class_dashboard'))
             
-            # --- LUẬT KHÓA CHỦ NHẬT ---
-            from datetime import datetime, date, timedelta
-            now_vn = datetime.utcnow() + timedelta(hours=7) # Cố định luôn luôn là giờ VN
+            # =========================================================================
+            # [BẢN VÁ TỐI THƯỢNG]: ÉP BUỘC MÚI GIỜ VIỆT NAM (UTC+7) ĐỒNG BỘ 100%
+            # =========================================================================
+            from datetime import datetime, timezone, timedelta
+            # Khởi tạo đối tượng múi giờ VN chuẩn
+            vn_tz = timezone(timedelta(hours=7))
+            # Lấy giờ hiện tại và ép chặt vào múi giờ VN
+            now_vn = datetime.now(vn_tz) 
             today_vn_date = now_vn.date()
             
+            # --- LUẬT KHÓA CHỦ NHẬT ---
             is_expired_dynamic = False
             if score.start_date:
                 try:
@@ -6152,7 +6156,7 @@ def submit_appeal():
                         start_date_obj = datetime.strptime(start_d_clean, '%d/%m/%Y').date()
                         
                     sunday_obj = start_date_obj + timedelta(days=6)
-                    if today_vn_date > sunday_obj:
+                    if today_vn_date > sunday_obj: # Dùng ngày VN để so sánh
                         is_expired_dynamic = True
                 except Exception as e:
                     pass
@@ -6164,7 +6168,8 @@ def submit_appeal():
             # --- LUẬT KHÓA LỖI QUÁ NGÀY ---
             import re
             days_vn = {0: '[T2]', 1: '[T3]', 2: '[T4]', 3: '[T5]', 4: '[T6]', 5: '[T7]', 6: '[CN]'}
-            today_pfx = days_vn[datetime.now().weekday()]
+            # ĐÃ SỬA TẠI ĐÂY: Lấy thứ theo lịch Việt Nam thay vì giờ của Server Mỹ
+            today_pfx = days_vn[now_vn.weekday()] 
             
             match_errors = re.search(r'Phúc khảo các lỗi:\s*\[(.*?)\]', reason)
             if match_errors:
@@ -6182,21 +6187,20 @@ def submit_appeal():
             # =================================================================
             # TẢI ẢNH LÊN CLOUDINARY VÀ GẮN LINK VÀO GHI CHÚ
             # =================================================================
-            reason_with_img = reason # Mặc định chỉ lấy lý do text
+            reason_with_img = reason 
             
-            # Chỉ kích hoạt upload lên Cloudinary nếu máy chủ nhận được dữ liệu ảnh
             if evidence_base64:
                 saved_image_url = process_and_save_evidence(evidence_base64, score.branch_id, score.week)
                 if not saved_image_url:
                     flash("⛔ Có lỗi xảy ra khi tải ảnh lên đám mây Cloudinary. Vui lòng thử lại!", "error")
                     return redirect(url_for('class_dashboard'))
                 
-                # Nối link ảnh vào lý do
                 reason_with_img = f"{reason} <br><a href='{saved_image_url}' target='_blank' style='color: #2563eb; text-decoration: none; display: inline-block; margin-top: 8px;'><i class='fa-regular fa-image'></i> <b>Xem ảnh minh chứng GVCN gửi</b></a>"
 
-            # --- KIỂM TRA SỐ LẦN GỬI (TỐI ĐA 2 LẦN/NGÀY) ---
-            today_date_str = datetime.now().strftime("%d/%m/%Y") 
-            now_str = datetime.now().strftime("%d/%m/%Y %H:%M")  
+            # --- KIỂM TRA SỐ LẦN GỬI (TỐI ĐA 2 LẦN/NGÀY) THEO GIỜ VN ---
+            # ĐÃ SỬA TẠI ĐÂY: Dùng now_vn thay cho datetime.now()
+            today_date_str = now_vn.strftime("%d/%m/%Y") 
+            now_str = now_vn.strftime("%d/%m/%Y %H:%M")  
             new_entry = f"[{now_str}] {reason_with_img}" 
             
             if score.appeal_reason:
