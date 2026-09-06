@@ -6076,7 +6076,7 @@ def submit_appeal():
         
     score_id = request.form.get('score_id', type=int)
     reason = request.form.get('reason', '').strip()
-    evidence_base64 = request.form.get('appeal_evidence_base64', '') # <--- Bắt ảnh ở đây
+    evidence_base64 = request.form.get('appeal_evidence_base64', '').replace(' ', '+')
     
     if not score_id or not reason: 
         return redirect(url_for('class_dashboard'))
