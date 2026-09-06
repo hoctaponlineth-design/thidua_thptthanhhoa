@@ -2175,7 +2175,7 @@ def auto_assign():
             current_week_shift_counts = {star.id: 0 for star in stars}
             success_count = 0
             
-            # Ưu tiên các khu vực "Giám sát Khối" lên trước
+            # Sắp xếp ưu tiên các khu vực "Giám sát Khối" lên trước
             areas_sorted = sorted(areas, key=lambda a: 0 if "KHỐI" in a.name.upper() else 1)
             
             # 5. Bắt đầu phân công
@@ -2190,14 +2190,15 @@ def auto_assign():
                     area_grades = {get_grade(c) for c in area_classes if get_grade(c)}
                     
                     while assigned_count < req_count:
+                        # Lọc những em chưa có lịch trong ca này
                         available_pool = [s for s in stars if s.id not in assigned_in_this_shift]
                         
-                        # Nếu đã rải hết quân trong ca mà vẫn chưa đủ ghế -> Reset vòng xoay tua
+                        # Nếu đã rải hết quân mà vẫn thiếu ghế -> Xoay vòng cấp cứu, reset lại danh sách rảnh trong ca
                         if not available_pool:
                             assigned_in_this_shift.clear()
                             available_pool = list(stars)
                             
-                        # Lọc an toàn (khác khối)
+                        # Lọc an toàn (khác khối và không trùng lớp trực tiếp)
                         valid_stars = []
                         for star in available_pool:
                             star_class = star.branch.name.strip().upper() if star.branch else ""
@@ -2215,11 +2216,11 @@ def auto_assign():
                             if not is_conflict:
                                 valid_stars.append(star)
                                 
-                        # Cứu hộ vét cạn nếu không còn ai khác khối
+                        # Cứu hộ vét cạn: Nếu lọc hết khối mà rỗng, lấy luôn pool sẵn có
                         if not valid_stars:
                             valid_stars = list(available_pool)
                             
-                        # Sắp xếp ưu tiên lịch sử ít trực nhất
+                        # Sắp xếp ưu tiên lịch sử ít trực nhất & ít việc nhất trong tuần
                         valid_stars.sort(key=lambda s: (
                             history_counts[s.id].get(area.id, 0),
                             current_week_shift_counts[s.id]
@@ -2246,7 +2247,7 @@ def auto_assign():
             
             if success_count > 0:
                 log_system_action("LỊCH TRỰC", f"Đã phân công tự động Tuần {week_number}")
-                flash(f"✅ Đã phân công tự động Tuần {week_number} thành công! (Tổng số {success_count} lượt trực được lấp đầy)", "success")
+                flash(f"✅ Đã phân công tự động Tuần {week_number} thành công! (Lấp đầy trọn vẹn {success_count} vị trí)", "success")
             else:
                 flash("⚠️ Không thể phân công do thiếu dữ liệu Sao đỏ.", "warning")
                 
