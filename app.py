@@ -3930,7 +3930,7 @@ def class_dashboard():
             warning_students = []
             
             # =========================================================================
-            # [NÂNG CẤP]: LẤY DỮ LIỆU NGÂN HÀNG LỖI ĐỂ GVCN TRA CỨU (KHÔNG LÀM ẢNH HƯỞNG LUỒNG CŨ)
+            # [NÂNG CẤP]: LẤY DỮ LIỆU NGÂN HÀNG LỖI ĐỂ GVCN TRA CỨU
             # =========================================================================
             violation_bank = []
             if active_year:
@@ -3985,9 +3985,15 @@ def class_dashboard():
                         so_luong_diem_tot = int(sc.count_9 or 0) + int(sc.count_10 or 0)
                         if "2" in str(group_val): so_luong_diem_tot += int(sc.count_8 or 0)
                             
+                        # =========================================================================
+                        # [NÂNG CẤP]: MỞ KHÓA NÚT GIAO DIỆN (CHỈ KHÓA KHI GỬI ĐỦ 2 LẦN/NGÀY)
+                        # =========================================================================
                         has_appealed_today = False
-                        if sc.appeal_reason and f"[{today_str}]" in sc.appeal_reason:
-                            has_appealed_today = True
+                        if sc.appeal_reason:
+                            count_today = sc.appeal_reason.count(f"[{today_str}")
+                            if count_today >= 2:
+                                has_appealed_today = True
+                        # =========================================================================
                             
                         weekly_scores.append({
                             'score_id': sc.id,             
@@ -6092,7 +6098,6 @@ def submit_appeal():
                         start_date_obj = datetime.strptime(start_d_clean, '%d/%m/%Y').date()
                         
                     # Tính ngày Chủ nhật trong tuần đó (Cộng thêm 6 ngày từ ngày bắt đầu)
-                    # Hoặc nếu dùng chuẩn: tìm ngày Chủ nhật gần nhất hoặc ngày thứ 7/Chủ nhật của tuần
                     sunday_obj = start_date_obj + timedelta(days=6)
                     
                     # Nếu ngày hiện tại (date.today()) đã vượt qua ngày Chủ nhật của tuần đó
@@ -6106,18 +6111,20 @@ def submit_appeal():
                 return redirect(url_for('class_dashboard'))
             # =========================================================================
 
-            # --- [THUẬT TOÁN MỚI]: KIỂM TRA SỐ LẦN GỬI TRONG NGÀY ---
-            from datetime import datetime
-            today_str = datetime.now().strftime("%d/%m/%Y")
-            new_entry = f"[{today_str}] {reason}"
+            # --- [THUẬT TOÁN ĐẾM]: KIỂM TRA SỐ LẦN GỬI TRONG NGÀY (TỐI ĐA 2 LẦN) ---
+            today_date_str = datetime.now().strftime("%d/%m/%Y") # Lấy ngày để đếm
+            now_str = datetime.now().strftime("%d/%m/%Y %H:%M")  # Gắn thêm giờ:phút cho BGH dễ theo dõi
+            new_entry = f"[{now_str}] {reason}"
             
             if score.appeal_reason:
-                # Nếu chuỗi ngày hôm nay đã tồn tại trong lý do -> Khóa không cho gửi tiếp
-                if f"[{today_str}]" in score.appeal_reason:
-                    flash("⛔ Hôm nay thầy/cô đã gửi phúc khảo cho tuần này rồi! Vui lòng chờ phản hồi hoặc quay lại vào ngày mai.", "error")
+                # Đếm số lần ngày hôm nay xuất hiện trong chuỗi lý do
+                count_today = score.appeal_reason.count(f"[{today_date_str}")
+                
+                if count_today >= 2:
+                    flash("⛔ Thầy/cô đã dùng hết 2 lượt gửi phúc khảo trong ngày hôm nay! Vui lòng chờ phản hồi hoặc quay lại vào ngày mai.", "error")
                     return redirect(url_for('class_dashboard'))
                 
-                # Nếu là ngày khác, cộng dồn lý do mới vào lý do cũ
+                # Nếu chưa đủ 2 lần, cộng dồn lý do mới vào lý do cũ
                 score.appeal_reason = score.appeal_reason + " | " + new_entry
             else:
                 score.appeal_reason = new_entry
@@ -6133,6 +6140,7 @@ def submit_appeal():
         import traceback; traceback.print_exc() 
         
     return redirect(url_for('class_dashboard'))
+
 # ==========================================
 # MODULE: WEB APP MOBILE DÀNH CHO SAO ĐỎ
 # ==========================================
