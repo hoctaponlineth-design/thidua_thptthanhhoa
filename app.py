@@ -6139,8 +6139,10 @@ def submit_appeal():
             
             # --- LUẬT KHÓA CHỦ NHẬT ---
             from datetime import datetime, date, timedelta
-            is_expired_dynamic = False
+            now_vn = datetime.utcnow() + timedelta(hours=7) # Cố định luôn luôn là giờ VN
+            today_vn_date = now_vn.date()
             
+            is_expired_dynamic = False
             if score.start_date:
                 try:
                     start_d_clean = score.start_date.split()[0]
@@ -6150,7 +6152,7 @@ def submit_appeal():
                         start_date_obj = datetime.strptime(start_d_clean, '%d/%m/%Y').date()
                         
                     sunday_obj = start_date_obj + timedelta(days=6)
-                    if date.today() > sunday_obj:
+                    if today_vn_date > sunday_obj:
                         is_expired_dynamic = True
                 except Exception as e:
                     pass
