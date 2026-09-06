@@ -1678,10 +1678,17 @@ def delete_red_star(id):
             star = db_session.query(RedStar).filter(RedStar.id == id).first()
             if star:
                 name = star.full_name
+                
+                # 1. Thu hồi các lịch trực liên quan đến học sinh này
                 db_session.query(Assignment).filter(Assignment.red_star_id == id).delete()
-                db_session.query(StarEvaluation).filter(StarEvaluation.red_star_id == id).delete()
+                
+                # 2. [ĐÃ VÁ LỖI]: Đổi 'red_star_id' thành 'evaluatee_id' cho chuẩn khớp với CSDL
+                db_session.query(StarEvaluation).filter(StarEvaluation.evaluatee_id == id).delete()
+                
+                # 3. Xóa sổ vĩnh viễn hồ sơ của học sinh
                 db_session.delete(star)
-                log_system_action("ĐỘI SAO ĐỎ", f"Đã xóa vĩnh viễn Sao đỏ {name} và các lịch trực liên quan")
+                
+                log_system_action("ĐỘI SAO ĐỎ", f"Đã xóa vĩnh viễn Sao đỏ {name} và các lịch trực, phiếu đánh giá liên quan")
                 flash(f"Đã xóa vĩnh viễn Sao đỏ {name} và các lịch trực liên quan!", "success")
     except Exception as e:
         flash(f"Lỗi xóa sao đỏ: {e}", "error")
