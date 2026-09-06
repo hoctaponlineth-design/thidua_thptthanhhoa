@@ -2137,6 +2137,7 @@ def auto_assign():
             import random
             import json
             import os
+            import re
             
             # 1. Xóa toàn bộ lịch cũ của tuần này để xếp lại từ đầu
             db_session.query(Assignment).filter(Assignment.week_number == week_number).delete()
@@ -2149,7 +2150,7 @@ def auto_assign():
                 flash("Lỗi: Thiếu dữ liệu Khu vực trực hoặc Đội Sao đỏ để phân công!", "error")
                 return redirect(url_for('assignments', week=week_number))
                 
-            # 3. Đọc cấu hình Sơ đồ lớp để né (Không trực lớp mình)
+            # 3. Đọc cấu hình Sơ đồ lớp để né
             base_dir = os.path.dirname(os.path.abspath(__file__))
             config_path = os.path.join(base_dir, "config", "class_zones.json")
             zones_map = {}
@@ -2158,64 +2159,96 @@ def auto_assign():
                     try: zones_map = json.load(f)
                     except: pass
             
-            # 4. Trộn ngẫu nhiên danh sách sao đỏ để đổi mới mỗi tuần
-            random.shuffle(stars)
+            def get_grade(class_name):
+                match = re.search(r'(10|11|12)', str(class_name))
+                return match.group(1) if match else ""
+
+            # 4. TRÍCH XUẤT LỊCH SỬ XOAY VÒNG
+            history_counts = {star.id: {} for star in stars}
+            past_assignments = db_session.query(Assignment).filter(Assignment.week_number < week_number).all()
             
+            for pa in past_assignments:
+                if pa.red_star_id in history_counts and pa.duty_area:
+                    area_id_val = pa.duty_area.id
+                    history_counts[pa.red_star_id][area_id_val] = history_counts[pa.red_star_id].get(area_id_val, 0) + 1
+
+            current_week_shift_counts = {star.id: 0 for star in stars}
             success_count = 0
             
-            # 5. Bắt đầu xếp lịch cho từng Ca trực (Sáng/Chiều)
+            # Ưu tiên các khu vực "Giám sát Khối" lên trước
+            areas_sorted = sorted(areas, key=lambda a: 0 if "KHỐI" in a.name.upper() else 1)
+            
+            # 5. Bắt đầu phân công
             for shift in shifts:
-                available_stars = list(stars) 
+                assigned_in_this_shift = set()
                 
-                for area in areas:
-                    req_count = area.required_stars or 2
+                for area in areas_sorted:
+                    req_count = int(area.required_stars or 1)
                     assigned_count = 0
                     
-                    # Danh sách các lớp thuộc khu vực này
                     area_classes = [c.strip().upper() for c in zones_map.get(area.name, [])]
+                    area_grades = {get_grade(c) for c in area_classes if get_grade(c)}
                     
-                    stars_to_remove = []
-                    for star in available_stars:
-                        if assigned_count >= req_count:
-                            break
-                            
-                        # Kiểm tra xem Sao đỏ có bị trùng lớp không
-                        star_class = star.branch.name.strip().upper() if star.branch else ""
-                        is_conflict = False
+                    while assigned_count < req_count:
+                        available_pool = [s for s in stars if s.id not in assigned_in_this_shift]
                         
-                        if star_class in area_classes:
-                            is_conflict = True
-                        elif "KHỐI" in area.name.upper():
-                            grade = "".join(filter(str.isdigit, area.name))
-                            if grade and star_class.startswith(grade):
-                                is_conflict = True
-                                
-                        # Nếu không trùng lớp -> Phân công!
-                        if not is_conflict:
-                            # [BẢN VÁ LỖI]: Truyền thẳng Object thay vì ID, dập tắt lỗi AttributeError/TypeError
-                            new_assign = Assignment(
-                                week_number=week_number,
-                                shift=shift,
-                                date=start_date,
-                                red_star=star,      # Gán trực tiếp Object RedStar
-                                duty_area=area      # Gán trực tiếp Object DutyArea
-                            )
-                            db_session.add(new_assign)
-                            assigned_count += 1
-                            stars_to_remove.append(star)
-                            success_count += 1
+                        # Nếu đã rải hết quân trong ca mà vẫn chưa đủ ghế -> Reset vòng xoay tua
+                        if not available_pool:
+                            assigned_in_this_shift.clear()
+                            available_pool = list(stars)
                             
-                    # Loại bỏ các Sao đỏ đã được xếp lịch ra khỏi hàng đợi của Ca này
-                    for s in stars_to_remove:
-                        available_stars.remove(s)
+                        # Lọc an toàn (khác khối)
+                        valid_stars = []
+                        for star in available_pool:
+                            star_class = star.branch.name.strip().upper() if star.branch else ""
+                            star_grade = get_grade(star_class)
+                            
+                            is_conflict = False
+                            if star_class in area_classes:
+                                is_conflict = True
+                            elif star_grade and star_grade in area_grades:
+                                is_conflict = True
+                            elif not is_conflict and "KHỐI" in area.name.upper():
+                                if star_grade and star_grade in area.name:
+                                    is_conflict = True
+                                    
+                            if not is_conflict:
+                                valid_stars.append(star)
+                                
+                        # Cứu hộ vét cạn nếu không còn ai khác khối
+                        if not valid_stars:
+                            valid_stars = list(available_pool)
+                            
+                        # Sắp xếp ưu tiên lịch sử ít trực nhất
+                        valid_stars.sort(key=lambda s: (
+                            history_counts[s.id].get(area.id, 0),
+                            current_week_shift_counts[s.id]
+                        ))
+                        
+                        chosen_star = valid_stars[0]
+                        
+                        new_assign = Assignment(
+                            week_number=week_number,
+                            shift=shift,
+                            date=start_date,
+                            red_star=chosen_star,      
+                            duty_area=area      
+                        )
+                        db_session.add(new_assign)
+                        
+                        assigned_in_this_shift.add(chosen_star.id)
+                        current_week_shift_counts[chosen_star.id] += 1
+                        history_counts[chosen_star.id][area.id] = history_counts[chosen_star.id].get(area.id, 0) + 1
+                        assigned_count += 1
+                        success_count += 1
             
             db_session.commit()
             
             if success_count > 0:
-                log_system_action("LỊCH TRỰC", f"Đã chạy thuật toán xếp lịch tự động cho Tuần {week_number}")
-                flash(f"✅ Đã phân công tự động Tuần {week_number} thành công! ({success_count} lượt trực)", "success")
+                log_system_action("LỊCH TRỰC", f"Đã phân công tự động Tuần {week_number}")
+                flash(f"✅ Đã phân công tự động Tuần {week_number} thành công! (Tổng số {success_count} lượt trực được lấp đầy)", "success")
             else:
-                flash("⚠️ Thuật toán chạy xong nhưng không thể xếp lịch (Có thể do không đủ người đáp ứng điều kiện chéo tuyến).", "warning")
+                flash("⚠️ Không thể phân công do thiếu dữ liệu Sao đỏ.", "warning")
                 
     except Exception as e:
         import traceback
