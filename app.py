@@ -3939,7 +3939,7 @@ def class_dashboard():
             warning_students = []
             
             # =========================================================================
-            # [NÂNG CẤP]: LẤY DỮ LIỆU NGÂN HÀNG LỖI ĐỂ GVCN TRA CỨU (KHÔNG LÀM ẢNH HƯỞNG LUỒNG CŨ)
+            # [NÂNG CẤP]: LẤY DỮ LIỆU NGÂN HÀNG LỖI ĐỂ GVCN TRA CỨU
             # =========================================================================
             violation_bank = []
             if active_year:
@@ -3994,9 +3994,15 @@ def class_dashboard():
                         so_luong_diem_tot = int(sc.count_9 or 0) + int(sc.count_10 or 0)
                         if "2" in str(group_val): so_luong_diem_tot += int(sc.count_8 or 0)
                             
+                        # =========================================================================
+                        # [NÂNG CẤP]: MỞ KHÓA NÚT GIAO DIỆN (CHỈ KHÓA KHI GỬI ĐỦ 2 LẦN/NGÀY)
+                        # =========================================================================
                         has_appealed_today = False
-                        if sc.appeal_reason and f"[{today_str}]" in sc.appeal_reason:
-                            has_appealed_today = True
+                        if sc.appeal_reason:
+                            count_today = sc.appeal_reason.count(f"[{today_str}")
+                            if count_today >= 2:
+                                has_appealed_today = True
+                        # =========================================================================
                             
                         weekly_scores.append({
                             'score_id': sc.id,             
@@ -6059,8 +6065,9 @@ def auto_generate_gvcn():
         flash(f"Lỗi hệ thống: {e}", "error")
         return redirect(url_for('users'))
 
+
 # ==========================================
-# API: GVCN GỬI PHÚC KHẢO ĐIỂM
+# API: GVCN GỬI PHÚC KHẢO ĐIỂM (BẮT BUỘC KÈM HÌNH ẢNH)
 # ==========================================
 @app.route('/submit_appeal', methods=['POST'])
 def submit_appeal():
@@ -6069,8 +6076,14 @@ def submit_appeal():
         
     score_id = request.form.get('score_id', type=int)
     reason = request.form.get('reason', '').strip()
+    evidence_base64 = request.form.get('appeal_evidence_base64', '') # <--- Bắt ảnh ở đây
     
     if not score_id or not reason: 
+        return redirect(url_for('class_dashboard'))
+        
+    # KHIÊN BẢO VỆ MÁY CHỦ: Nếu dùng tool hack không gửi ảnh thì chặn lại
+    if not evidence_base64:
+        flash("⛔ Yêu cầu phúc khảo BẮT BUỘC phải có hình ảnh minh chứng đính kèm!", "error")
         return redirect(url_for('class_dashboard'))
         
     try:
@@ -6085,63 +6098,84 @@ def submit_appeal():
                 flash("⛔ Tuần này đã chốt cứng, không thể gửi yêu cầu phúc khảo!", "error")
                 return redirect(url_for('class_dashboard'))
             
-            # =========================================================================
-            # [NÂNG CẤP]: THUẬT TOÁN TỰ ĐỘNG KHÓA PHÚC KHẢO VÀO NGÀY CHỦ NHẬT CỦA TUẦN
-            # =========================================================================
+            # --- LUẬT KHÓA CHỦ NHẬT ---
             from datetime import datetime, date, timedelta
             is_expired_dynamic = False
             
             if score.start_date:
                 try:
-                    # Lấy ngày bắt đầu tuần (thường là Thứ 2)
                     start_d_clean = score.start_date.split()[0]
                     if "-" in start_d_clean:
                         start_date_obj = datetime.strptime(start_d_clean, '%Y-%m-%d').date()
                     else:
                         start_date_obj = datetime.strptime(start_d_clean, '%d/%m/%Y').date()
                         
-                    # Tính ngày Chủ nhật trong tuần đó (Cộng thêm 6 ngày từ ngày bắt đầu)
-                    # Hoặc nếu dùng chuẩn: tìm ngày Chủ nhật gần nhất hoặc ngày thứ 7/Chủ nhật của tuần
                     sunday_obj = start_date_obj + timedelta(days=6)
-                    
-                    # Nếu ngày hiện tại (date.today()) đã vượt qua ngày Chủ nhật của tuần đó
                     if date.today() > sunday_obj:
                         is_expired_dynamic = True
                 except Exception as e:
-                    print("Lỗi tính toán hạn phúc khảo Chủ nhật:", e)
+                    pass
             
             if score.is_appeal_expired or is_expired_dynamic:
                 flash("⛔ Đã hết thời hạn! Hệ thống tự động khóa quyền khiếu nại vào ngày Chủ nhật của tuần thi đua.", "error")
                 return redirect(url_for('class_dashboard'))
-            # =========================================================================
 
-            # --- [THUẬT TOÁN MỚI]: KIỂM TRA SỐ LẦN GỬI TRONG NGÀY ---
-            from datetime import datetime
-            today_str = datetime.now().strftime("%d/%m/%Y")
-            new_entry = f"[{today_str}] {reason}"
+            # --- LUẬT KHÓA LỖI QUÁ NGÀY ---
+            import re
+            days_vn = {0: '[T2]', 1: '[T3]', 2: '[T4]', 3: '[T5]', 4: '[T6]', 5: '[T7]', 6: '[CN]'}
+            today_pfx = days_vn[datetime.now().weekday()]
+            
+            match_errors = re.search(r'Phúc khảo các lỗi:\s*\[(.*?)\]', reason)
+            if match_errors:
+                errors_str = match_errors.group(1)
+                appealed_errors = [e.strip() for e in errors_str.split("] & [")]
+                
+                for err in appealed_errors:
+                    day_match = re.search(r'\[(T[2-7]|CN)\]', err)
+                    if day_match:
+                        err_day = day_match.group(0)
+                        if err_day != today_pfx:
+                            flash(f"⛔ TỪ CHỐI: Lỗi thuộc ngày {err_day} đã quá hạn! Chỉ tiếp nhận khiếu nại trong cùng ngày xảy ra vi phạm.", "error")
+                            return redirect(url_for('class_dashboard'))
+
+            # =================================================================
+            # TẢI ẢNH LÊN CLOUDINARY VÀ GẮN LINK VÀO GHI CHÚ
+            # =================================================================
+            saved_image_url = process_and_save_evidence(evidence_base64, score.branch_id, score.week)
+            if not saved_image_url:
+                flash("⛔ Có lỗi xảy ra khi tải ảnh lên đám mây Cloudinary. Vui lòng thử lại!", "error")
+                return redirect(url_for('class_dashboard'))
+            
+            # Gắn link ảnh tuyệt đẹp vào đoạn text để BGH click vào là xem được
+            reason_with_img = f"{reason} <br><a href='{saved_image_url}' target='_blank' style='color: #2563eb; text-decoration: none; display: inline-block; margin-top: 8px;'><i class='fa-regular fa-image'></i> <b>Xem ảnh minh chứng GVCN gửi</b></a>"
+
+            # --- KIỂM TRA SỐ LẦN GỬI (TỐI ĐA 2 LẦN/NGÀY) ---
+            today_date_str = datetime.now().strftime("%d/%m/%Y") 
+            now_str = datetime.now().strftime("%d/%m/%Y %H:%M")  
+            new_entry = f"[{now_str}] {reason_with_img}" # <--- Dùng reason đã có gắn link ảnh
             
             if score.appeal_reason:
-                # Nếu chuỗi ngày hôm nay đã tồn tại trong lý do -> Khóa không cho gửi tiếp
-                if f"[{today_str}]" in score.appeal_reason:
-                    flash("⛔ Hôm nay thầy/cô đã gửi phúc khảo cho tuần này rồi! Vui lòng chờ phản hồi hoặc quay lại vào ngày mai.", "error")
+                count_today = score.appeal_reason.count(f"[{today_date_str}")
+                if count_today >= 2:
+                    flash("⛔ Thầy/cô đã dùng hết 2 lượt gửi phúc khảo trong ngày hôm nay!", "error")
                     return redirect(url_for('class_dashboard'))
                 
-                # Nếu là ngày khác, cộng dồn lý do mới vào lý do cũ
                 score.appeal_reason = score.appeal_reason + " | " + new_entry
             else:
                 score.appeal_reason = new_entry
             
             score.is_appealed = True
-            score.appeal_response = None # Xóa phản hồi cũ để báo cáo nổi lại trên màn hình của BGH
+            score.appeal_response = None 
             
-            log_system_action("PHÚC KHẢO", f"GVCN Lớp {score.branch.name} gửi khiếu nại Tuần {score.week}: {reason[:30]}...")
-            flash("✅ Đã gửi Báo cáo sai sót / Phúc khảo đến Đoàn trường thành công!", "success")
+            log_system_action("PHÚC KHẢO", f"GVCN Lớp {score.branch.name} gửi khiếu nại (Kèm hình ảnh).")
+            flash("✅ Đã gửi Báo cáo sai sót / Phúc khảo kèm HÌNH ẢNH đến Đoàn trường thành công!", "success")
             
     except Exception as e: 
         flash(f"Lỗi xử lý phúc khảo: {e}", "error")
         import traceback; traceback.print_exc() 
         
     return redirect(url_for('class_dashboard'))
+
 # ==========================================
 # MODULE: WEB APP MOBILE DÀNH CHO SAO ĐỎ
 # ==========================================
