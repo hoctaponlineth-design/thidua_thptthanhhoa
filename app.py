@@ -22,24 +22,33 @@ VAPID_CLAIMS = {
 # (Tùy chọn) Thầy/cô có thể tạo thêm bảng `PushSubscription` trong Models 
 # để lưu thông tin đăng ký của từng GVCN. Tạm thời chúng ta dùng Session/Dict để test.
 global_subscriptions = {}
-
-    
+  
 def process_and_save_evidence(base64_string, branch_id, week_name):
-    """Hàm hứng mảng Base64 và đẩy thẳng lên Đám mây Cloudinary"""
+    """Hàm hứng chuỗi Base64 (Data URI) và đẩy lên Cloudinary một cách an toàn (Đã bọc thép chống nhân đôi)"""
     if not base64_string or base64_string.strip() in ["", "[]"]:
         return None
         
     try:
         import json
+        import unicodedata
+        import re
+        import os
+        import hashlib
         import cloudinary
         import cloudinary.uploader
         
-        # [QUAN TRỌNG]: Thầy/cô sẽ đăng ký tài khoản Cloudinary miễn phí và điền 3 mã này vào
-        cloudinary.config( 
-            cloud_name = "bgjw5m03", 
-            api_key = "438871542918892", 
-            api_secret = "sVU9IhaUUby5XOrR8oNsp_8XF6Q" 
-        )
+        # Tự động nhận diện cấu hình Cloudinary
+        if os.environ.get("CLOUDINARY_URL"):
+            cloudinary.config(secure=True)
+        else:
+            cloudinary.config( 
+                cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME"), 
+                api_key = os.environ.get("CLOUDINARY_API_KEY"), 
+                api_secret = os.environ.get("CLOUDINARY_API_SECRET"),
+                secure = True
+            )
+            
+        # Xử lý danh sách hoặc chuỗi đơn
         if base64_string.startswith('['):
             base64_list = json.loads(base64_string)
         else:
@@ -47,19 +56,31 @@ def process_and_save_evidence(base64_string, branch_id, week_name):
             
         saved_paths = []
         
-        for idx, b64 in enumerate(base64_list):
+        # Chuẩn hóa tên tuần không dấu
+        safe_week = unicodedata.normalize('NFKD', str(week_name)).encode('ASCII', 'ignore').decode('utf-8')
+        safe_week = re.sub(r'[^a-zA-Z0-9]', '_', safe_week)
+        
+        for b64 in base64_list:
             if not b64: continue
             
-            # API Cloudinary nhận thẳng định dạng Base64, không cần lưu file trung gian
-            upload_result = cloudinary.uploader.upload(b64, folder=f"thidua_doantruong/{week_name}")
+            # [CHÌA KHÓA VÀNG]: Băm mã Base64 thành Dấu vân tay (MD5) để chống trùng lặp do mạng yếu
+            img_hash = hashlib.md5(b64.encode('utf-8')).hexdigest()[:15]
             
-            # Lấy đường link HTTPS tĩnh của bức ảnh trên đám mây để lưu vào CSDL
+            # Đảm bảo chuỗi base64 giữ nguyên định dạng Data URI chuẩn từ FileReader
+            # Gắn thêm public_id để Cloudinary tự động ghi đè nếu mạng tự động gửi lại cùng 1 bức ảnh
+            upload_result = cloudinary.uploader.upload(
+                b64, 
+                folder=f"thidua_doantruong/{safe_week}",
+                public_id=f"img_{branch_id}_{img_hash}"
+            )
             saved_paths.append(upload_result['secure_url'])
             
         return "|".join(saved_paths) if saved_paths else None
+        
     except Exception as e:
-        print(f"❌ LỖI UPLOAD ẢNH LÊN ĐÁM MÂY: {str(e)}")
-        return None
+        error_detail = str(e)
+        print(f"❌ LỖI UPLOAD ẢNH LÊN ĐÁM MÂY: {error_detail}")
+        raise Exception(error_detail)
     
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 import openpyxl
@@ -6888,15 +6909,23 @@ def sao_do_quick_submit_form():
                 db_session.add(score)
                 db_session.flush() 
             
-            # --- [BỔ SUNG]: LƯU ẢNH MINH CHỨNG VÀ NỐI TIẾP VỚI ẢNH CŨ ---
-            saved_image_path = process_and_save_evidence(evidence_base64, branch.id, week_name) # (Hoặc branch.id, current_week tùy hàm)
+            # --- [BỔ SUNG]: LƯU ẢNH MINH CHỨNG VÀ CHỐNG TRÙNG LẶP DO MẠNG YẾU ---
+            # Lưu ý: Ở hàm submit_mobile_sao_do, thầy đổi biến week_name thành current_week cho khớp nhé
+            saved_image_path = process_and_save_evidence(evidence_base64, branch.id, week_name) 
             if saved_image_path:
-                if getattr(score, 'evidence_image', None):
-                    score.evidence_image = f"{score.evidence_image}|{saved_image_path}"
-                else:
-                    score.evidence_image = saved_image_path
-            # ------------------------------------
-            # ------------------------------------
+                current_images = getattr(score, 'evidence_image', '') or ''
+                
+                # Tách các link ảnh hiện có thành danh sách để rà soát
+                existing_urls = [url.strip() for url in current_images.split('|') if url.strip()]
+                new_urls = [url.strip() for url in saved_image_path.split('|') if url.strip()]
+                
+                # Chỉ ghép thêm đường link NẾU đường link đó chưa hề tồn tại trong CSDL
+                for n_url in new_urls:
+                    if n_url not in existing_urls:
+                        existing_urls.append(n_url)
+                        
+                # Đóng gói lại thành chuỗi phân cách bằng dấu |
+                score.evidence_image = "|".join(existing_urls)
                 
             old_note = score.note if score and score.note else ""
             
@@ -7265,11 +7294,19 @@ def submit_mobile_sao_do():
                 score.note = final_note
                 score.score_tru = diem_tru_final
                 score.total_score = total_val
+                
+                # --- [BẢN VÁ LỖI TỐI THƯỢNG]: LỌC ẢNH TRÙNG LẶP TRONG CSDL ---
                 if saved_image_path:
-                    if getattr(score, 'evidence_image', None):
-                        score.evidence_image = f"{score.evidence_image}|{saved_image_path}"
-                    else:
-                        score.evidence_image = saved_image_path
+                    current_images = getattr(score, 'evidence_image', '') or ''
+                    existing_urls = [url.strip() for url in current_images.split('|') if url.strip()]
+                    new_urls = [url.strip() for url in saved_image_path.split('|') if url.strip()]
+                    
+                    for n_url in new_urls:
+                        if n_url not in existing_urls:
+                            existing_urls.append(n_url)
+                            
+                    score.evidence_image = "|".join(existing_urls)
+                # -------------------------------------------------------------
             else:
                 score = WeeklyScore(
                     branch_id=branch.id, week=current_week, week_rating=rating,
