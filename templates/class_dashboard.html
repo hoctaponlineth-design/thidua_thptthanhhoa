@@ -358,10 +358,10 @@
         @keyframes shimmer {
             to { background-position-x: -200%; }
         }
-		/* Tùy chỉnh cụm 3 nút hành động GVCN bằng nhau tuyệt đối */
+		/* Tùy chỉnh cụm nút hành động GVCN bằng nhau tuyệt đối */
     .gvcn-action-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr); /* [NÂNG CẤP LƯỚI] Thay thành 4 cột */
+        grid-template-columns: repeat(4, 1fr);
         gap: 8px;
         margin-top: 12px;
         width: 100%;
@@ -464,13 +464,13 @@
                                 <span>Xuất Hồ Sơ</span>
                             </a>
 
-                            <!-- [NÂNG CẤP LÕI]: SỬA LẠI NÚT TRA SỔ ĐEN ĐỂ GỌI ĐÚNG TAB MỚI -->
+                            <!-- 2. Nút Tra Sổ Đen -->
                             <button type="button" class="btn-gvcn-equal" style="background: linear-gradient(135deg, #ef4444, #dc2626);" onclick="document.querySelector('[data-bs-target=\'#blacklist-pane\']').click()" title="Tra cứu Sổ Đen của lớp">
                                 <i class="fa-solid fa-book-skull"></i>
                                 <span>Tra Sổ Đen</span>
                             </button>
                             
-                            <!-- 2. Nút Sửa Thông Tin -->
+                            <!-- 3. Nút Sửa Thông Tin -->
                             {% if is_gvcn or session.get('role') in ['Quản trị viên', 'Admin', 'Bí thư Đoàn trường'] %}
                             <button type="button" class="btn-gvcn-equal" style="background: linear-gradient(135deg, #2563eb, #1d4ed8);" onclick="openEditBranchModal()" title="Sửa thông tin lớp">
                                 <i class="fa-solid fa-user-pen"></i>
@@ -478,7 +478,7 @@
                             </button>
                             {% endif %}
                             
-                            <!-- 3. Nút Bật/Tắt Thông Báo -->
+                            <!-- 4. Nút Bật/Tắt Thông Báo -->
                             {% if is_gvcn %}
                             <button type="button" class="btn-gvcn-equal" id="btnPushNotifyGVCN" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);" onclick="enablePushNotifications()" title="Bật/Tắt thông báo vi phạm">
                                 <i class="fa-solid fa-bell"></i>
@@ -624,6 +624,12 @@
                     <li class="nav-item" role="presentation">
                         <button class="modern-tab text-danger" data-bs-toggle="tab" data-bs-target="#blacklist-pane" type="button" role="tab" style="border-color: #fecaca; background-color: #fef2f2;">
                             <i class="fa-solid fa-book-skull"></i> Sổ Đen Của Lớp
+                        </button>
+                    </li>
+                    <!-- TAB HỒ SƠ PHÚC KHẢO ĐƯỢC TÍCH HỢP -->
+                    <li class="nav-item" role="presentation">
+                        <button class="modern-tab text-primary" data-bs-toggle="tab" data-bs-target="#appeal-history-pane" type="button" role="tab" style="border-color: #bfdbfe; background-color: #eff6ff;">
+                            <i class="fa-solid fa-scale-balanced"></i> Hồ sơ Phúc khảo
                         </button>
                     </li>
                 </ul>
@@ -1071,6 +1077,87 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- ========================================= -->
+                <!-- [BẢN NÂNG CẤP LÕI]: TAB HỒ SƠ PHÚC KHẢO (ĐÃ ĐƯỢC BÓC TÁCH) -->
+                <!-- ========================================= -->
+                <div class="tab-pane fade" id="appeal-history-pane" role="tabpanel">
+                    <div class="p-4 pb-0">
+                        <div class="alert alert-primary bg-opacity-10 border-0 text-primary fw-bold rounded-3 small mb-3 d-flex gap-2">
+                            <i class="fa-solid fa-circle-info mt-1"></i> Tra cứu và theo dõi tiến trình xử lý toàn bộ các yêu cầu khiếu nại điểm của lớp.
+                        </div>
+                        
+                        <div class="d-flex flex-wrap gap-3 mb-4 bg-white p-3 rounded-3 shadow-sm border align-items-center">
+                            <div class="input-group" style="max-width: 400px; flex-grow: 1;">
+                                <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                                <input type="text" id="appealSearchInput" class="form-control border-start-0 ps-0 bg-light" placeholder="Nhập tên HS, Lỗi hoặc Tuần để lọc nhanh..." style="box-shadow: none;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive-custom mt-2 border-top">
+                        <table class="table-modern" id="appealTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 5%;">STT</th>
+                                    <th style="width: 10%;">Tuần</th>
+                                    <th style="width: 15%;">Thời gian gửi</th>
+                                    <th style="width: 25%; text-align: left;">Nội dung (Lỗi & Tên HS)</th>
+                                    <th style="width: 25%; text-align: left;">Lý do / Minh chứng</th>
+                                    <th style="width: 20%;">Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if appeal_records %}
+                                    {% for record in appeal_records %}
+                                    <tr>
+                                        <td data-label="STT" class="fw-bold text-muted text-md-center">{{ loop.index }}</td>
+                                        <td data-label="Tuần"><span class="badge-soft badge-secondary shadow-sm">{{ record.week }}</span></td>
+                                        <td data-label="Gửi lúc" class="text-md-center"><span class="small text-muted fw-bold"><i class="fa-regular fa-clock me-1"></i>{{ record.time }}</span></td>
+                                        <td data-label="Nội dung" class="text-danger fw-bold" style="text-align: left !important; font-size: 13px;">
+                                            {{ record.errors_raw | safe if record.errors_raw else "Không có lỗi đính kèm" }}
+                                        </td>
+                                        <td data-label="Lý do" class="text-muted" style="text-align: left !important; font-size: 13px; line-height: 1.5;">
+                                            {{ record.reason | safe }}
+                                        </td>
+                                        <td data-label="Trạng thái" class="text-md-center">
+                                            <span class="badge bg-{{ record.badge }} px-3 py-1 rounded-pill shadow-sm mb-1" style="font-size: 12px;">{{ record.status }}</span>
+                                            {% if record.response %}
+                                                <div class="fst-italic mt-2" style="font-size: 12px; color: #475569; background: #f8fafc; padding: 6px; border-radius: 6px; border-left: 2px solid {% if record.badge == 'success' %}#22c55e{% else %}#ef4444{% endif %}; text-align: left;">
+                                                    {{ record.response | replace('[ĐÃ DUYỆT]', '') | replace('[TỪ CHỐI]', '') | truncate(40) }}
+                                                </div>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="col-details text-center py-5 text-muted fst-italic">
+                                            <i class="fa-solid fa-box-open fs-3 d-block mb-2 opacity-50"></i> Lớp chưa từng gửi yêu cầu phúc khảo nào.
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Kịch bản Javascript cho thanh tìm kiếm thông minh -->
+                <script>
+                    document.addEventListener("DOMContentLoaded", function() {
+                        const searchInput = document.getElementById("appealSearchInput");
+                        if(searchInput) {
+                            searchInput.addEventListener("keyup", function() {
+                                const filter = this.value.toLowerCase();
+                                const rows = document.querySelectorAll("#appealTable tbody tr:not(.col-details)"); // Không ẩn hàng thông báo trống
+                                rows.forEach(row => {
+                                    const textContent = row.textContent.toLowerCase();
+                                    row.style.display = textContent.includes(filter) ? "" : "none";
+                                });
+                            });
+                        }
+                    });
+                </script>
 
             </div>
         </div>
