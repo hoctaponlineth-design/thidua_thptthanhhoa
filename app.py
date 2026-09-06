@@ -2164,54 +2164,56 @@ def auto_assign():
                 match = re.search(r'(10|11|12)', str(class_name))
                 return match.group(1) if match else ""
 
-            # 4. [NÂNG CẤP LÕI - QUY TẮC 2]: TRÍCH XUẤT LỊCH SỬ ĐỂ ÉP LUẬT XOAY VÒNG
+            # 4. TRÍCH XUẤT LỊCH SỬ ĐỂ ÉP LUẬT XOAY VÒNG
             history_counts = {star.id: {} for star in stars}
             past_assignments = db_session.query(Assignment).filter(Assignment.week_number < week_number).all()
             
             for pa in past_assignments:
-                # [ĐÃ VÁ LỖI]: Gọi thẳng Object pa.duty_area.id thay vì gọi cột database
                 if pa.red_star_id in history_counts and pa.duty_area:
                     area_id_val = pa.duty_area.id
                     history_counts[pa.red_star_id][area_id_val] = history_counts[pa.red_star_id].get(area_id_val, 0) + 1
 
-            # Biến đếm khối lượng công việc trong Tuần hiện tại
             current_week_shift_counts = {star.id: 0 for star in stars}
             success_count = 0
             
-            # Xáo trộn mảng cụm trực để đổi mới ngẫu nhiên thứ tự bốc thăm
-            random.shuffle(areas)
+            # Sắp xếp ưu tiên các khu vực "Giám sát Khối" lên trước để xử lý toán học trước
+            areas_sorted = sorted(areas, key=lambda a: 0 if "KHỐI" in a.name.upper() else 1)
             
             # 5. Bắt đầu xếp lịch
             for shift in shifts:
                 available_stars = list(stars)
-                random.shuffle(available_stars) # Trộn ngẫu nhiên ban đầu
+                random.shuffle(available_stars) 
                 
-                for area in areas:
-                    req_count = area.required_stars or 2
+                for area in areas_sorted:
+                    req_count = area.required_stars or 1
                     assigned_count = 0
                     
-                    # Xác định CÁC KHỐI LỚP (10, 11, 12) có mặt trong Cụm trực này
                     area_classes = [c.strip().upper() for c in zones_map.get(area.name, [])]
                     area_grades = {get_grade(c) for c in area_classes if get_grade(c)}
                     
-                    # [NÂNG CẤP LÕI - QUY TẮC 1]: Lọc ra danh sách Sao đỏ hợp lệ
+                    # --- BƯỚC 1: Lọc danh sách an toàn (Khác khối và không trùng lớp trực tiếp) ---
                     valid_stars_for_area = []
                     for star in available_stars:
                         star_class = star.branch.name.strip().upper() if star.branch else ""
                         star_grade = get_grade(star_class)
                         
                         is_conflict = False
-                        # Nếu Cụm trực chứa lớp có cùng Khối với Sao đỏ -> XUNG ĐỘT
-                        if star_grade and star_grade in area_grades:
+                        # Né lớp trực thuộc cụm
+                        if star_class in area_classes:
                             is_conflict = True
-                        
-                        # Xử lý dự phòng cho cụm trực chưa có trong Sơ đồ lớp
-                        if not is_conflict and "KHỐI" in area.name.upper():
+                        # Né khối
+                        elif star_grade and star_grade in area_grades:
+                            is_conflict = True
+                        elif not is_conflict and "KHỐI" in area.name.upper():
                             if star_grade and star_grade in area.name:
                                 is_conflict = True
                                 
                         if not is_conflict:
                             valid_stars_for_area.append(star)
+                            
+                    # --- BƯỚC 2 (VÉT CẠN CỨU HỘ): NẾU HẾT SẠCH QUÂN AN TOÀN, LẤY TẠM QUÂN KHÁC ---
+                    if not valid_stars_for_area and available_stars:
+                        valid_stars_for_area = list(available_stars)
                             
                     # Sắp xếp theo ưu tiên: 1. Ít trực cụm này nhất -> 2. Ít việc trong tuần nhất
                     valid_stars_for_area.sort(key=lambda s: (
@@ -2219,13 +2221,11 @@ def auto_assign():
                         current_week_shift_counts[s.id]
                     ))
                     
-                    # Tiến hành bốc người vào Cụm trực
                     stars_to_remove_from_shift = []
                     for star in valid_stars_for_area:
                         if assigned_count >= req_count:
                             break
                             
-                        # Chốt phân công
                         new_assign = Assignment(
                             week_number=week_number,
                             shift=shift,
@@ -2241,7 +2241,6 @@ def auto_assign():
                         stars_to_remove_from_shift.append(star)
                         success_count += 1
                             
-                    # Trực xong 1 ca rồi thì loại ra khỏi vòng lặp của buổi đó
                     for s in stars_to_remove_from_shift:
                         if s in available_stars:
                             available_stars.remove(s)
@@ -2252,7 +2251,7 @@ def auto_assign():
                 log_system_action("LỊCH TRỰC", f"Đã chạy thuật toán xếp lịch tự động cho Tuần {week_number}")
                 flash(f"✅ Đã phân công tự động Tuần {week_number} thành công! ({success_count} lượt trực)", "success")
             else:
-                flash("⚠️ Thuật toán chạy xong nhưng không thể xếp lịch (Có thể do không đủ người đáp ứng điều kiện chéo tuyến).", "warning")
+                flash("⚠️ Thuật toán chạy xong nhưng không thể xếp lịch.", "warning")
                 
     except Exception as e:
         import traceback
