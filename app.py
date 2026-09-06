@@ -2163,7 +2163,7 @@ def auto_assign():
                 match = re.search(r'(10|11|12)', str(class_name))
                 return match.group(1) if match else ""
 
-            # 4. TRÍCH XUẤT LỊCH SỬ XOAY VÒNG
+            # 4. TRÍCH XUẤT LỊCH SỬ ĐỂ KIỂM TRA VỊ TRÍ ĐÃ TỪNG TRỰC
             history_counts = {star.id: {} for star in stars}
             past_assignments = db_session.query(Assignment).filter(Assignment.week_number < week_number).all()
             
@@ -2175,8 +2175,8 @@ def auto_assign():
             current_week_shift_counts = {star.id: 0 for star in stars}
             success_count = 0
             
-            # Sắp xếp ưu tiên các khu vực "Giám sát Khối" lên trước
-            areas_sorted = sorted(areas, key=lambda a: 0 if "KHỐI" in a.name.upper() else 1)
+            # Ưu tiên các khu vực "Giám sát Khối" lên trước, sau đó đến Cụm, cuối cùng là Cổng
+            areas_sorted = sorted(areas, key=lambda a: 0 if "KHỐI" in a.name.upper() else (1 if "CỔNG" not in a.name.upper() else 2))
             
             # 5. Bắt đầu phân công
             for shift in shifts:
@@ -2186,6 +2186,10 @@ def auto_assign():
                     req_count = int(area.required_stars or 1)
                     assigned_count = 0
                     
+                    area_name_lower = area.name.lower()
+                    # Kiểm tra xem khu vực này có phải là Cổng hay không
+                    is_gate_area = "cổng" in area_name_lower
+                    
                     area_classes = [c.strip().upper() for c in zones_map.get(area.name, [])]
                     area_grades = {get_grade(c) for c in area_classes if get_grade(c)}
                     
@@ -2193,38 +2197,53 @@ def auto_assign():
                         # Lọc những em chưa có lịch trong ca này
                         available_pool = [s for s in stars if s.id not in assigned_in_this_shift]
                         
-                        # Nếu đã rải hết quân mà vẫn thiếu ghế -> Xoay vòng cấp cứu, reset lại danh sách rảnh trong ca
                         if not available_pool:
                             assigned_in_this_shift.clear()
                             available_pool = list(stars)
                             
-                        # Lọc an toàn (khác khối và không trùng lớp trực tiếp)
+                        # --- THUẬT TOÁN LỌC THEO QUY TẮC MỚI ---
                         valid_stars = []
                         for star in available_pool:
                             star_class = star.branch.name.strip().upper() if star.branch else ""
                             star_grade = get_grade(star_class)
                             
                             is_conflict = False
-                            if star_class in area_classes:
-                                is_conflict = True
-                            elif star_grade and star_grade in area_grades:
-                                is_conflict = True
-                            elif not is_conflict and "KHỐI" in area.name.upper():
-                                if star_grade and star_grade in area.name:
+                            
+                            # NẾU LÀ VỊ TRÍ KHÁC CỔNG (Cụm, Giám sát khối): Áp dụng luật khắt khe
+                            if not is_gate_area:
+                                # 1. Không trực lớp mình / khối mình
+                                if star_class in area_classes:
+                                    is_conflict = True
+                                elif star_grade and star_grade in area_grades:
+                                    is_conflict = True
+                                elif "KHỐI" in area.name.upper() and star_grade and star_grade in area.name:
                                     is_conflict = True
                                     
+                                # 2. Không trực lại vị trí ĐÃ TỪNG TRỰC (Lịch sử > 0 lần ở khu vực này)
+                                if history_counts[star.id].get(area.id, 0) > 0:
+                                    is_conflict = True
+                            
+                            # NẾU LÀ VỊ TRÍ CỔNG: Bỏ qua mọi ràng buộc trên, ai cũng trực được
+                            
                             if not is_conflict:
                                 valid_stars.append(star)
                                 
-                        # Cứu hộ vét cạn: Nếu lọc hết khối mà rỗng, lấy luôn pool sẵn có
+                        # Cứu hộ vét cạn: Nếu do ràng buộc ngặt nghèo quá mà danh sách bị rỗng, nới lỏng dần để không thiếu người
                         if not valid_stars:
+                            # Nếu không phải cổng mà bị rỗng, thử cho phép trực lại vị trí cũ nhưng vẫn né khối
+                            valid_stars = []
+                            for star in available_pool:
+                                star_class = star.branch.name.strip().upper() if star.branch else ""
+                                star_grade = get_grade(star_class)
+                                if star_class not in area_classes and (not star_grade or star_grade not in area_grades):
+                                    valid_stars.append(star)
+                        
+                        if not valid_stars:
+                            # Cấp cứu cuối cùng: lấy bất kỳ ai còn rảnh trong ca
                             valid_stars = list(available_pool)
                             
-                        # Sắp xếp ưu tiên lịch sử ít trực nhất & ít việc nhất trong tuần
-                        valid_stars.sort(key=lambda s: (
-                            history_counts[s.id].get(area.id, 0),
-                            current_week_shift_counts[s.id]
-                        ))
+                        # Sắp xếp theo ưu tiên: Ít việc nhất trong tuần
+                        valid_stars.sort(key=lambda s: current_week_shift_counts[s.id])
                         
                         chosen_star = valid_stars[0]
                         
@@ -2247,7 +2266,7 @@ def auto_assign():
             
             if success_count > 0:
                 log_system_action("LỊCH TRỰC", f"Đã phân công tự động Tuần {week_number}")
-                flash(f"✅ Đã phân công tự động Tuần {week_number} thành công! (Lấp đầy trọn vẹn {success_count} vị trí)", "success")
+                flash(f"✅ Đã phân công tự động Tuần {week_number} thành công theo quy tắc mới! ({success_count} vị trí)", "success")
             else:
                 flash("⚠️ Không thể phân công do thiếu dữ liệu Sao đỏ.", "warning")
                 
