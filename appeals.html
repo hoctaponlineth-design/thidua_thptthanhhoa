@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hồ sơ Phúc khảo - Quản lý Thi đua</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #f8fafc; font-family: 'Inter', sans-serif; color: #0f172a; }
+        .sidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; background-color: #1e293b; color: white; padding-top: 20px; z-index: 1000; overflow-y: auto; }
+        .sidebar h4 { font-size: 16px; font-weight: 700; text-align: center; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); text-transform: uppercase; color: #cbd5e1;}
+        .sidebar .nav-link { color: #94a3b8; font-weight: 500; padding: 12px 20px; font-size: 14px; transition: all 0.2s; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { background-color: rgba(255,255,255,0.1); color: white; border-left: 4px solid #2563eb; }
+        .main-content { margin-left: 260px; padding: 30px; }
+        .glass-card { background: #ffffff; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; margin-bottom: 24px; }
+        .table-modern { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .table-modern thead th { background: #f1f5f9; color: #64748b; font-size: 13px; font-weight: 600; text-transform: uppercase; padding: 16px; border-bottom: 1px solid #e2e8f0; white-space: nowrap;}
+        .table-modern tbody td { padding: 16px; font-size: 14px; font-weight: 500; border-bottom: 1px solid #e2e8f0; vertical-align: middle;}
+        .form-select-modern, .form-control-modern { border-radius: 10px; border: 1px solid #cbd5e1; font-size: 14px; padding: 10px 14px; }
+        .form-select-modern:focus, .form-control-modern:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    </style>
+</head>
+<body>
+
+    {% include 'sidebar.html' %}
+
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded-4 shadow-sm border">
+            <h4 class="m-0 fw-bold text-primary"><i class="fa-solid fa-scale-balanced me-2"></i> Trung tâm Quản lý Phúc khảo Toàn trường</h4>
+            <div class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-bold border border-success border-opacity-25">
+                <i class="fa-solid fa-calendar-check me-1"></i> NH: {{ active_year.name }}
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show shadow-sm rounded-4">
+                        <i class="fa-solid fa-circle-info me-2"></i> {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- BỘ LỌC TÌM KIẾM -->
+        <div class="glass-card p-4">
+            <form method="GET" action="/appeals" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-muted small">Tra cứu Tuần</label>
+                    <select name="search_week" class="form-select form-select-modern">
+                        <option value="">Tất cả các tuần</option>
+                        {% for w in available_weeks %}
+                            <option value="{{ w }}" {% if search_week == w %}selected{% endif %}>{{ w }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-muted small">Lọc theo Lớp</label>
+                    <select name="search_branch" class="form-select form-select-modern">
+                        <option value="">Tất cả các Chi đoàn</option>
+                        {% for b in branches %}
+                            <option value="{{ b.id }}" {% if search_branch == b.id|string %}selected{% endif %}>Lớp {{ b.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold text-muted small">Trạng thái</label>
+                    <select name="search_status" class="form-select form-select-modern">
+                        <option value="all" {% if search_status == 'all' %}selected{% endif %}>Tất cả</option>
+                        <option value="pending" {% if search_status == 'pending' %}selected{% endif %}>Chờ xử lý</option>
+                        <option value="resolved" {% if search_status == 'resolved' %}selected{% endif %}>Đã giải quyết</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-muted small">Tìm Tên HS / Nội dung</label>
+                    <input type="text" name="search_name" value="{{ search_name }}" class="form-control form-control-modern" placeholder="Gõ tên học sinh, lỗi...">
+                </div>
+                <div class="col-md-1 text-end">
+                    <button type="submit" class="btn btn-primary fw-bold w-100 py-2 rounded-3 shadow-sm" style="background-color: #2563eb;"><i class="fa-solid fa-filter"></i> Lọc</button>
+                </div>
+            </form>
+        </div>
+
+		<!-- BẢNG DỮ LIỆU PHÚC KHẢO -->
+        <div class="glass-card">
+            <!-- Thêm giới hạn chiều cao (max-height) để tạo thanh cuộn riêng cho bảng -->
+            <div class="table-responsive" style="max-height: calc(100vh - 280px); overflow-y: auto;">
+                <table class="table-modern text-center align-middle mb-0">
+                    <!-- Lệnh position: sticky giúp khóa chặt dòng tiêu đề lên Top -->
+                    <thead style="position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <tr>
+                            <th>STT</th>
+                            <th>Chi đoàn</th>
+                            <th>Thời gian gửi</th>
+                            <th style="width: 25%; text-align: left;">Lỗi / Tên Học Sinh</th>
+                            <th style="width: 25%; text-align: left;">Lý do (Của GVCN)</th>
+                            <th style="width: 15%;">Trạng thái</th>
+                            <th>Xử lý</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if appeal_records %}
+                            {% for record in appeal_records %}
+                            <tr>
+                                <td class="text-muted fw-bold">{{ loop.index }}</td>
+                                <td>
+                                    <div class="fw-bold text-primary" style="font-size: 15px;">{{ record.branch_name }}</div>
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25">{{ record.week }}</span>
+                                </td>
+                                <td><span class="text-muted small fw-bold"><i class="fa-regular fa-clock me-1"></i>{{ record.time }}</span></td>
+                                <td class="text-start text-danger fw-bold" style="font-size: 13px;">
+                                    {{ record.errors_raw | safe if record.errors_raw else "Không đính kèm lỗi" }}
+                                </td>
+                                <td class="text-start text-muted" style="font-size: 13px; line-height: 1.5;">
+                                    {{ record.reason | safe }}
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ record.badge }} px-3 py-1 rounded-pill mb-1">{{ record.status }}</span>
+                                    {% if record.response %}
+                                        <div class="fst-italic" style="font-size: 11.5px; color: #475569; background: #f8fafc; padding: 6px; border-radius: 6px; border-left: 2px solid {% if record.badge == 'success' %}#22c55e{% else %}#ef4444{% endif %}; text-align: left;">
+                                            {{ record.response | replace('[ĐÃ DUYỆT]', '') | replace('[TỪ CHỐI]', '') | truncate(45) }}
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm fw-bold px-3 py-1 shadow-sm" 
+                                            style="background: {% if record.status == 'Đang chờ xử lý' %}#f59e0b{% else %}#f1f5f9{% endif %}; 
+                                                   color: {% if record.status == 'Đang chờ xử lý' %}#fff{% else %}#475569{% endif %}; border-radius: 8px;"
+                                            onclick="openResolveModal(this)"
+                                            data-score-id="{{ record.score_id }}"
+                                            data-branch-name="{{ record.branch_name }}"
+                                            data-week="{{ record.week }}"
+                                            data-reason="{{ record.raw_reason }}">
+                                        {% if record.status == 'Đang chờ xử lý' %}<i class="fa-solid fa-reply me-1"></i> Xử lý ngay{% else %}<i class="fa-solid fa-eye me-1"></i> Xem lại{% endif %}
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-5 text-muted fst-italic">
+                                    <i class="fa-solid fa-folder-open fs-2 d-block mb-3 opacity-25"></i>
+                                    Không tìm thấy dữ liệu khiếu nại nào phù hợp với bộ lọc.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL TRẢ LỜI PHÚC KHẢO (COPY TỪ CLASS DASHBOARD SANG) -->
+    <div class="modal fade" id="resolveModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header bg-primary text-white border-0 pb-3" style="padding: 24px;">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-scale-balanced me-2"></i> Xử lý Phán quyết Phúc khảo</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/resolve_appeal" method="POST">
+                    <div class="modal-body px-4 pb-4 mt-3">
+                        <input type="hidden" name="score_id" id="resolveScoreId">
+                        
+                        <div class="mb-4">
+                            <label class="fw-bold text-muted small mb-2">Lớp khiếu nại:</label>
+                            <input type="text" class="form-control fw-bold text-primary bg-light border-0" id="resolveBranch" readonly style="padding: 12px 16px; border-radius: 12px;">
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="fw-bold text-muted small mb-2">Nội dung khiếu nại của GVCN:</label>
+                            <div class="p-3 bg-light border border-secondary border-opacity-25 text-danger fst-italic shadow-sm" id="resolveReason" style="border-radius: 12px; font-size: 14px;">
+                            </div>
+                        </div>
+
+                        <div class="mb-4 p-3 bg-primary bg-opacity-10 border border-primary border-opacity-50" style="border-radius: 12px;">
+                            <label class="fw-bold text-primary small mb-2"><i class="fa-solid fa-rotate-left me-1"></i> Số điểm hoàn lại (Chỉ nhập nếu Duyệt):</label>
+                            <input type="number" step="0.5" min="0" class="form-control border-primary fw-bold fs-5 text-primary" name="refund_points" value="0" style="border-radius: 12px;">
+                            <small class="text-muted mt-2 d-block"><i class="fa-solid fa-circle-info me-1"></i> Hệ thống tự động cộng số điểm này vào điểm của lớp và xóa lỗi khỏi Sổ đen.</small>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label class="fw-bold text-muted small mb-2">Phán quyết & Phản hồi từ Đoàn trường:</label>
+                            <textarea class="form-control border-secondary" name="response_text" rows="3" placeholder="Ghi rõ lý do tại sao duyệt hoặc từ chối để GVCN nắm rõ..." required style="border-radius: 12px; resize: none; padding: 16px; font-size: 14px; background: #f8fafc; border: 1px solid #cbd5e1;"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 px-4 pb-4 pt-0 d-flex gap-2">
+                        <button type="submit" name="action" value="reject" class="btn btn-danger fw-bold flex-grow-1 py-2 rounded-3 shadow-sm">
+                            <i class="fa-solid fa-ban me-1"></i> Từ chối
+                        </button>
+                        <button type="submit" name="action" value="approve" class="btn btn-success fw-bold flex-grow-1 py-2 rounded-3 shadow-sm">
+                            <i class="fa-solid fa-check-double me-1"></i> Duyệt & Hoàn Điểm
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Script xử lý Popup và tự động cộng điểm hoàn lại -->
+    <script>
+        const violationBankData = [
+            {% for cat in violation_bank %}
+            { name: "{{ cat.name | safe }}", points: parseFloat('{{ cat.penalty_points }}') || 0 },
+            {% endfor %}
+        ];
+
+        function openResolveModal(btn) {
+            document.getElementById('resolveScoreId').value = btn.getAttribute('data-score-id');
+            document.getElementById('resolveBranch').value = "Lớp " + btn.getAttribute('data-branch-name') + " (" + btn.getAttribute('data-week') + ")";
+            
+            let reasonText = btn.getAttribute('data-reason') || '';
+            let reasonDiv = document.getElementById('resolveReason');
+            if (reasonDiv) {
+                reasonDiv.innerHTML = '"' + reasonText.replace(/ \| /g, '<br><br>') + '"';
+            }
+
+            let refundInput = document.querySelector('input[name="refund_points"]');
+            if (refundInput) {
+                let totalRefund = 0.0;
+                try {
+                    let regex = /Phúc khảo các lỗi:\s*\[(.*?)\]\s*\|/g;
+                    let matches = [...reasonText.matchAll(regex)];
+                    
+                    matches.forEach(match => {
+                        let errorsStr = match[1]; 
+                        let appealedErrors = errorsStr.split("] & ["); 
+                        
+                        appealedErrors.forEach(errStr => {
+                            let cleanErr = errStr.trim();
+                            if (!cleanErr) return;
+                            
+                            let qtyMatch = cleanErr.match(/(?:x|:|-)\s*(\d+)/i);
+                            let qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
+                            
+                            let foundPoints = 0.0;
+                            for (let i = 0; i < violationBankData.length; i++) {
+                                if (cleanErr.toLowerCase().includes(violationBankData[i].name.toLowerCase())) {
+                                    foundPoints = violationBankData[i].points;
+                                    break;
+                                }
+                            }
+                            totalRefund += (foundPoints * qty);
+                        });
+                    });
+                } catch (e) { console.error("Lỗi tự động tính điểm hoàn:", e); }
+                
+                refundInput.value = totalRefund > 0 ? totalRefund.toFixed(1) : "0.0";
+            }
+            
+            var myModal = new bootstrap.Modal(document.getElementById('resolveModal'));
+            myModal.show();
+        }
+    </script>
+</body>
+</html>
