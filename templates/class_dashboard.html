@@ -1086,48 +1086,32 @@
         {% endif %}
     </div>
 
-<!-- MODAL PHÚC KHẢO (NÂNG CẤP UI/UX HIỆN ĐẠI) -->
+    <!-- MODAL PHÚC KHẢO -->
     <div class="modal fade" id="appealModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-fullscreen-md-down">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
-                <!-- Header: Gọn gàng, tích hợp luôn tên Tuần -->
-                <div class="modal-header border-bottom-0 pb-0" style="padding: 20px 24px 10px 24px;">
-                    <div class="d-flex align-items-center gap-2">
-                        <h5 class="modal-title fw-bold text-main fs-5 m-0"><i class="fa-solid fa-scale-balanced text-primary me-2"></i>Phúc Khảo Điểm</h5>
-                        <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1 fs-6 rounded-3" id="appealWeekNameDisplay">Tuần...</span>
-                    </div>
-                    <button type="button" class="btn-close bg-light rounded-circle p-2" data-bs-dismiss="modal"></button>
+                <div class="modal-header border-0 pb-0" style="padding: 24px 24px 10px 24px;">
+                    <h5 class="modal-title fw-bold text-main fs-5"><i class="fa-solid fa-hand-paper text-warning me-2"></i> Yêu Cầu Phúc Khảo Điểm</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                
-				<form action="/submit_appeal" method="POST" enctype="multipart/form-data" id="appealForm" class="d-flex flex-column h-100">
-                    <div class="modal-body px-4 pt-3 pb-2">
+                <form action="/submit_appeal" method="POST" id="appealForm">
+                    <div class="modal-body px-4 pb-4 mt-3">
                         <input type="hidden" name="score_id" id="appealScoreId">
                         <input type="hidden" name="reason" id="finalReason">
-                        <input type="hidden" id="appealWeekName"> <!-- Ẩn input này đi vì đã đưa lên Header -->
                         
-                        <!-- Section 1: Danh sách lỗi dạng Card chọn (Bỏ màu đỏ chói) -->
-                        <div id="appealViolationsSection" style="display:none;">
-                            <label class="fw-bold text-secondary mb-2" style="font-size: 13px; letter-spacing: 0.5px;">1. CHỌN LỖI CẦN KHIẾU NẠI (NẾU CÓ)</label>
-                            <div id="appealViolationsContainer" class="mb-3 d-flex flex-column gap-2" style="max-height: 40vh; overflow-y: auto; overflow-x: hidden; padding-right: 4px;">
-                                <!-- Checkbox Cards sẽ được JS sinh ra ở đây -->
-                            </div>
+                        <div class="widget-label mb-2 text-muted">Đang khiếu nại cho:</div>
+                        <input type="text" class="form-control fw-bold text-primary bg-primary bg-opacity-10 border-0 mb-4" id="appealWeekName" readonly style="font-size: 15px; padding: 12px 16px; border-radius: 12px;">
+                        
+                        <div class="widget-label mb-2 text-danger" id="appealViolationsLabel" style="display:none;"><i class="fa-solid fa-list-check me-1"></i> Tích chọn các lỗi bị ghi nhận sai (Nếu có):</div>
+                        <div id="appealViolationsContainer" class="mb-4 d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto; overflow-x: hidden;">
                         </div>
 
-                        <!-- Section 2: Lý do / Minh chứng -->
-                        <label class="fw-bold text-secondary mb-2" style="font-size: 13px; letter-spacing: 0.5px;">2. NỘI DUNG / LÝ DO CHI TIẾT</label>
-                        <textarea class="form-control shadow-none" id="appealReasonText" rows="4" placeholder="Ví dụ: Em Hân lớp tôi hôm qua có đi học, có giấy phép của y tế..." required style="border-radius: 12px; resize: none; padding: 14px; font-size: 14.5px; background: #f8fafc; border: 1.5px solid var(--border); transition: all 0.2s;"></textarea>
-						<!-- Section 3: Ảnh minh chứng (Bắt buộc) -->
-                        <label class="fw-bold text-secondary mb-2 mt-3" style="font-size: 13px; letter-spacing: 0.5px;">3. ẢNH MINH CHỨNG (BẮT BUỘC)</label>
-                        <input type="file" class="form-control shadow-none" id="appealImageInput" accept="image/*" required style="border-radius: 12px; padding: 10px; background: #f8fafc; border: 1.5px solid var(--border);">
-                        
-                        <!-- Ống ngầm chứa dữ liệu ảnh gửi về Server -->
-                        <input type="hidden" name="appeal_evidence_base64" id="appealEvidenceBase64">
+                        <div class="widget-label mb-2 text-muted"><i class="fa-solid fa-pen-to-square me-1"></i> Nội dung/ Minh chứng bổ sung:</div>
+                        <textarea class="form-control shadow-sm" id="appealReasonText" rows="3" placeholder="Ghi rõ lý do tại sao các lỗi trên bị chấm sai..." required style="border-radius: 12px; resize: none; padding: 16px; font-size: 14px; background: #ffffff; border: 1px solid var(--border);"></textarea>
                     </div>
-                    
-                    <!-- Footer: Nút bấm tràn viền chuẩn Mobile App -->
-                    <div class="modal-footer border-0 px-4 pb-4 pt-2 d-flex gap-2 w-100">
-                        <button type="button" class="btn fw-bold py-2 w-100" style="background: #f1f5f9; color: #64748b; border-radius: 12px; font-size: 15px; flex: 1;" data-bs-dismiss="modal">Hủy bỏ</button>
-                        <button type="submit" class="btn fw-bold py-2 w-100 shadow-sm" style="background: var(--primary); color: white; border-radius: 12px; font-size: 15px; flex: 2;"><i class="fa-solid fa-paper-plane me-1"></i> Gửi Yêu Cầu</button>
+                    <div class="modal-footer border-0 px-4 pb-4 pt-0 d-flex gap-2">
+                        <button type="button" class="btn-modern btn-light fw-bold px-4 py-2" style="background: #f1f5f9; color: var(--text-main);" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn-modern btn-modern-warning fw-bold flex-grow-1 shadow-sm py-2"><i class="fa-solid fa-paper-plane me-1"></i> Gửi Yêu Cầu Cho Đoàn Trường</button>
                     </div>
                 </form>
             </div>
@@ -1553,7 +1537,7 @@
             }
         }
 
-		// XỬ LÝ MỞ MODAL PHÚC KHẢO VÀ SINH GIAO DIỆN HIỆN ĐẠI
+		// XỬ LÝ MỞ MODAL PHÚC KHẢO VÀ KHÓA CÁC LỖI CỦA NGÀY HÔM TRƯỚC
         function openAppealModal(btn) {
             let scoreId = btn.getAttribute('data-score-id');
             let weekName = btn.getAttribute('data-week');
@@ -1561,13 +1545,12 @@
 
             document.getElementById('appealScoreId').value = scoreId;
             document.getElementById('appealWeekName').value = weekName;
-            document.getElementById('appealWeekNameDisplay').innerText = weekName; // Hiển thị trên Header
             
             let container = document.getElementById('appealViolationsContainer');
-            let section = document.getElementById('appealViolationsSection');
-            container.innerHTML = ''; 
+            let label = document.getElementById('appealViolationsLabel');
+            container.innerHTML = ''; // Reset rổ chứa lỗi
             
-            // XÁC ĐỊNH THỨ HỆ THỐNG ĐỂ KHÓA LỖI CŨ
+            // XÁC ĐỊNH THỨ HỆ THỐNG HIỆN TẠI (0: Chủ nhật, 1: Thứ 2, ..., 6: Thứ 7)
             const dayOrder = { 'CN': 0, 'T2': 1, 'T3': 2, 'T4': 3, 'T5': 4, 'T6': 5, 'T7': 6 };
             const jsDay = new Date().getDay(); 
             const dayMap = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -1575,7 +1558,7 @@
             const currentRank = dayOrder[currentDayCode] !== undefined ? dayOrder[currentDayCode] : 99;
 
             if (noteText && noteText.trim() !== '' && noteText.trim() !== 'Không có vi phạm' && noteText.trim() !== 'Không có') {
-                section.style.display = 'block';
+                label.style.display = 'block';
                 let violations = noteText.split(';');
                 violations.forEach((v, index) => {
                     let vClean = v.trim();
@@ -1586,112 +1569,54 @@
                         if (matchDay && matchDay[1]) {
                             let violationDayCode = matchDay[1].toUpperCase();
                             let violationRank = dayOrder[violationDayCode];
+                            
                             if (violationRank !== undefined && violationRank < currentRank) {
                                 isPastDay = true;
                             }
                         }
 
-                        // THIẾT KẾ CARD HIỆN ĐẠI CHO TỪNG LỖI
                         let labelNode = document.createElement('label');
-                        labelNode.className = 'd-flex align-items-center p-3 border rounded-3 w-100 mb-1 transition-all';
+                        labelNode.className = 'd-flex align-items-start p-3 border rounded-3 shadow-sm w-100 ' + (isPastDay ? 'bg-light opacity-75' : 'bg-white');
                         labelNode.style.cursor = isPastDay ? 'not-allowed' : 'pointer';
-                        labelNode.style.background = isPastDay ? '#f8fafc' : '#ffffff';
-                        labelNode.style.borderColor = '#e2e8f0';
+                        labelNode.style.borderColor = isPastDay ? '#cbd5e1' : '#fca5a5';
                         
-                        let disabledAttr = isPastDay ? 'disabled' : '';
-                        let badgePast = isPastDay ? '<span class="badge bg-secondary ms-2 opacity-75" style="font-size: 10px; font-weight: 500;">Hết hạn khiếu nại</span>' : '';
-
-                        labelNode.innerHTML = `
-                            <div class="form-check m-0 pe-3 d-flex align-items-center">
-                                <input class="form-check-input shadow-none" type="checkbox" value="${vClean}" id="viol_app_${index}" ${disabledAttr} style="width: 20px; height: 20px; cursor: inherit;">
-                            </div>
-                            <div class="flex-grow-1" style="line-height: 1.4;">
-                                <div class="fw-bold ${isPastDay ? 'text-muted opacity-50 text-decoration-line-through' : 'text-main'}" style="font-size: 14px;">
-                                    ${vClean} ${badgePast}
-                                </div>
-                            </div>
-                        `;
-
-                        // JS Xử lý đổi màu viền khi Tích/Bỏ tích (UI/UX)
                         if (!isPastDay) {
-                            let checkbox = labelNode.querySelector('input');
-                            checkbox.addEventListener('change', function() {
-                                if(this.checked) {
-                                    labelNode.style.borderColor = 'var(--primary)';
-                                    labelNode.style.background = '#eff6ff'; // Màu xanh nhạt
-                                } else {
-                                    labelNode.style.borderColor = '#e2e8f0';
-                                    labelNode.style.background = '#ffffff';
-                                }
-                            });
+                            labelNode.onmouseenter = function() { this.style.backgroundColor = '#fef2f2'; this.style.borderColor = '#ef4444'; };
+                            labelNode.onmouseleave = function() { this.style.backgroundColor = '#ffffff'; this.style.borderColor = '#fca5a5'; };
                         }
 
+                        let disabledAttr = isPastDay ? 'disabled' : '';
+                        let badgePast = isPastDay ? '<span class="badge bg-secondary ms-2" style="font-size: 11px;">⚠️ Quá hạn (Lỗi ngày trước)</span>' : '';
+
+                        labelNode.innerHTML = `
+                            <input class="form-check-input m-0 me-3 shadow-none flex-shrink-0" type="checkbox" value="${vClean}" id="viol_app_${index}" ${disabledAttr} style="width: 18px; height: 18px; margin-top: 2px !important; cursor: ${isPastDay ? 'not-allowed' : 'pointer'}; border-color: ${isPastDay ? '#94a3b8' : '#ef4444'};">
+                            <div class="fw-bold ${isPastDay ? 'text-secondary text-decoration-line-through' : 'text-danger'} w-100" style="font-size: 14.5px; line-height: 1.5;">
+                                ${vClean} ${badgePast}
+                            </div>
+                        `;
                         container.appendChild(labelNode);
                     }
                 });
             } else {
-                section.style.display = 'none';
+                label.style.display = 'none';
             }
             
-            // Focus vào ô nhập văn bản khi mở modal
-            let textarea = document.getElementById('appealReasonText');
-            textarea.value = ''; 
-            textarea.style.borderColor = 'var(--border)';
-            
-            textarea.addEventListener('focus', function() { this.style.borderColor = 'var(--primary)'; this.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.1)';});
-            textarea.addEventListener('blur', function() { this.style.borderColor = 'var(--border)'; this.style.boxShadow = 'none';});
-
+            document.getElementById('appealReasonText').value = ''; 
             var myModal = new bootstrap.Modal(document.getElementById('appealModal'));
             myModal.show();
         }
 
-		// BẮT SỰ KIỆN CHỌN ẢNH VÀ NÉN THÀNH BASE64
-        document.getElementById('appealImageInput').addEventListener('change', function(e) {
-            let file = e.target.files[0];
-            if (!file) {
-                document.getElementById('appealEvidenceBase64').value = "";
-                return;
-            }
-            
-            // Chặn ảnh dung lượng quá lớn (> 5MB) bảo vệ máy chủ
-            if (file.size > 5 * 1024 * 1024) {
-                alert("⛔ Dung lượng ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.");
-                this.value = ""; 
-                document.getElementById('appealEvidenceBase64').value = "";
-                return;
-            }
-
-            let reader = new FileReader();
-            reader.onload = function(event) {
-                // Đổ dữ liệu ảnh đã mã hóa vào ống ngầm
-                document.getElementById('appealEvidenceBase64').value = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
-
-        // BẮT SỰ KIỆN GỬI FORM PHÚC KHẢO
         document.getElementById('appealForm').addEventListener('submit', function(e) {
-            let base64Data = document.getElementById('appealEvidenceBase64').value;
-            
-            // Khiên bảo vệ: Ép buộc phải có ảnh đã được mã hóa xong
-            if (!base64Data) {
-                e.preventDefault();
-                alert("⏳ Hệ thống đang xử lý ảnh minh chứng, vui lòng chờ 1 giây rồi bấm gửi lại!");
-                return;
-            }
-
             let selected = [];
             let container = document.getElementById('appealViolationsContainer');
-            if (container) {
-                let checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
-                checkboxes.forEach(cb => { selected.push(cb.value); });
-            }
+            let checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+            
+            checkboxes.forEach(cb => { selected.push(cb.value); });
             
             let textReason = document.getElementById('appealReasonText').value;
             let finalReason = "";
             
             if(selected.length > 0) {
-                // Đổi chữ "Lý do" thành "Giải trình" để đồng bộ với thuật toán tự động hoàn điểm của BGH
                 finalReason = "Phúc khảo các lỗi: [" + selected.join("] & [") + "] | Lý do: " + textReason;
             } else {
                 finalReason = textReason;
