@@ -22,8 +22,7 @@ VAPID_CLAIMS = {
 # (Tùy chọn) Thầy/cô có thể tạo thêm bảng `PushSubscription` trong Models 
 # để lưu thông tin đăng ký của từng GVCN. Tạm thời chúng ta dùng Session/Dict để test.
 global_subscriptions = {}
-
-    
+ 
 def process_and_save_evidence(base64_string, branch_id, week_name):
     """Hàm hứng mảng Base64 và đẩy thẳng lên Đám mây Cloudinary"""
     if not base64_string or base64_string.strip() in ["", "[]"]:
@@ -33,6 +32,8 @@ def process_and_save_evidence(base64_string, branch_id, week_name):
         import json
         import cloudinary
         import cloudinary.uploader
+        import unicodedata
+        import re
         
         # TỰ ĐỘNG NẠP CẤU HÌNH TỪ BIẾN MÔI TRƯỜNG TRÊN RENDER
         import os
@@ -49,17 +50,22 @@ def process_and_save_evidence(base64_string, branch_id, week_name):
             
         saved_paths = []
         
+        # [BẢN VÁ LỖI TỐI THƯỢNG]: Tự động xóa dấu tiếng Việt và khoảng trắng (VD: "Tuần 1" -> "Tuan_1")
+        safe_week = unicodedata.normalize('NFKD', str(week_name)).encode('ASCII', 'ignore').decode('utf-8')
+        safe_week = re.sub(r'[^a-zA-Z0-9]', '_', safe_week)
+        
         for idx, b64 in enumerate(base64_list):
             if not b64: continue
             
             # API Cloudinary nhận thẳng định dạng Base64, không cần lưu file trung gian
-            upload_result = cloudinary.uploader.upload(b64, folder=f"thidua_doantruong/{week_name}")
+            upload_result = cloudinary.uploader.upload(b64, folder=f"thidua_doantruong/{safe_week}")
             
             # Lấy đường link HTTPS tĩnh của bức ảnh trên đám mây để lưu vào CSDL
             saved_paths.append(upload_result['secure_url'])
             
         return "|".join(saved_paths) if saved_paths else None
     except Exception as e:
+        # Hệ thống ghi nhận lỗi để tra cứu
         print(f"❌ LỖI UPLOAD ẢNH LÊN ĐÁM MÂY: {str(e)}")
         return None
     
