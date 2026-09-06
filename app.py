@@ -3975,6 +3975,7 @@ def class_dashboard():
             assignments = []
             monitoring_assignments = []
             warning_students = []
+            appeal_records = []
             
             # =========================================================================
             # [NÂNG CẤP]: LẤY DỮ LIỆU NGÂN HÀNG LỖI ĐỂ GVCN TRA CỨU
@@ -4033,13 +4034,54 @@ def class_dashboard():
                         if "2" in str(group_val): so_luong_diem_tot += int(sc.count_8 or 0)
                             
                         # =========================================================================
-                        # [NÂNG CẤP]: MỞ KHÓA NÚT GIAO DIỆN (CHỈ KHÓA KHI GỬI ĐỦ 2 LẦN/NGÀY)
+                        # [NÂNG CẤP LÕI]: MỞ KHÓA NÚT GIAO DIỆN VÀ BÓC TÁCH HỒ SƠ PHÚC KHẢO
                         # =========================================================================
                         has_appealed_today = False
                         if sc.appeal_reason:
                             count_today = sc.appeal_reason.count(f"[{today_str}")
                             if count_today >= 2:
                                 has_appealed_today = True
+                                
+                            # --- [BỔ SUNG]: BÓC TÁCH DỮ LIỆU CHO TAB HỒ SƠ PHÚC KHẢO ---
+                            import re
+                            pattern = r'\[\d{2}/\d{2}/\d{4} \d{2}:\d{2}\]'
+                            timestamps = re.findall(pattern, sc.appeal_reason)
+                            segments = re.split(pattern, sc.appeal_reason)[1:] 
+                            
+                            # Duyệt ngược để khiếu nại mới nhất lên đầu danh sách
+                            for i in range(len(timestamps)-1, -1, -1):
+                                time_str = timestamps[i].strip('[]')
+                                content = segments[i].strip().strip('|').strip()
+                                
+                                errors_part = ""
+                                reason_part = content
+                                
+                                # Cắt chuỗi để lấy riêng phần Lỗi và phần Lý do/Minh chứng
+                                match = re.search(r'Phúc khảo các lỗi:\s*(.*?)\s*\|\s*Lý do:(.*)', content, re.IGNORECASE)
+                                if match:
+                                    errors_part = match.group(1).strip()
+                                    reason_part = match.group(2).strip()
+                                
+                                status_text = "Đang chờ xử lý"
+                                badge_class = "warning text-dark"
+                                if sc.appeal_response:
+                                    if "ĐÃ DUYỆT" in sc.appeal_response:
+                                        status_text = "Đã duyệt"
+                                        badge_class = "success"
+                                    elif "TỪ CHỐI" in sc.appeal_response:
+                                        status_text = "Từ chối"
+                                        badge_class = "danger"
+                                
+                                appeal_records.append({
+                                    'week': sc.week,
+                                    'time': time_str,
+                                    'errors_raw': errors_part,
+                                    'reason': reason_part,
+                                    'status': status_text,
+                                    'badge': badge_class,
+                                    'response': sc.appeal_response if sc.appeal_response else ""
+                                })
+                            # -----------------------------------------------------------
                         # =========================================================================
                             
                         weekly_scores.append({
@@ -4074,7 +4116,6 @@ def class_dashboard():
                         with open(config_path, "r", encoding="utf-8") as f:
                             try: zones_map = json.load(f)
                             except: pass
-
                     # =========================================================================
                     # [BẢN VÁ TỐI ƯU]: XỬ LÝ LỊCH PHÂN CÔNG ĐI TRỰC CHO TAB 3
                     # =========================================================================
@@ -4153,6 +4194,7 @@ def class_dashboard():
                                    monitoring_assignments=monitoring_assignments,
                                    warning_students=warning_students,
                                    violation_bank=violation_bank,
+                                   appeal_records=appeal_records,
                                    is_gvcn=is_gvcn 
             )
     except Exception as e:
