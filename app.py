@@ -6368,9 +6368,8 @@ def mobile_sao_do():
     except Exception as e:
         return f"Lỗi hệ thống Mobile: {e}"
 
-
 # ==========================================
-# MODULE: TRỢ LÝ AI PHÂN TÍCH VÀ VIẾT BÁO CÁO TUẦN (ĐÃ NÂNG CẤP CHUẨN QUẢN LÝ)
+# MODULE: TRỢ LÝ AI PHÂN TÍCH VÀ VIẾT BÁO CÁO TUẦN (CHUẨN QUẢN LÝ GIÁO DỤC THỰC THỤ)
 # ==========================================
 @app.route('/api/ai_weekly_report/<week_name>')
 def api_ai_weekly_report(week_name):
@@ -6393,19 +6392,15 @@ def api_ai_weekly_report(week_name):
             avg_school_score = sum([float(sc.total_score or 0) for sc in scores]) / total_classes if total_classes > 0 else 0
             total_penalty_school = sum([float(sc.score_tru or 0) for sc in scores])
             
-            top_classes = sorted(scores, key=lambda x: float(x.total_score or 0), reverse=True)[:3]
-            bottom_classes = sorted(scores, key=lambda x: float(x.total_score or 0))[:3]
-            
-            # Tìm lớp bị trừ điểm nhiều nhất (Điểm nóng)
+            # Tìm lớp bị trừ điểm nhiều nhất
             worst_class_score = min(scores, key=lambda x: float(x.total_score or 0))
             
             summary_lines = []
             for sc in scores:
                 b_name = sc.branch.name
                 tot = sc.total_score
-                rating = sc.week_rating
                 note = sc.note or "Không có"
-                summary_lines.append(f"- Lớp {b_name}: Tổng điểm {tot}, Xếp loại {rating}, Ghi chú: {note}")
+                summary_lines.append(f"- Lớp {b_name}: {tot}đ, Lỗi: {note}")
                 
             data_context = "\n".join(summary_lines)
             
@@ -6420,7 +6415,7 @@ def api_ai_weekly_report(week_name):
             if not api_key:
                 return {"error": "Chưa cấu hình Groq API Key trong hệ thống!"}
                 
-            # 4. Gọi API Groq AI với Prompt chuẩn phong cách Nhà quản lý giáo dục
+            # 4. GỌI API GROQ VỚI PROMPT SẮC BÉN CỦA NHÀ QUẢN TRỊ
             import requests
             url = "https://api.groq.com/openai/v1/chat/completions"
             headers = {
@@ -6429,56 +6424,52 @@ def api_ai_weekly_report(week_name):
             }
             
             prompt = f"""
-            Bạn là một Chuyên gia Quản lý Giáo dục và Cố vấn Cấp cao cho Ban Giám hiệu trường THPT Thanh Hòa. Dựa trên dữ liệu tổng kết nề nếp của {week_name} dưới đây, hãy đưa ra bản phân tích mang tầm nhìn chiến lược, khách quan, sắc sảo và mang tính xây dựng cao:
+            Đóng vai trò là Trưởng ban Thi đua / Phó Hiệu trưởng phụ trách nề nếp của trường THPT Thanh Hòa.
+            Dựa trên số liệu thống kê {week_name}, hãy viết một bản "Đánh giá và Chỉ đạo công tác chủ nhiệm".
             
-            DỮ LIỆU THI ĐUA:
-            - Tổng số lớp tham gia: {total_classes}
-            - Điểm trung bình toàn trường: {avg_school_score:.1f} điểm
-            - Tổng mức điểm trừ kỷ luật toàn trường: {total_penalty_school}đ
-            - Lớp thấp điểm nhất (Điểm nóng): Lớp {worst_class_score.branch.name} (GVCN: {worst_class_score.branch.gvcn or 'Chưa cập nhật'}, Tổng điểm: {worst_class_score.total_score}, Lỗi: {worst_class_score.note})
+            DỮ LIỆU:
+            - Điểm trung bình toàn trường: {avg_school_score:.1f}/100đ
+            - Tổng điểm bị trừ toàn trường: {total_penalty_school}đ
+            - Lớp vi phạm kỷ luật nặng nhất: Lớp {worst_class_score.branch.name} (GVCN: {worst_class_score.branch.gvcn or 'Chưa cập nhật'}, Điểm: {worst_class_score.total_score}, Lỗi: {worst_class_score.note})
             
             CHI TIẾT CÁC LỚP:
             {data_context}
             
-            YÊU CẦU TRÌNH BÀY (BẮT BUỘC TRẢ VỀ ĐỊNH DẠNG HTML SẠCH SẼ):
-            Hãy chia nội dung thành đúng 3 phần với các thẻ HTML sau (tuyệt đối không dùng dấu ** hay ký tự Markdown thô):
+            YÊU CẦU VĂN PHONG QUẢN LÝ (RẤT QUAN TRỌNG):
+            - Tuyệt đối KHÔNG dùng các từ sáo rỗng, bay bổng (như: bức tranh tổng thể, tín hiệu tích cực, điểm nóng, nhìn chung).
+            - Bắt buộc dùng ngôn từ hành chính, chỉ đạo: "Đánh giá chung tình hình", "Tồn đọng cần chấn chỉnh", "Yêu cầu GVCN đôn đốc", "Nghiêm túc rút kinh nghiệm".
+            - Giọng điệu: Khách quan, nghiêm khắc, đi thẳng vào vấn đề, giao việc rõ ràng.
             
-            1. Phần Bức tranh tổng quan (Tiêu đề dùng icon fa-chart-line): Nhận xét khái quát về biên độ điểm số, ý thức kỷ luật chung của học sinh toàn trường trong tuần.
-            2. Phần Điểm nóng cần lưu ý (Tiêu đề dùng icon fa-triangle-exclamation): Chỉ ra tập thể lớp đang gặp vấn đề trầm trọng về nề nếp (ví dụ lớp {worst_class_score.branch.name}), phân tích nguyên nhân sơ bộ từ dữ liệu lỗi.
-            3. Phần Đề xuất hướng giải quyết (Tiêu đề dùng icon fa-circle-check): Đưa ra các mốc giải pháp cụ thể dành cho Ban Giám hiệu, Đoàn trường phối hợp với Giáo viên chủ nhiệm để chấn chỉnh kỷ kỷ luật và duy trì phong trào.
+            YÊU CẦU ĐỊNH DẠNG (BẮT BUỘC):
+            - TUYỆT ĐỐI KHÔNG SỬ DỤNG DẤU MARKDOWN (Không dùng **, *, #).
+            - Trả về CHỈ MÃ HTML THEO ĐÚNG KHUNG DƯỚI ĐÂY, không thêm bất kỳ dòng chữ nào bên ngoài khung này:
+            
+            <div style="font-family: 'Inter', sans-serif; font-size: 14.5px; color: #334155; line-height: 1.6; text-align: justify;">
+                <p><b style="color: #0f172a;"><i class="fa-solid fa-chart-bar me-1"></i> 1. Đánh giá tình hình nề nếp:</b><br>[Viết nhận xét ngắn gọn về ĐTB và kỷ cương toàn trường]</p>
+                <p><b style="color: #dc2626;"><i class="fa-solid fa-circle-exclamation me-1"></i> 2. Các mặt tồn đọng cần chấn chỉnh:</b><br>[Phê bình thẳng thắn lớp {worst_class_score.branch.name} và các lỗi vi phạm phổ biến hiện nay]</p>
+                <p><b style="color: #166534;"><i class="fa-solid fa-clipboard-check me-1"></i> 3. Đề xuất & Chỉ đạo thực hiện:</b><br>[Giao nhiệm vụ cụ thể, đanh thép cho Đoàn trường và GVCN]</p>
+            </div>
             """
             
             payload = {
-                "model": "openai/gpt-oss-120b",
+                "model": "llama3-70b-8192",  # Sử dụng mô hình Llama3-70B thông minh và tuân thủ lệnh tốt hơn
                 "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.7
+                "temperature": 0.4  # Hạ nhiệt độ xuống thấp để văn phong nghiêm túc, bớt bay bổng
             }
             
             response = requests.post(url, json=payload, headers=headers, timeout=30)
             if response.status_code == 200:
                 res_json = response.json()
-                ai_text = res_json['choices'][0]['message']['content']
+                ai_text = res_json['choices'][0]['message']['content'].strip()
                 
-                # [THUẬT TOÁN LỌC VÀ XÓA DẤU SAO]: 
+                # --- THUẬT TOÁN "BỌC THÉP" CHỐNG LỖI ĐỊNH DẠNG ---
                 import re
-                # 1. Chuyển đổi định dạng **chữ đậm** thành thẻ <strong> của HTML
-                ai_text = re.sub(r'\*\*(.*?)\*\*', r'<strong style="color: #0f172a;">\1</strong>', ai_text)
-                # 2. Xóa bỏ hoàn toàn bất kỳ dấu sao đơn lẻ nào còn sót lại
-                ai_text = ai_text.replace('*', '')
+                # 1. Nếu AI vẫn ngoan cố xuất **chữ**, đổi nó thành thẻ in đậm <b>
+                ai_text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', ai_text)
+                # 2. Quét sạch mọi dấu sao (*) đơn lẻ và thẻ bao bọc code ```html thừa thãi
+                ai_text = ai_text.replace('*', '').replace('```html', '').replace('```', '')
                 
-                # Xử lý ký tự xuống dòng an toàn tránh lỗi backslash
-                replaced_text = ai_text.replace('\n', '<br>')
-                
-                if not ai_text.startswith("<div"):
-                    formatted_html = f"""
-                    <div style="font-family: 'Inter', sans-serif; color: #1e293b; line-height: 1.6;">
-                        <div style="font-size: 14.5px; text-align: justify;">{replaced_text}</div>
-                    </div>
-                    """
-                else:
-                    formatted_html = ai_text
-                
-                return {"success": True, "report": formatted_html}
+                return {"success": True, "report": ai_text}
             else:
                 return {"error": f"Lỗi kết nối AI API: {response.text}"}
                 
