@@ -4390,6 +4390,8 @@ def export_class_dashboard(branch_id):
 @app.route('/api/raw_scores/<week_name>/<int:branch_id>', methods=['GET', 'POST'])
 def handle_raw_scores(week_name, branch_id):
     try:
+        from database.database import session_scope
+        from database.models import Branch, SchoolYear, RawScore
         with session_scope() as db_session:
             branch = db_session.query(Branch).filter_by(id=branch_id).first()
             if not branch: 
@@ -4397,22 +4399,26 @@ def handle_raw_scores(week_name, branch_id):
             
             active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
             year_id = active_year.id if active_year else 0
+            
+            # [CHÌA KHÓA VÀNG]: Gắn chặt Tên Tuần với ID Năm Học (VD: Tuần 1_Y2) để không bao giờ bị lẫn lộn giữa các năm
             safe_week_key = f"{week_name}_Y{year_id}"
             
             if request.method == 'GET':
-                records = db_session.query(RawScore).filter_by(week=week_name, branch_name=branch.name).all()
+                # Đổi week_name thành safe_week_key
+                records = db_session.query(RawScore).filter_by(week=safe_week_key, branch_name=branch.name).all()
                 data = [{"subj": r.subject, "c10": r.c10, "c9": r.c9, "c8": r.c8} for r in records]
                 return {"data": data}
 
             if request.method == 'POST':
                 raw_list = request.json.get('raw_list', [])
-                db_session.query(RawScore).filter_by(week=week_name, branch_name=branch.name).delete()
+                # Đổi week_name thành safe_week_key
+                db_session.query(RawScore).filter_by(week=safe_week_key, branch_name=branch.name).delete()
                 
                 for item in raw_list:
                     subj = str(item.get("subj", "")).strip()
                     if not subj or subj == "Điểm đã nhập": continue
                     rs = RawScore(
-                        week=week_name,
+                        week=safe_week_key, # Đổi week_name thành safe_week_key
                         branch_name=branch.name,
                         subject=subj,
                         c10=int(item.get("c10", 0)),
