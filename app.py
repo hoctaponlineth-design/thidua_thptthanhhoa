@@ -6840,6 +6840,27 @@ def manifest():
 @app.route('/sao_do_quick_submit_form', methods=['POST'])
 def sao_do_quick_submit_form():
     if session.get('role') != 'Sao đỏ': return redirect(url_for('login'))
+    
+    # ====================================================================
+    # [KHIÊN BẢO VỆ]: CHỐNG NHÂN ĐÔI DỮ LIỆU DO TRÌNH DUYỆT TỰ ĐỘNG RETRY KHI RỚT MẠNG
+    # ====================================================================
+    import hashlib, time
+    req_data = str(request.form.to_dict()) + str(request.form.get('evidence_base64', '')[:50])
+    req_hash = hashlib.md5(req_data.encode('utf-8')).hexdigest()
+    
+    last_hash = session.get('last_quick_submit_hash')
+    last_time = session.get('last_quick_submit_time', 0)
+    current_time = time.time()
+    
+    if req_hash == last_hash and (current_time - last_time < 60):
+        # Trả về thành công giả để trình duyệt ngừng gửi lại
+        flash(f"⚡ Đã ghi nhận lỗi vào Sổ đen thành công!", "success")
+        return redirect(url_for('mobile_sao_do'))
+        
+    session['last_quick_submit_hash'] = req_hash
+    session['last_quick_submit_time'] = current_time
+    # ====================================================================
+
     try:
         with session_scope() as db_session:
             active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
@@ -7016,9 +7037,30 @@ def sao_do_quick_submit_form():
         flash(f"Lỗi hệ thống: {e}", "error")
         return redirect(url_for('mobile_sao_do'))
 
+
 @app.route('/submit_mobile_sao_do', methods=['POST'])
 def submit_mobile_sao_do():
     if session.get('role') != 'Sao đỏ': return redirect(url_for('login'))
+    
+    # ====================================================================
+    # [KHIÊN BẢO VỆ]: CHỐNG NHÂN ĐÔI DỮ LIỆU DO TRÌNH DUYỆT TỰ ĐỘNG RETRY KHI RỚT MẠNG
+    # ====================================================================
+    import hashlib, time
+    req_data = str(request.form.to_dict()) + str(request.form.get('evidence_base64', '')[:50])
+    req_hash = hashlib.md5(req_data.encode('utf-8')).hexdigest()
+    
+    last_hash = session.get('last_full_submit_hash')
+    last_time = session.get('last_full_submit_time', 0)
+    current_time = time.time()
+    
+    if req_hash == last_hash and (current_time - last_time < 60):
+        flash(f"⚡ Hệ thống đã cập nhật điểm thành công!", "success")
+        return redirect(url_for('mobile_sao_do'))
+        
+    session['last_full_submit_hash'] = req_hash
+    session['last_full_submit_time'] = current_time
+    # ====================================================================
+
     try:
         with session_scope() as db_session:
             active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
