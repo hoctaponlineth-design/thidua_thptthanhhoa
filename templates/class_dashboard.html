@@ -1086,32 +1086,42 @@
         {% endif %}
     </div>
 
-    <!-- MODAL PHÚC KHẢO -->
+<!-- MODAL PHÚC KHẢO (NÂNG CẤP UI/UX HIỆN ĐẠI) -->
     <div class="modal fade" id="appealModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-dialog modal-dialog-centered modal-fullscreen-md-down">
             <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
-                <div class="modal-header border-0 pb-0" style="padding: 24px 24px 10px 24px;">
-                    <h5 class="modal-title fw-bold text-main fs-5"><i class="fa-solid fa-hand-paper text-warning me-2"></i> Yêu Cầu Phúc Khảo Điểm</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <!-- Header: Gọn gàng, tích hợp luôn tên Tuần -->
+                <div class="modal-header border-bottom-0 pb-0" style="padding: 20px 24px 10px 24px;">
+                    <div class="d-flex align-items-center gap-2">
+                        <h5 class="modal-title fw-bold text-main fs-5 m-0"><i class="fa-solid fa-scale-balanced text-primary me-2"></i>Phúc Khảo Điểm</h5>
+                        <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1 fs-6 rounded-3" id="appealWeekNameDisplay">Tuần...</span>
+                    </div>
+                    <button type="button" class="btn-close bg-light rounded-circle p-2" data-bs-dismiss="modal"></button>
                 </div>
-                <form action="/submit_appeal" method="POST" id="appealForm">
-                    <div class="modal-body px-4 pb-4 mt-3">
+                
+                <form action="/submit_appeal" method="POST" id="appealForm" class="d-flex flex-column h-100">
+                    <div class="modal-body px-4 pt-3 pb-2">
                         <input type="hidden" name="score_id" id="appealScoreId">
                         <input type="hidden" name="reason" id="finalReason">
+                        <input type="hidden" id="appealWeekName"> <!-- Ẩn input này đi vì đã đưa lên Header -->
                         
-                        <div class="widget-label mb-2 text-muted">Đang khiếu nại cho:</div>
-                        <input type="text" class="form-control fw-bold text-primary bg-primary bg-opacity-10 border-0 mb-4" id="appealWeekName" readonly style="font-size: 15px; padding: 12px 16px; border-radius: 12px;">
-                        
-                        <div class="widget-label mb-2 text-danger" id="appealViolationsLabel" style="display:none;"><i class="fa-solid fa-list-check me-1"></i> Tích chọn các lỗi bị ghi nhận sai (Nếu có):</div>
-                        <div id="appealViolationsContainer" class="mb-4 d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto; overflow-x: hidden;">
+                        <!-- Section 1: Danh sách lỗi dạng Card chọn (Bỏ màu đỏ chói) -->
+                        <div id="appealViolationsSection" style="display:none;">
+                            <label class="fw-bold text-secondary mb-2" style="font-size: 13px; letter-spacing: 0.5px;">1. CHỌN LỖI CẦN KHIẾU NẠI (NẾU CÓ)</label>
+                            <div id="appealViolationsContainer" class="mb-3 d-flex flex-column gap-2" style="max-height: 40vh; overflow-y: auto; overflow-x: hidden; padding-right: 4px;">
+                                <!-- Checkbox Cards sẽ được JS sinh ra ở đây -->
+                            </div>
                         </div>
 
-                        <div class="widget-label mb-2 text-muted"><i class="fa-solid fa-pen-to-square me-1"></i> Nội dung/ Minh chứng bổ sung:</div>
-                        <textarea class="form-control shadow-sm" id="appealReasonText" rows="3" placeholder="Ghi rõ lý do tại sao các lỗi trên bị chấm sai..." required style="border-radius: 12px; resize: none; padding: 16px; font-size: 14px; background: #ffffff; border: 1px solid var(--border);"></textarea>
+                        <!-- Section 2: Lý do / Minh chứng -->
+                        <label class="fw-bold text-secondary mb-2" style="font-size: 13px; letter-spacing: 0.5px;">2. NỘI DUNG / LÝ DO CHI TIẾT</label>
+                        <textarea class="form-control shadow-none" id="appealReasonText" rows="4" placeholder="Ví dụ: Em Hân lớp tôi hôm qua có đi học, có giấy phép của y tế..." required style="border-radius: 12px; resize: none; padding: 14px; font-size: 14.5px; background: #f8fafc; border: 1.5px solid var(--border); transition: all 0.2s;"></textarea>
                     </div>
-                    <div class="modal-footer border-0 px-4 pb-4 pt-0 d-flex gap-2">
-                        <button type="button" class="btn-modern btn-light fw-bold px-4 py-2" style="background: #f1f5f9; color: var(--text-main);" data-bs-dismiss="modal">Hủy</button>
-                        <button type="submit" class="btn-modern btn-modern-warning fw-bold flex-grow-1 shadow-sm py-2"><i class="fa-solid fa-paper-plane me-1"></i> Gửi Yêu Cầu Cho Đoàn Trường</button>
+                    
+                    <!-- Footer: Nút bấm tràn viền chuẩn Mobile App -->
+                    <div class="modal-footer border-0 px-4 pb-4 pt-2 d-flex gap-2 w-100">
+                        <button type="button" class="btn fw-bold py-2 w-100" style="background: #f1f5f9; color: #64748b; border-radius: 12px; font-size: 15px; flex: 1;" data-bs-dismiss="modal">Hủy bỏ</button>
+                        <button type="submit" class="btn fw-bold py-2 w-100 shadow-sm" style="background: var(--primary); color: white; border-radius: 12px; font-size: 15px; flex: 2;"><i class="fa-solid fa-paper-plane me-1"></i> Gửi Yêu Cầu</button>
                     </div>
                 </form>
             </div>
@@ -1537,7 +1547,7 @@
             }
         }
 
-		// XỬ LÝ MỞ MODAL PHÚC KHẢO VÀ KHÓA CÁC LỖI CỦA NGÀY HÔM TRƯỚC
+		// XỬ LÝ MỞ MODAL PHÚC KHẢO VÀ SINH GIAO DIỆN HIỆN ĐẠI
         function openAppealModal(btn) {
             let scoreId = btn.getAttribute('data-score-id');
             let weekName = btn.getAttribute('data-week');
@@ -1545,12 +1555,13 @@
 
             document.getElementById('appealScoreId').value = scoreId;
             document.getElementById('appealWeekName').value = weekName;
+            document.getElementById('appealWeekNameDisplay').innerText = weekName; // Hiển thị trên Header
             
             let container = document.getElementById('appealViolationsContainer');
-            let label = document.getElementById('appealViolationsLabel');
-            container.innerHTML = ''; // Reset rổ chứa lỗi
+            let section = document.getElementById('appealViolationsSection');
+            container.innerHTML = ''; 
             
-            // XÁC ĐỊNH THỨ HỆ THỐNG HIỆN TẠI (0: Chủ nhật, 1: Thứ 2, ..., 6: Thứ 7)
+            // XÁC ĐỊNH THỨ HỆ THỐNG ĐỂ KHÓA LỖI CŨ
             const dayOrder = { 'CN': 0, 'T2': 1, 'T3': 2, 'T4': 3, 'T5': 4, 'T6': 5, 'T7': 6 };
             const jsDay = new Date().getDay(); 
             const dayMap = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -1558,7 +1569,7 @@
             const currentRank = dayOrder[currentDayCode] !== undefined ? dayOrder[currentDayCode] : 99;
 
             if (noteText && noteText.trim() !== '' && noteText.trim() !== 'Không có vi phạm' && noteText.trim() !== 'Không có') {
-                label.style.display = 'block';
+                section.style.display = 'block';
                 let violations = noteText.split(';');
                 violations.forEach((v, index) => {
                     let vClean = v.trim();
@@ -1569,39 +1580,61 @@
                         if (matchDay && matchDay[1]) {
                             let violationDayCode = matchDay[1].toUpperCase();
                             let violationRank = dayOrder[violationDayCode];
-                            
                             if (violationRank !== undefined && violationRank < currentRank) {
                                 isPastDay = true;
                             }
                         }
 
+                        // THIẾT KẾ CARD HIỆN ĐẠI CHO TỪNG LỖI
                         let labelNode = document.createElement('label');
-                        labelNode.className = 'd-flex align-items-start p-3 border rounded-3 shadow-sm w-100 ' + (isPastDay ? 'bg-light opacity-75' : 'bg-white');
+                        labelNode.className = 'd-flex align-items-center p-3 border rounded-3 w-100 mb-1 transition-all';
                         labelNode.style.cursor = isPastDay ? 'not-allowed' : 'pointer';
-                        labelNode.style.borderColor = isPastDay ? '#cbd5e1' : '#fca5a5';
+                        labelNode.style.background = isPastDay ? '#f8fafc' : '#ffffff';
+                        labelNode.style.borderColor = '#e2e8f0';
                         
-                        if (!isPastDay) {
-                            labelNode.onmouseenter = function() { this.style.backgroundColor = '#fef2f2'; this.style.borderColor = '#ef4444'; };
-                            labelNode.onmouseleave = function() { this.style.backgroundColor = '#ffffff'; this.style.borderColor = '#fca5a5'; };
-                        }
-
                         let disabledAttr = isPastDay ? 'disabled' : '';
-                        let badgePast = isPastDay ? '<span class="badge bg-secondary ms-2" style="font-size: 11px;">⚠️ Quá hạn (Lỗi ngày trước)</span>' : '';
+                        let badgePast = isPastDay ? '<span class="badge bg-secondary ms-2 opacity-75" style="font-size: 10px; font-weight: 500;">Hết hạn khiếu nại</span>' : '';
 
                         labelNode.innerHTML = `
-                            <input class="form-check-input m-0 me-3 shadow-none flex-shrink-0" type="checkbox" value="${vClean}" id="viol_app_${index}" ${disabledAttr} style="width: 18px; height: 18px; margin-top: 2px !important; cursor: ${isPastDay ? 'not-allowed' : 'pointer'}; border-color: ${isPastDay ? '#94a3b8' : '#ef4444'};">
-                            <div class="fw-bold ${isPastDay ? 'text-secondary text-decoration-line-through' : 'text-danger'} w-100" style="font-size: 14.5px; line-height: 1.5;">
-                                ${vClean} ${badgePast}
+                            <div class="form-check m-0 pe-3 d-flex align-items-center">
+                                <input class="form-check-input shadow-none" type="checkbox" value="${vClean}" id="viol_app_${index}" ${disabledAttr} style="width: 20px; height: 20px; cursor: inherit;">
+                            </div>
+                            <div class="flex-grow-1" style="line-height: 1.4;">
+                                <div class="fw-bold ${isPastDay ? 'text-muted opacity-50 text-decoration-line-through' : 'text-main'}" style="font-size: 14px;">
+                                    ${vClean} ${badgePast}
+                                </div>
                             </div>
                         `;
+
+                        // JS Xử lý đổi màu viền khi Tích/Bỏ tích (UI/UX)
+                        if (!isPastDay) {
+                            let checkbox = labelNode.querySelector('input');
+                            checkbox.addEventListener('change', function() {
+                                if(this.checked) {
+                                    labelNode.style.borderColor = 'var(--primary)';
+                                    labelNode.style.background = '#eff6ff'; // Màu xanh nhạt
+                                } else {
+                                    labelNode.style.borderColor = '#e2e8f0';
+                                    labelNode.style.background = '#ffffff';
+                                }
+                            });
+                        }
+
                         container.appendChild(labelNode);
                     }
                 });
             } else {
-                label.style.display = 'none';
+                section.style.display = 'none';
             }
             
-            document.getElementById('appealReasonText').value = ''; 
+            // Focus vào ô nhập văn bản khi mở modal
+            let textarea = document.getElementById('appealReasonText');
+            textarea.value = ''; 
+            textarea.style.borderColor = 'var(--border)';
+            
+            textarea.addEventListener('focus', function() { this.style.borderColor = 'var(--primary)'; this.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.1)';});
+            textarea.addEventListener('blur', function() { this.style.borderColor = 'var(--border)'; this.style.boxShadow = 'none';});
+
             var myModal = new bootstrap.Modal(document.getElementById('appealModal'));
             myModal.show();
         }
