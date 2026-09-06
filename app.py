@@ -7712,9 +7712,7 @@ def school_monthly_analysis():
         import traceback; traceback.print_exc()
         flash(f"Lỗi tải trang báo cáo toàn trường: {e}", "error")
         return redirect(url_for('dashboard'))
-# =====================================================================
-# API: XEM BẢNG XẾP HẠNG TOÀN TRƯỜNG (HỖ TRỢ TUẦN, THÁNG, HỌC KỲ KÈM CHI TIẾT)
-# =====================================================================
+    
 @app.route('/api/gvcn/leaderboard', methods=['GET'])
 @app.route('/api/gvcn/leaderboard/<week_name>', methods=['GET'])
 def api_gvcn_leaderboard(week_name=None):
@@ -7841,12 +7839,17 @@ def api_gvcn_leaderboard(week_name=None):
             group_1_data.sort(key=lambda x: x["total_score"], reverse=True)
             group_2_data.sort(key=lambda x: x["total_score"], reverse=True)
 
-            return {"success": True, "week_name": week_name, "group_1": group_1_data, "group_2": group_2_data}, 200
+            # [NÂNG CẤP ĐÚNG CHUẨN ĐỒNG BỘ]: Trả về cấu trúc JSON chứa đầy đủ thành phần mà Javascript đang cần
+            return {
+                "success": True, 
+                "week_name": week_name, 
+                "group_1": group_1_data, 
+                "group_2": group_2_data
+            }, 200
 
     except Exception as e:
         import traceback; traceback.print_exc()
         return {"success": False, "error": f"{type(e).__name__}: {str(e)}"}, 500
-
 # =====================================================================
 # API: TẢI DANH SÁCH THÁNG CHO BỘ LỌC
 # =====================================================================
