@@ -1638,7 +1638,14 @@
                 btn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Gửi Đánh Giá';
             }
         }
-
+		// =======================================================
+        // NẠP DỮ LIỆU BAREM LỖI TỪ SERVER XUỐNG ĐỂ JAVASCRIPT TRA CỨU ĐIỂM
+        // =======================================================
+        const violationBankData = [
+            {% for cat in violation_bank %}
+            { name: "{{ cat.name | safe }}", points: parseFloat('{{ cat.penalty_points }}') || 0 },
+            {% endfor %}
+        ];
 		function openAppealModal(btn) {
             let scoreId = btn.getAttribute('data-score-id');
             let weekName = btn.getAttribute('data-week');
