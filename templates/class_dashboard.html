@@ -1233,7 +1233,7 @@
                             <input type="text" class="form-control fw-bold text-primary bg-light border-0" id="resolveBranch" readonly style="font-size: 15px; padding: 12px 16px; border-radius: 12px;">
                         </div>
 
-                        <!-- KHU VỰC HIỂN THỊ CÁC CHECKBOX CHỌN LỖI ĐỂ GỠ -->
+                        <!-- KHU VỰC HIỂN THỊ CÁC CHECKBOX CHỌN LỖI ĐỂ GỠ (BẢN VÁ LỖI) -->
                         <div class="mb-4">
                             <label class="widget-label text-dark mb-2">Nội dung khiếu nại (Tích chọn các lỗi ĐỒNG Ý GỠ):</label>
                             <div id="resolveErrorCheckboxes" class="d-flex flex-column gap-2 mb-3"></div>
@@ -1756,7 +1756,7 @@
             {% endfor %}
         ];
 
-		function openResolveModal(btn) {
+function openResolveModal(btn) {
             document.getElementById('resolveScoreId').value = btn.getAttribute('data-score-id');
             document.getElementById('resolveBranch').value = "Lớp " + btn.getAttribute('data-branch-name') + " (" + btn.getAttribute('data-week') + ")";
             
@@ -1776,8 +1776,8 @@
                 cleanReasonText = reasonText.replace(timeMatch[0], '');
             }
             
-            // Tách phần Lỗi và phần Lý do
-            let regex = /Phúc khảo các lỗi:\s*\[(.*?)\]\s*\|\s*Lý do:(.*)/is;
+            // Thuật toán bóc tách dữ liệu thông minh (Chống nhiễu dấu ngoặc lồng nhau)
+            let regex = /Phúc khảo các lỗi:\s*(.*?)\s*\|\s*Lý do:(.*)/is;
             let match = cleanReasonText.match(regex);
             
             if (match) {
@@ -1785,9 +1785,15 @@
                 let reasonStr = match[2];
                 if(reasonDiv) reasonDiv.innerHTML = '"' + reasonStr.trim().replace(/ \| /g, '<br>') + '"';
                 
-                let appealedErrors = errorsStr.split("] & ["); 
+                // Cắt bằng ký tự "&" để tránh đứt chuỗi tên học sinh
+                let appealedErrors = errorsStr.split(" & "); 
                 appealedErrors.forEach((errStr, idx) => {
                     let cleanErr = errStr.trim();
+                    // Gọt sạch ngoặc vuông dư thừa ở 2 đầu
+                    if (cleanErr.startsWith('[')) cleanErr = cleanErr.substring(1);
+                    if (cleanErr.endsWith(']')) cleanErr = cleanErr.substring(0, cleanErr.length - 1);
+                    cleanErr = cleanErr.trim();
+                    
                     if (!cleanErr) return;
                     
                     // Tính điểm tự động tra cứu từ ngân hàng lỗi
