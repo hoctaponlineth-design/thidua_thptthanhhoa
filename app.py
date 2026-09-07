@@ -912,62 +912,81 @@ def resolve_appeal():
                 week_num = score.week
 
                 # =======================================================
-                # TRƯỜNG HỢP 1: ĐỒNG Ý PHÚC KHẢO & HOÀN ĐIỂM
+                # TRƯỜNG HỢP 1: ĐỒNG Ý PHÚC KHẢO & TỰ ĐỘNG TÍNH TOÁN THEO TỪNG PHẦN
                 # =======================================================
                 if action == 'approve':
-                    # 1. Tự động hoàn điểm
-                    score.total_score = float(score.total_score or 0) + refund_points
-                    score.score_tru = max(0.0, float(score.score_tru or 0) - refund_points)
+                    auto_refund_points = 0.0
+                    # Hứng danh sách các lỗi mà BCH đã tích "Đồng ý" duyệt trên giao diện
+                    approved_errors = request.form.getlist('approved_errors[]')
                     
-                    # 2. TỰ ĐỘNG ĐỊNH VỊ VÀ XÓA LỖI KHỎI SỔ ĐEN (LÀM SẠCH GHI CHÚ)
                     if score.appeal_reason and "Phúc khảo các lỗi: [" in score.appeal_reason:
                         try:
                             import re
-                            # Trích xuất danh sách lỗi mà GVCN đã tích Checkbox gửi lên
-                            match = re.search(r'Phúc khảo các lỗi:\s*\[(.*?)\]\s*\|\s*Giải trình', score.appeal_reason)
-                            if match:
-                                errors_str = match.group(1)
-                                appealed_errors = [e.strip() for e in errors_str.split("] & [")]
-                                
-                                # Lấy danh sách lỗi hiện tại đang có của lớp
-                                current_notes = [n.strip() for n in (score.note or "").split(";") if n.strip()]
-                                remaining_notes = []
-                                
-                                # Quét và loại bỏ những lỗi trùng khớp với đơn phúc khảo
-                                for n in current_notes:
-                                    if n not in appealed_errors:
-                                        remaining_notes.append(n)
+                            current_notes = [n.strip() for n in (score.note or "").split(";") if n.strip()]
+                            remaining_notes = []
+                            
+                            all_categories = db_session.query(ViolationCategory).filter_by(school_year_id=score.branch.school_year_id).all()
+                            sorted_cats = sorted(all_categories, key=lambda x: len(x.name), reverse=True)
+                            
+                            # Quét từng lỗi đang có trong Sổ đen của lớp
+                            for n in current_notes:
+                                # Kiểm tra xem lỗi 'n' có nằm trong danh sách được DUYỆT (approved_errors) không
+                                is_approved = False
+                                for app_err in approved_errors:
+                                    if app_err in n or n in app_err:
+                                        is_approved = True
+                                        break
                                         
-                                # Ghi đè lại ghi chú sạch sẽ vào Database
-                                score.note = " ; ".join(remaining_notes)
-                                
-                                # 3. ĐỒNG BỘ LÀM SẠCH "SỔ ĐEN TOÀN TRƯỜNG" (Bảng WeeklyViolation)
-                                db_session.query(WeeklyViolation).filter_by(weekly_score_id=score.id).delete()
-                                
-                                # Quét lại ghi chú mới và nạp lại vào Sổ đen những lỗi còn tồn tại
-                                all_categories = db_session.query(ViolationCategory).filter_by(school_year_id=score.branch.school_year_id).all()
-                                sorted_cats = sorted(all_categories, key=lambda x: len(x.name), reverse=True)
-                                
-                                for part in remaining_notes:
-                                    match_day = re.search(r'\[(T[2-7]|CN)\]', part)
-                                    day_pfx = match_day.group(0) if match_day else ""
-                                    text_to_parse = part.replace(day_pfx, "").strip() if day_pfx else part
-                                    
-                                    match_stu = re.search(r'\[(.*?)\]', text_to_parse)
-                                    stu_display = match_stu.group(1).strip() if match_stu else None
+                                if is_approved:
+                                    # LỖI ĐƯỢC DUYỆT GỠ: Không đưa vào remaining_notes nữa & Cộng điểm hoàn trả
+                                    day_pfx_match = re.search(r'\[(T[2-7]|CN)\]', n)
+                                    day_pfx = day_pfx_match.group(0) if day_pfx_match else ""
+                                    text_to_parse = n.replace(day_pfx, "").strip() if day_pfx else n
                                     
                                     for cat in sorted_cats:
-                                        if cat.name.lower() in text_to_parse.lower():
-                                            match_qty = re.search(r'(?:x|:|-)\s*(\d+)', text_to_parse.lower())
-                                            qty = int(match_qty.group(1)) if match_qty else 1
-                                            db_session.add(WeeklyViolation(weekly_score_id=score.id, violation_id=cat.id, quantity=qty, student_name=stu_display))
+                                        if cat.name.lower() in text_to_parse.lower() and getattr(cat, 'point_type', 'Điểm trừ') != 'Điểm cộng':
+                                            qty_match = re.search(r'(?:x|:|-)\s*(\d+)', text_to_parse.lower())
+                                            qty = int(qty_match.group(1)) if qty_match else 1
+                                            auto_refund_points += float(cat.penalty_points * qty)
                                             break
+                                else:
+                                    # LỖI BỊ TỪ CHỐI GỠ HOẶC LỖI KHÔNG BỊ KHIẾU NẠI -> Giữ lại trong Sổ đen
+                                    remaining_notes.append(n)
+                                    
+                            # Ghi đè lại ghi chú sau khi đã GỌT BỎ những lỗi được gỡ
+                            score.note = " ; ".join(remaining_notes)
+                            
+                            # ĐỒNG BỘ LÀM SẠCH "SỔ ĐEN TOÀN TRƯỜNG" DỰA TRÊN PHẦN CÒN LẠI
+                            db_session.query(WeeklyViolation).filter_by(weekly_score_id=score.id).delete()
+                            
+                            for part in remaining_notes:
+                                match_day = re.search(r'\[(T[2-7]|CN)\]', part)
+                                day_pfx = match_day.group(0) if match_day else ""
+                                text_to_parse = part.replace(day_pfx, "").strip() if day_pfx else part
+                                
+                                match_stu = re.search(r'\[(.*?)\]', text_to_parse)
+                                stu_display = match_stu.group(1).strip() if match_stu else None
+                                
+                                for cat in sorted_cats:
+                                    if cat.name.lower() in text_to_parse.lower():
+                                        match_qty = re.search(r'(?:x|:|-)\s*(\d+)', text_to_parse.lower())
+                                        qty = int(match_qty.group(1)) if match_qty else 1
+                                        db_session.add(WeeklyViolation(weekly_score_id=score.id, violation_id=cat.id, quantity=qty, student_name=stu_display))
+                                        break
                         except Exception as e:
                             print(f"Lỗi tự động xóa Sổ đen: {e}")
                     
-                    score.appeal_response = f"[ĐÃ DUYỆT] Hoàn lại {refund_points}đ. Phản hồi: {response_text}"
-                    log_system_action("XỬ LÝ PHÚC KHẢO", f"Đã DUYỆT khiếu nại lớp {score.branch.name} Tuần {score.week}. Tự động hoàn {refund_points}đ và xóa lỗi.")
-                    flash(f"✅ Đã duyệt khiếu nại, hoàn {refund_points}đ và tự động xóa lỗi khỏi Sổ đen của lớp {score.branch.name}!", "success")
+                    # Ưu tiên lấy điểm tự động tính toán bởi Python Backend.
+                    form_refund = request.form.get('refund_points', type=float, default=0.0)
+                    final_refund = auto_refund_points if auto_refund_points > 0 else form_refund
+                    
+                    # Thực hiện hoàn điểm
+                    score.total_score = float(score.total_score or 0) + final_refund
+                    score.score_tru = max(0.0, float(score.score_tru or 0) - final_refund)
+                    
+                    score.appeal_response = f"[ĐÃ DUYỆT BỘ PHẬN] Đã gỡ lỗi được chọn và hoàn {final_refund}đ. Phản hồi: {response_text}"
+                    log_system_action("XỬ LÝ PHÚC KHẢO", f"Đã DUYỆT 1 PHẦN khiếu nại lớp {score.branch.name} Tuần {score.week}. Tự động hoàn {final_refund}đ.")
+                    flash(f"✅ Đã duyệt khiếu nại, hệ thống hoàn {final_refund}đ và xử lý Sổ đen chuẩn xác!", "success")
                     
                     # [NÂNG CẤP]: BẮN THÔNG BÁO ĐẨY CHO GVCN KHI ĐƯỢC DUYỆT PHÚC KHẢO
                     try:
