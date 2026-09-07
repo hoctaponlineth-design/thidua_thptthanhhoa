@@ -2000,6 +2000,9 @@ def import_class_zones():
     if file and (file.filename.endswith('.xlsx') or file.filename.endswith('.xls')):
         try:
             import numpy as np
+            import pandas as pd
+            import os
+            import json
             
             df = pd.read_excel(file)
             df.columns = df.columns.str.strip().str.upper()
@@ -2049,7 +2052,8 @@ def import_class_zones():
                 for zone_name in dynamic_zones.keys():
                     exist = db_session.query(DutyArea).filter_by(name=zone_name).first()
                     if not exist:
-                        new_area = DutyArea(name=zone_name, required_stars=2)
+                        # [ĐÃ ĐỒNG BỘ]: Set required_stars = 1 để khớp với luật "1 người/1 vị trí"
+                        new_area = DutyArea(name=zone_name, required_stars=1)
                         db_session.add(new_area)
                         count_new += 1
                 
@@ -2163,7 +2167,7 @@ def auto_assign():
                 match = re.search(r'(10|11|12)', str(class_name))
                 return match.group(1) if match else ""
 
-            # 4. TRÍCH XUẤT LỊCH SỬ ĐỂ KIỂM TRA VỊ TRÍ ĐÃ TỪNG TRỰC
+            # 4. TRÍCH XUẤT LỊCH SỬ XOAY VÒNG
             history_counts = {star.id: {} for star in stars}
             past_assignments = db_session.query(Assignment).filter(Assignment.week_number < week_number).all()
             
@@ -2175,13 +2179,14 @@ def auto_assign():
             current_week_shift_counts = {star.id: 0 for star in stars}
             success_count = 0
             
-            # Ưu tiên các khu vực "Giám sát Khối" lên trước, sau đó đến Cụm, cuối cùng là Cổng
+            # QUY TẮC SẮP XẾP KHU VỰC: Ưu tiên Giám sát khối trước -> Cụm lớp -> Cổng sau cùng
             areas_sorted = sorted(areas, key=lambda a: 0 if "KHỐI" in a.name.upper() else (1 if "CỔNG" not in a.name.upper() else 2))
             
-            # 5. Bắt đầu phân công
+            # 5. Bắt đầu phân công cho từng ca (Sáng / Chiều)
             for shift in shifts:
-                # Quản lý danh sách các em ĐÃ ĐƯỢC XẾP trong ca này để tuyệt đối không bị trùng lặp người
-                assigned_in_this_shift = set()
+                # Danh sách quân số rảnh trong ca này (Mỗi em chỉ dùng đúng 1 lần)
+                available_stars = list(stars)
+                random.shuffle(available_stars)
                 
                 for area in areas_sorted:
                     req_count = int(area.required_stars or 1)
@@ -2194,22 +2199,19 @@ def auto_assign():
                     area_grades = {get_grade(c) for c in area_classes if get_grade(c)}
                     
                     while assigned_count < req_count:
-                        # Chỉ lấy những em CHƯA CÓ LỊCH trong buổi này
-                        available_pool = [s for s in stars if s.id not in assigned_in_this_shift]
-                        
-                        # Nếu vì lý do nào đó số ghế cần nhiều hơn số quân, reset lại danh sách ca
-                        if not available_pool:
-                            assigned_in_this_shift.clear()
-                            available_pool = list(stars)
+                        # Nếu vì lý do nào đó dùng hết quân mà vẫn thiếu ghế, cấp cứu nạp lại từ đầu
+                        if not available_stars:
+                            available_stars = list(stars)
                             
+                        # Lọc danh sách thỏa mãn điều kiện an toàn
                         valid_stars = []
-                        for star in available_pool:
+                        for star in available_stars:
                             star_class = star.branch.name.strip().upper() if star.branch else ""
                             star_grade = get_grade(star_class)
                             
                             is_conflict = False
                             
-                            # Nếu không phải khu vực Cổng: Áp dụng luật khắt khe (Né khối + Né vị trí cũ)
+                            # Nếu không phải khu vực Cổng: Áp dụng luật nghiêm ngặt (Né khối + Né vị trí cũ)
                             if not is_gate_area:
                                 if star_class in area_classes:
                                     is_conflict = True
@@ -2220,25 +2222,29 @@ def auto_assign():
                                     
                                 if history_counts[star.id].get(area.id, 0) > 0:
                                     is_conflict = True
-                            
+                                    
                             if not is_conflict:
                                 valid_stars.append(star)
                                 
                         # Cứu hộ tầng 1: Nếu lọc quá ngặt mà rỗng, cho phép trực lại vị trí cũ nhưng vẫn né khối
                         if not valid_stars and not is_gate_area:
-                            for star in available_pool:
+                            for star in available_stars:
                                 star_class = star.branch.name.strip().upper() if star.branch else ""
                                 star_grade = get_grade(star_class)
                                 if star_class not in area_classes and (not star_grade or star_grade not in area_grades):
                                     valid_stars.append(star)
                                     
-                        # Cứu hộ tầng 2 (Tuyệt đối): Lấy bất kỳ ai còn rảnh trong ca
+                        # Cứu hộ tầng 2 (Tuyệt đối): Lấy bất kỳ ai còn lại trong danh sách rảnh
                         if not valid_stars:
-                            valid_stars = list(available_pool)
+                            valid_stars = list(available_stars)
                             
-                        # Sắp xếp theo ưu tiên: Ít việc nhất trong tuần
-                        valid_stars.sort(key=lambda s: current_week_shift_counts[s.id])
+                        # Sắp xếp theo ưu tiên: Ít lịch sử trực cụm này nhất & Ít việc trong tuần nhất
+                        valid_stars.sort(key=lambda s: (
+                            history_counts[s.id].get(area.id, 0),
+                            current_week_shift_counts[s.id]
+                        ))
                         
+                        # CHỐT: Lấy em tốt nhất
                         chosen_star = valid_stars[0]
                         
                         new_assign = Assignment(
@@ -2250,8 +2256,9 @@ def auto_assign():
                         )
                         db_session.add(new_assign)
                         
-                        # Đánh dấu em này đã có việc trong ca, không được chia thêm việc khác nữa
-                        assigned_in_this_shift.add(chosen_star.id)
+                        # XÓA VĨNH VIỄN EM NÀY KHỎI DANH SÁCH RẢNH CỦA CA ĐÓ (Đảm bảo mỗi vị trí là duy nhất 1 người)
+                        available_stars.remove(chosen_star)
+                        
                         current_week_shift_counts[chosen_star.id] += 1
                         history_counts[chosen_star.id][area.id] = history_counts[chosen_star.id].get(area.id, 0) + 1
                         assigned_count += 1
@@ -2261,7 +2268,7 @@ def auto_assign():
             
             if success_count > 0:
                 log_system_action("LỊCH TRỰC", f"Đã phân công tự động Tuần {week_number}")
-                flash(f"✅ Đã phân công tự động Tuần {week_number} thành công! (Phủ kín {success_count} vị trí, mỗi em một nơi không trùng lặp)", "success")
+                flash(f"✅ Đã phân công thành công! (Mỗi vị trí là duy nhất 1 Sao đỏ, lấp đầy {success_count} vị trí)", "success")
             else:
                 flash("⚠️ Không thể phân công do thiếu dữ liệu Sao đỏ.", "warning")
                 
@@ -2272,7 +2279,6 @@ def auto_assign():
         
     return redirect(url_for('assignments', week=week_number))
 
-# --- XUẤT EXCEL LỊCH TRỰC ---
 @app.route('/export_schedule/<int:week>')
 def export_schedule(week):
     try:
@@ -2285,83 +2291,101 @@ def export_schedule(week):
             assignments = db_session.query(Assignment).join(RedStar).join(Branch).filter(
                 Assignment.week_number == week,
                 Branch.school_year_id == active_year.id
-            ).order_by(Assignment.shift, Assignment.id).all()
+            ).order_by(Assignment.shift, DutyArea.name).all()
             
             if not assignments:
                 flash(f"Chưa có dữ liệu lịch trực tuần {week} để xuất!", "error")
                 return redirect(url_for('assignments', week=week))
 
+            import os, json
             zones_map = {}
             if os.path.exists("config/class_zones.json"):
                 with open("config/class_zones.json", "r", encoding="utf-8") as f:
                     zones_map = json.load(f)
+
+            import openpyxl
+            from openpyxl.styles import Font, Alignment, Border, Side
+            import io
+            from flask import send_file
 
             wb = openpyxl.Workbook()
             ws = wb.active
             ws.title = f"Tuan_{week}"
             
             ws['A1'] = "ĐOÀN TRƯỜNG THPT THANH HÒA"
-            ws['D1'] = "ĐOÀN TNCS HỒ CHÍ MINH"
+            ws['E1'] = "ĐOÀN TNCS HỒ CHÍ MINH"
             ws['A1'].font = Font(name="Times New Roman", size=11, bold=True)
-            ws['D1'].font = Font(name="Times New Roman", size=11, bold=True)
-            ws['D1'].alignment = Alignment(horizontal="right")
+            ws['E1'].font = Font(name="Times New Roman", size=11, bold=True)
+            ws['E1'].alignment = Alignment(horizontal="right")
             
-            ws['A3'] = f"LỊCH TRỰC SAO ĐỎ - TUẦN {week}"
+            ws['A3'] = f"LỊCH TRỰC ĐỘI SAO ĐỎ - TUẦN {week}"
             ws['A3'].font = Font(name="Times New Roman", size=14, bold=True)
+            ws.merge_cells('A3:F3')
+            ws['A3'].alignment = Alignment(horizontal="center")
             
-            headers = ["STT", "Họ Và Tên", "Vị trí trực", "Ghi chú"]
+            # [ĐÃ NÂNG CẤP LÕI]: Chuẩn hóa tiêu đề Excel tách bạch Cụm và Lớp
+            headers = ["STT", "Họ Tên Sao Đỏ", "Lớp của SĐ", "Khu Vực Trực", "Giám Sát Các Lớp", "Ca Trực"]
             thin = Side(border_style="thin", color="000000")
             border = Border(left=thin, right=thin, top=thin, bottom=thin)
             
             for col_num, h_title in enumerate(headers, 1):
                 c = ws.cell(row=5, column=col_num, value=h_title)
-                c.font = Font(name="Times New Roman", size=11, bold=True)
+                c.font = Font(name="Times New Roman", size=12, bold=True)
                 c.alignment = Alignment(horizontal="center", vertical="center")
                 c.border = border
                 
             for idx, assign in enumerate(assignments, 1):
-                area_name = assign.duty_area.name if assign.duty_area else ""
-                disp_area = ", ".join(zones_map.get(area_name, [])) if area_name in zones_map else area_name
-                star_name = assign.red_star.full_name if assign.red_star else ""
-                branch_name = assign.red_star.branch.name if assign.red_star and assign.red_star.branch else ""
+                area_name = assign.duty_area.name if assign.duty_area else "Chưa phân công"
+                classes_list = zones_map.get(area_name, [])
+                class_str = ", ".join(classes_list) if classes_list else "Khu vực chung"
+                
+                star_name = assign.red_star.full_name if assign.red_star else "Khuyết"
+                branch_name = assign.red_star.branch.name if assign.red_star and assign.red_star.branch else "---"
                 
                 row_idx = idx + 5
-                c1 = ws.cell(row=row_idx, column=1, value=idx)
-                c2 = ws.cell(row=row_idx, column=2, value=f"{star_name} ({branch_name})")
-                c3 = ws.cell(row=row_idx, column=3, value=f"{disp_area} ({assign.shift})")
-                c4 = ws.cell(row=row_idx, column=4, value="")
+                row_data = [idx, star_name, branch_name, area_name, class_str, assign.shift]
                 
-                for c in [c1, c2, c3, c4]:
-                    c.font = Font(name="Times New Roman", size=11)
+                for col_num, val in enumerate(row_data, 1):
+                    c = ws.cell(row=row_idx, column=col_num, value=val)
+                    c.font = Font(name="Times New Roman", size=12)
                     c.border = border
-                c1.alignment = Alignment(horizontal="center")
+                    if col_num in [1, 3, 6]: 
+                        c.alignment = Alignment(horizontal="center")
                 
             ws.column_dimensions['A'].width = 8
-            ws.column_dimensions['B'].width = 30
-            ws.column_dimensions['C'].width = 35
-            ws.column_dimensions['D'].width = 20
+            ws.column_dimensions['B'].width = 25
+            ws.column_dimensions['C'].width = 15
+            ws.column_dimensions['D'].width = 22
+            ws.column_dimensions['E'].width = 30
+            ws.column_dimensions['F'].width = 15
             
-            log_system_action("XUẤT EXCEL", f"Xuất lịch trực Tuần {week}")
+            log_system_action("XUẤT EXCEL", f"Xuất lịch trực chuyên nghiệp Tuần {week}")
             out = io.BytesIO()
             wb.save(out)
             out.seek(0)
             return send_file(out, download_name=f"Lich_Truc_Tuan_{week}.xlsx", as_attachment=True)
     except Exception as e:
+        import traceback; traceback.print_exc()
         flash(f"Lỗi xuất excel lịch trực: {e}", "error")
         return redirect(url_for('assignments', week=week))
 
-# --- API LẤY DANH SÁCH GỢI Ý ĐỔI NGƯỜI THÔNG MINH ---
 @app.route('/api/get_swap_candidates/<int:assign_id>')
 def api_get_swap_candidates(assign_id):
     try:
+        from database.database import session_scope
+        from database.models import Assignment, DutyArea, RedStar
+        import json, os, re
+        
         with session_scope() as db_session:
             assign = db_session.query(Assignment).filter_by(id=assign_id).first()
             if not assign: return {"error": "Không tìm thấy lịch trực"}
             
             week_num = assign.week_number
             shift = assign.shift
-            area_name = assign.duty_area.name if assign.duty_area else ""
-            current_star_id = assign.red_star_id
+            
+            current_area_name = assign.duty_area.name if assign.duty_area else ""
+            current_star = assign.red_star
+            current_star_id = current_star.id if current_star else 0
             
             active_stars = db_session.query(RedStar).filter_by(is_active=True).all()
             shift_assignments = db_session.query(Assignment).filter_by(week_number=week_num, shift=shift).all()
@@ -2370,14 +2394,28 @@ def api_get_swap_candidates(assign_id):
             zones_map = {}
             if os.path.exists("config/class_zones.json"):
                 with open("config/class_zones.json", "r", encoding="utf-8") as f:
-                    zones_map = json.load(f)
+                    try: zones_map = json.load(f)
+                    except: pass
                     
-            restricted_classes = [c.upper() for c in zones_map.get(area_name, [])]
-            
-            is_gate_chinh = "Cổng chính" in area_name
-            is_gate_phu = "Cổng phụ" in area_name
-            is_giam_sat = "Giám sát" in area_name
-            is_cum = not (is_gate_chinh or is_gate_phu or is_giam_sat)
+            def get_grade(class_name):
+                match = re.search(r'(10|11|12)', str(class_name))
+                return match.group(1) if match else ""
+
+            # [THUẬT TOÁN ĐỔI NGƯỜI CHÉO THÔNG MINH]: Kiểm tra 1 Học sinh có hợp lệ trực 1 Khu vực hay không
+            def can_assign(star_obj, target_area_name):
+                if not star_obj: return False
+                if "cổng" in target_area_name.lower(): return True # Cổng thì vô tư
+                
+                s_class = star_obj.branch.name.strip().upper() if star_obj.branch else ""
+                s_grade = get_grade(s_class)
+                
+                a_classes = [c.strip().upper() for c in zones_map.get(target_area_name, [])]
+                a_grades = {get_grade(c) for c in a_classes if get_grade(c)}
+                
+                if s_class in a_classes: return False # Trùng lớp
+                if s_grade and s_grade in a_grades: return False # Trùng khối
+                if "KHỐI" in target_area_name.upper() and s_grade and s_grade in target_area_name.upper(): return False
+                return True
             
             free_list = []
             busy_list = []
@@ -2385,55 +2423,33 @@ def api_get_swap_candidates(assign_id):
             for star in active_stars:
                 if star.id == current_star_id: continue
                 
-                star_class_name = star.branch.name.upper() if star.branch else ""
-                is_owner = False
-                if star_class_name in restricted_classes: is_owner = True
-                elif "Khối" in area_name:
-                    grade_num = "".join(filter(str.isdigit, area_name))
-                    if grade_num and star_class_name.startswith(grade_num): is_owner = True
-                        
-                if is_owner: continue
+                # 1. Học sinh này có đủ điều kiện thế chỗ vào vị trí hiện tại không?
+                if not can_assign(star, current_area_name):
+                    continue
                     
                 is_busy = star.id in busy_map
-                swap_valid = True
                 target_assign_id = None
                 target_area_name = ""
                 
                 if is_busy:
                     target_assign_id, target_area_name = busy_map[star.id]
-                    t_gate_chinh = "Cổng chính" in target_area_name
-                    t_gate_phu = "Cổng phụ" in target_area_name
-                    t_giam_sat = "Giám sát" in target_area_name
-                    t_cum = not (t_gate_chinh or t_gate_phu or t_giam_sat)
-                    
-                    rule_matched = False
-                    if is_gate_chinh and t_gate_phu: rule_matched = True
-                    elif is_gate_phu and t_gate_chinh: rule_matched = True
-                    elif is_cum and t_giam_sat: rule_matched = True
-                    elif is_giam_sat and t_cum: rule_matched = True
-                    
-                    if not rule_matched: swap_valid = False
-                    
-                    if swap_valid:
-                        curr_class = assign.red_star.branch.name.upper() if assign.red_star and assign.red_star.branch else ""
-                        target_restricted = [c.upper() for c in zones_map.get(target_area_name, [])]
-                        if curr_class in target_restricted: swap_valid = False
-                        elif "Khối" in target_area_name:
-                            t_grade = "".join(filter(str.isdigit, target_area_name))
-                            if t_grade and curr_class.startswith(t_grade): swap_valid = False
+                    # 2. Học sinh hiện tại có đủ điều kiện sang thế chỗ ngược lại cho học sinh kia không?
+                    if not can_assign(current_star, target_area_name):
+                        continue
                 
-                if swap_valid:
-                    item = {
-                        "star_id": star.id,
-                        "star_name": f"{star.full_name} ({star.branch.name if star.branch else ''})",
-                        "target_assign_id": target_assign_id,
-                        "target_area_name": target_area_name
-                    }
-                    if is_busy: busy_list.append(item)
-                    else: free_list.append(item)
-                    
-            return {"free": free_list[:10], "busy": busy_list}
+                item = {
+                    "star_id": star.id,
+                    "star_name": f"{star.full_name} ({star.branch.name if star.branch else ''})",
+                    "target_assign_id": target_assign_id,
+                    "target_area_name": target_area_name
+                }
+                
+                if is_busy: busy_list.append(item)
+                else: free_list.append(item)
+                
+            return {"free": free_list[:15], "busy": busy_list}
     except Exception as e:
+        import traceback; traceback.print_exc()
         return {"error": str(e)}
 
 @app.route('/execute_swap', methods=['POST'])
