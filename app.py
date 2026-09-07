@@ -24,7 +24,7 @@ VAPID_CLAIMS = {
 global_subscriptions = {}
   
 def process_and_save_evidence(base64_string, branch_id, week_name):
-    """Hàm hứng chuỗi Base64 (Data URI) và đẩy lên Cloudinary (Đã bọc thép chống sập hệ thống)"""
+    """Hàm hứng chuỗi Base64 (Data URI) và đẩy lên Cloudinary một cách an toàn (Đã bọc thép chống nhân đôi)"""
     if not base64_string or base64_string.strip() in ["", "[]"]:
         return None
         
@@ -32,21 +32,23 @@ def process_and_save_evidence(base64_string, branch_id, week_name):
         import json
         import unicodedata
         import re
+        import os
         import hashlib
         import cloudinary
         import cloudinary.uploader
         
-        # =========================================================================
-        # [CẤU HÌNH CLOUDINARY]: ĐÃ TÍCH HỢP TRỰC TIẾP API KEY CỦA THẦY
-        # =========================================================================
-        cloudinary.config( 
-            cloud_name = "bgjw5m03", 
-            api_key = "438871542918892", 
-            api_secret = "sVU9IhaUUby5X0rR8oNsp_8XF6Q",
-            secure = True
-        )
-        
-        # Xử lý danh sách ảnh do App điện thoại đẩy lên
+        # Tự động nhận diện cấu hình Cloudinary
+        if os.environ.get("CLOUDINARY_URL"):
+            cloudinary.config(secure=True)
+        else:
+            cloudinary.config( 
+                cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME"), 
+                api_key = os.environ.get("CLOUDINARY_API_KEY"), 
+                api_secret = os.environ.get("CLOUDINARY_API_SECRET"),
+                secure = True
+            )
+            
+        # Xử lý danh sách hoặc chuỗi đơn
         if base64_string.startswith('['):
             base64_list = json.loads(base64_string)
         else:
@@ -54,17 +56,18 @@ def process_and_save_evidence(base64_string, branch_id, week_name):
             
         saved_paths = []
         
-        # Chuẩn hóa tên tuần không dấu để tạo Folder trên Cloudinary
+        # Chuẩn hóa tên tuần không dấu
         safe_week = unicodedata.normalize('NFKD', str(week_name)).encode('ASCII', 'ignore').decode('utf-8')
         safe_week = re.sub(r'[^a-zA-Z0-9]', '_', safe_week)
         
         for b64 in base64_list:
-            if not b64 or len(b64) < 100: continue # Bỏ qua chuỗi rỗng hoặc rác mạng
+            if not b64: continue
             
-            # Băm mã Base64 thành Dấu vân tay (MD5) để chống trùng lặp do mạng yếu
+            # [CHÌA KHÓA VÀNG]: Băm mã Base64 thành Dấu vân tay (MD5) để chống trùng lặp do mạng yếu
             img_hash = hashlib.md5(b64.encode('utf-8')).hexdigest()[:15]
             
-            # Đẩy dữ liệu trực tiếp lên Cloudinary
+            # Đảm bảo chuỗi base64 giữ nguyên định dạng Data URI chuẩn từ FileReader
+            # Gắn thêm public_id để Cloudinary tự động ghi đè nếu mạng tự động gửi lại cùng 1 bức ảnh
             upload_result = cloudinary.uploader.upload(
                 b64, 
                 folder=f"thidua_doantruong/{safe_week}",
@@ -77,11 +80,7 @@ def process_and_save_evidence(base64_string, branch_id, week_name):
     except Exception as e:
         error_detail = str(e)
         print(f"❌ LỖI UPLOAD ẢNH LÊN ĐÁM MÂY: {error_detail}")
-        # =========================================================================
-        # [BẢN VÁ LỖI TỐI THƯỢNG]: Bắt buộc trả về None thay vì báo lỗi (raise Exception)
-        # Điều này giúp hệ thống VẪN LƯU THÀNH CÔNG Điểm và Lỗi vi phạm dù ảnh có rớt mạng!
-        # =========================================================================
-        return None
+        raise Exception(error_detail)
     
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 import openpyxl
