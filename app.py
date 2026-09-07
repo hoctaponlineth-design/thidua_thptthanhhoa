@@ -930,10 +930,11 @@ def resolve_appeal():
                             
                             # Quét từng lỗi đang có trong Sổ đen của lớp
                             for n in current_notes:
-                                # Kiểm tra xem lỗi 'n' có nằm trong danh sách được DUYỆT (approved_errors) không
                                 is_approved = False
                                 for app_err in approved_errors:
-                                    if app_err in n or n in app_err:
+                                        # [TÍNH NĂNG MỚI]: Loại bỏ đuôi (Phạt Xđ) để Server so khớp an toàn tuyệt đối
+                                    app_err_clean = re.sub(r'\(Phạt .*?đ\)', '', app_err).strip()
+                                    if app_err_clean in n or n in app_err_clean:
                                         is_approved = True
                                         break
                                         
@@ -4113,6 +4114,12 @@ def class_dashboard():
                                 if match:
                                     errors_part = match.group(1).strip()
                                     reason_part = match.group(2).strip()
+                                    
+                                    # [TÍNH NĂNG MỚI]: LÀM ĐẸP CHUỖI HIỂN THỊ DẠNG BULLET CHO BCH
+                                    errors_html = errors_part.replace('] & [', '<br>• ').replace('[', '').replace(']', '')
+                                    if errors_html and not errors_html.startswith('• '):
+                                        errors_html = '• ' + errors_html
+                                    errors_part = errors_html
                                 
                                 status_text = "Đang chờ xử lý"
                                 badge_class = "warning text-dark"
