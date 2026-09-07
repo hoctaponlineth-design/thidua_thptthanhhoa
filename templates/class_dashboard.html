@@ -1233,9 +1233,9 @@
                             <input type="text" class="form-control fw-bold text-primary bg-light border-0" id="resolveBranch" readonly style="font-size: 15px; padding: 12px 16px; border-radius: 12px;">
                         </div>
 
-						<div class="mb-4">
+                        <!-- KHU VỰC HIỂN THỊ CÁC CHECKBOX CHỌN LỖI ĐỂ GỠ -->
+                        <div class="mb-4">
                             <label class="widget-label text-dark mb-2">Nội dung khiếu nại (Tích chọn các lỗi ĐỒNG Ý GỠ):</label>
-                            <!-- Nơi chứa các checkbox lỗi để duyệt từng phần -->
                             <div id="resolveErrorCheckboxes" class="d-flex flex-column gap-2 mb-3"></div>
                             
                             <label class="widget-label text-dark mb-2 border-top pt-3 w-100">Lý do / Minh chứng của GVCN:</label>
@@ -1243,12 +1243,10 @@
                             </div>
                         </div>
 
-                        <!-- ========================================================= -->
-                        <!-- [BẢN VÁ LỖI]: BỔ SUNG Ô TỰ ĐỘNG TÍNH TOÁN HOÀN TIỀN/ĐIỂM  -->
-                        <!-- ========================================================= -->
+                        <!-- Ô TỰ ĐỘNG NHẢY ĐIỂM -->
                         <div class="mb-4 p-3 bg-primary bg-opacity-10 border border-primary border-opacity-50 rounded-3" style="border-radius: 12px;">
-                            <label class="widget-label text-primary mb-2"><i class="fa-solid fa-rotate-left me-1"></i> Số điểm hoàn lại (Chỉ nhập nếu Duyệt):</label>
-                            <input type="number" step="0.5" min="0" class="form-control border-primary fw-bold fs-5 text-primary" name="refund_points" value="0" placeholder="VD: 2.0" style="border-radius: 12px;">
+                            <label class="widget-label text-primary mb-2"><i class="fa-solid fa-rotate-left me-1"></i> Số điểm hoàn lại (Tự động tính):</label>
+                            <input type="number" step="0.5" min="0" class="form-control border-primary fw-bold fs-5 text-primary" name="refund_points" id="refundPointsInput" value="0" placeholder="VD: 2.0" style="border-radius: 12px;">
                             <small class="text-muted mt-2 d-block"><i class="fa-solid fa-circle-info me-1"></i> Hệ thống tự động cộng số điểm này vào điểm của lớp và xóa lỗi khỏi Sổ đen.</small>
                         </div>
                         
@@ -1765,28 +1763,37 @@
             let reasonText = btn.getAttribute('data-reason') || '';
             let reasonDiv = document.getElementById('resolveReason');
             let checkboxesDiv = document.getElementById('resolveErrorCheckboxes');
-            checkboxesDiv.innerHTML = ''; // Làm sạch trước khi nạp
+            
+            if(checkboxesDiv) checkboxesDiv.innerHTML = ''; 
             
             let refundInput = document.querySelector('input[name="refund_points"]');
             let totalRefund = 0.0;
             
-            // Tách Lỗi và Lý do
-            let regex = /Phúc khảo các lỗi:\s*\[(.*?)\]\s*\|\s*Lý do:(.*)/i;
-            let match = reasonText.match(regex);
+            // Xử lý loại bỏ đoạn thời gian ở đầu chuỗi (VD: [07/09/2026 22:53] )
+            let cleanReasonText = reasonText;
+            let timeMatch = reasonText.match(/^\[\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}\]\s*/);
+            if (timeMatch) {
+                cleanReasonText = reasonText.replace(timeMatch[0], '');
+            }
+            
+            // Tách phần Lỗi và phần Lý do
+            let regex = /Phúc khảo các lỗi:\s*\[(.*?)\]\s*\|\s*Lý do:(.*)/is;
+            let match = cleanReasonText.match(regex);
             
             if (match) {
                 let errorsStr = match[1]; 
                 let reasonStr = match[2];
-                reasonDiv.innerHTML = '"' + reasonStr.trim().replace(/ \| /g, '<br>') + '"';
+                if(reasonDiv) reasonDiv.innerHTML = '"' + reasonStr.trim().replace(/ \| /g, '<br>') + '"';
                 
                 let appealedErrors = errorsStr.split("] & ["); 
                 appealedErrors.forEach((errStr, idx) => {
                     let cleanErr = errStr.trim();
                     if (!cleanErr) return;
                     
-                    // Tính điểm tự động cho từng lỗi
+                    // Tính điểm tự động tra cứu từ ngân hàng lỗi
                     let qtyMatch = cleanErr.match(/(?:x|:|-)\s*(\d+)/i);
                     let qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
+                    
                     let foundPoints = 0.0;
                     for (let i = 0; i < violationBankData.length; i++) {
                         if (cleanErr.toLowerCase().includes(violationBankData[i].name.toLowerCase())) {
@@ -1797,35 +1804,37 @@
                     let itemPoints = foundPoints * qty;
                     totalRefund += itemPoints; 
                     
-                    // Vẽ Checkbox giao diện
-                    let html = `
-                    <label class="d-flex align-items-center p-2 border rounded-3 bg-white transition-all error-cb-label" style="cursor:pointer; border-color: #2563eb;">
-                        <input type="checkbox" class="form-check-input me-3 resolve-err-cb" name="approved_errors[]" value="${cleanErr}" data-points="${itemPoints}" checked style="width:20px; height:20px;">
-                        <span class="fw-bold text-main flex-grow-1" style="font-size:14px;">${cleanErr}</span>
-                        <span class="badge bg-danger rounded-pill shadow-sm">+${itemPoints}đ</span>
-                    </label>`;
-                    checkboxesDiv.insertAdjacentHTML('beforeend', html);
+                    // Vẽ giao diện Checkbox lên màn hình
+                    if(checkboxesDiv) {
+                        let html = `
+                        <label class="d-flex align-items-center p-2 border rounded-3 bg-white transition-all error-cb-label" style="cursor:pointer; border-color: #2563eb;">
+                            <input type="checkbox" class="form-check-input me-3 resolve-err-cb" name="approved_errors[]" value="${cleanErr}" data-points="${itemPoints}" checked style="width:20px; height:20px;">
+                            <span class="fw-bold text-main flex-grow-1" style="font-size:14px;">${cleanErr}</span>
+                            <span class="badge bg-danger rounded-pill shadow-sm">+${itemPoints}đ</span>
+                        </label>`;
+                        checkboxesDiv.insertAdjacentHTML('beforeend', html);
+                    }
                 });
                 
-                // Lắng nghe sự kiện để cộng trừ tiền Tự động ngay lập tức khi Bỏ tích Checkbox
-                let cbs = checkboxesDiv.querySelectorAll('.resolve-err-cb');
-                cbs.forEach(cb => {
-                    cb.addEventListener('change', function() {
-                        let currentTotal = 0.0;
-                        checkboxesDiv.querySelectorAll('.resolve-err-cb:checked').forEach(checkedCb => {
-                            currentTotal += parseFloat(checkedCb.getAttribute('data-points'));
+                // Lắng nghe sự kiện Bỏ tích/Tích để cộng trừ điểm tự động theo thời gian thực
+                if(checkboxesDiv) {
+                    let cbs = checkboxesDiv.querySelectorAll('.resolve-err-cb');
+                    cbs.forEach(cb => {
+                        cb.addEventListener('change', function() {
+                            let currentTotal = 0.0;
+                            checkboxesDiv.querySelectorAll('.resolve-err-cb:checked').forEach(checkedCb => {
+                                currentTotal += parseFloat(checkedCb.getAttribute('data-points'));
+                            });
+                            if (refundInput) refundInput.value = currentTotal > 0 ? currentTotal.toFixed(1) : "0.0";
+                            this.parentElement.style.borderColor = this.checked ? '#2563eb' : '#e2e8f0';
+                            this.parentElement.style.opacity = this.checked ? '1' : '0.5';
                         });
-                        if (refundInput) refundInput.value = currentTotal > 0 ? currentTotal.toFixed(1) : "0.0";
-                        
-                        // Đổi màu Label
-                        this.parentElement.style.borderColor = this.checked ? '#2563eb' : '#e2e8f0';
-                        this.parentElement.style.opacity = this.checked ? '1' : '0.5';
                     });
-                });
+                }
 
             } else {
-                reasonDiv.innerHTML = '"' + reasonText.replace(/ \| /g, '<br>') + '"';
-                checkboxesDiv.innerHTML = '<div class="text-muted small fst-italic">Khiếu nại tay, không có danh sách lỗi cụ thể đính kèm.</div>';
+                if(reasonDiv) reasonDiv.innerHTML = '"' + reasonText.replace(/ \| /g, '<br>') + '"';
+                if(checkboxesDiv) checkboxesDiv.innerHTML = '<div class="text-muted small fst-italic">Khiếu nại tay, không có danh sách lỗi cụ thể đính kèm.</div>';
             }
 
             if (refundInput) refundInput.value = totalRefund > 0 ? totalRefund.toFixed(1) : "0.0";
