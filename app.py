@@ -7147,14 +7147,11 @@ def sao_do_quick_submit_form():
         flash(f"Lỗi hệ thống: {e}", "error")
         return redirect(url_for('mobile_sao_do'))
 
-
 @app.route('/submit_mobile_sao_do', methods=['POST'])
 def submit_mobile_sao_do():
     if session.get('role') != 'Sao đỏ': return redirect(url_for('login'))
     
-    # ====================================================================
-    # [KHIÊN BẢO VỆ]: CHỐNG NHÂN ĐÔI DỮ LIỆU DO TRÌNH DUYỆT TỰ ĐỘNG RETRY KHI RỚT MẠNG
-    # ====================================================================
+    # [KHIÊN BẢO VỆ CHỐNG SPAM]
     import hashlib, time
     req_data = str(request.form.to_dict()) + str(request.form.get('evidence_base64', '')[:50])
     req_hash = hashlib.md5(req_data.encode('utf-8')).hexdigest()
@@ -7169,7 +7166,6 @@ def submit_mobile_sao_do():
         
     session['last_full_submit_hash'] = req_hash
     session['last_full_submit_time'] = current_time
-    # ====================================================================
 
     try:
         with session_scope() as db_session:
@@ -7180,14 +7176,16 @@ def submit_mobile_sao_do():
             branch = db_session.query(Branch).filter_by(id=branch_id).first()
             score = db_session.query(WeeklyScore).filter_by(branch_id=branch.id, week=current_week).first()
             
-            # --- KIỂM TRA KHÓA SỔ ---
             if score and getattr(score, 'is_locked', False):
-                flash(f"⛔ Tuần {current_week} đã khóa sổ! Không thể sửa điểm của lớp {branch.name}.", "error")
+                flash(f"⛔ Tuần {current_week} đã khóa sổ! Không thể sửa điểm.", "error")
                 return redirect(url_for('mobile_sao_do'))
-            # ----------------------------------------
             
+            # --- TẢI VÀ XỬ LÝ ẢNH TRƯỚC TIÊN ---
             evidence_base64 = request.form.get('evidence_base64')
-            
+            saved_image_path = None
+            if evidence_base64 and evidence_base64 != "[]":
+                saved_image_path = process_and_save_evidence(evidence_base64, branch.id, current_week)
+                
             settings = db_session.query(ScoreSettings).filter_by(school_year_id=active_year.id).first()
             max_mon = int(getattr(settings, 'max_diem_mon', 4)) if settings else 4
             max_tot = int(getattr(settings, 'max_diem_tot', 14)) if settings else 14
@@ -7227,7 +7225,6 @@ def submit_mobile_sao_do():
                 f8 = score.count_8 if score else 0
                 if "1" in b_group: f8 = 0
 
-            # 2. HỢP NHẤT LỖI CŨ (TỪ DB) VÀ LỖI MỚI (TỪ APP)
             all_categories = db_session.query(ViolationCategory).filter_by(school_year_id=active_year.id).all()
             sorted_cats = sorted(all_categories, key=lambda x: len(x.name), reverse=True)
             
@@ -7235,48 +7232,31 @@ def submit_mobile_sao_do():
             days_vn = {0: '[T2]', 1: '[T3]', 2: '[T4]', 3: '[T5]', 4: '[T6]', 5: '[T7]', 6: '[CN]'}
             today_pfx = days_vn[datetime.now().weekday()]
             
-            old_note = score.note if score and score.note else ""
-            
-            new_checkbox_notes = []
-            for cat in all_categories:
-                qty_new = int(request.form.get(f'viol_{cat.id}', '0'))
-                if qty_new > 0:
-                    stu_new = request.form.get(f'student_{cat.id}', '').strip()
-                    stu_norm = " ".join(stu_new.split()).title() if stu_new else ""
-                    if stu_norm:
-                        new_checkbox_notes.append(f"{today_pfx} {cat.name} x{qty_new} [{stu_norm}]")
-                    else:
-                        new_checkbox_notes.append(f"{today_pfx} {cat.name} x{qty_new}")
-                        
-            raw_app_note = request.form.get('manual_note', '').strip()
-            manual_parts = []
-            if raw_app_note:
-                diff_note = raw_app_note
-                if old_note and raw_app_note.startswith(old_note):
-                    diff_note = raw_app_note.replace(old_note, "", 1).strip().lstrip(" ;,")
-                if diff_note:
-                    for part in smart_split_note(diff_note):
-                        p_clean = part.strip()
-                        if p_clean:
-                            if not re.search(r'\[(T[2-7]|CN)\]', p_clean):
-                                manual_parts.append(f"{today_pfx} {p_clean}")
-                            else:
-                                manual_parts.append(p_clean)
-
-            combined_parts = []
-            if old_note: combined_parts.append(old_note)
-            if new_checkbox_notes: combined_parts.extend(new_checkbox_notes)
-            if manual_parts: combined_parts.extend(manual_parts)
-            
-            raw_combined_note = " ; ".join(combined_parts)
-
+            raw_combined_note = request.form.get('full_note', '').strip()
             parsed_errors = {}
-            for part in smart_split_note(raw_combined_note):
+            import re
+            
+            def safe_split(note_text):
+                if not note_text: return []
+                parts, current = [], []
+                in_bracket = 0
+                for char in str(note_text):
+                    if char in '[(': in_bracket += 1
+                    elif char in '])': in_bracket -= 1
+                    if char in ',;+\n' and in_bracket <= 0:
+                        parts.append(''.join(current))
+                        current = []
+                    else:
+                        current.append(char)
+                if current: parts.append(''.join(current))
+                return [p.strip() for p in parts if p.strip()]
+
+            for part in safe_split(raw_combined_note):
                 part_clean = part.strip()
                 if not part_clean: continue
                 
                 match_day = re.search(r'\[(T[2-7]|CN)\]', part_clean)
-                day_pfx = match_day.group(0) if match_day else ""
+                day_pfx = match_day.group(0) if match_day else today_pfx
                 text_to_parse = part_clean.replace(day_pfx, "").strip() if day_pfx else part_clean
                 
                 match_stu = re.search(r'\[(.*?)\]', text_to_parse)
@@ -7294,113 +7274,90 @@ def submit_mobile_sao_do():
                         break
                 if not matched:
                     parsed_errors[("MANUAL", text_to_parse.lower(), text_to_parse, day_pfx)] = 1
-
-            # 3. CHẠY THUẬT TOÁN XÉN TRẦN BAREM TRÊN TỔNG DỮ LIỆU ĐÃ HỢP NHẤT
-            bad_marks_expanded = []
-            other_errors = []
-
+                    
+            # Xén trần học tập
+            bad_marks_expanded = []; other_errors = []
             for (cat_name, stu_key, stu_display, day_pfx), qty in parsed_errors.items():
                 if cat_name == "MANUAL":
                     other_errors.append((cat_name, stu_display, qty, day_pfx))
                 else:
-                    is_bad_mark = "không học bài" in cat_name.lower() or "điểm kém" in cat_name.lower()
-                    if is_bad_mark:
+                    if "không học bài" in cat_name.lower() or "điểm kém" in cat_name.lower():
                         mon_match = re.search(r'\(Môn (.*?)\)', stu_display, re.IGNORECASE) if stu_display else None
                         mon = mon_match.group(1).strip() if mon_match else "Khác"
-                        for _ in range(qty):
-                            bad_marks_expanded.append({'cat_name': cat_name, 'stu_display': stu_display, 'mon': mon, 'day_pfx': day_pfx})
+                        for _ in range(qty): bad_marks_expanded.append({'cat_name': cat_name, 'stu_display': stu_display, 'mon': mon, 'day_pfx': day_pfx})
                     else:
                         other_errors.append((cat_name, stu_display, qty, day_pfx))
 
             bad_by_subj = {}
-            for bm in bad_marks_expanded:
-                bad_by_subj.setdefault(bm['mon'], []).append(bm)
+            for bm in bad_marks_expanded: bad_by_subj.setdefault(bm['mon'], []).append(bm)
                 
             surviving_bad_marks = []
             for marks in bad_by_subj.values(): surviving_bad_marks.extend(marks[:max_mon])
             surviving_bad_marks = surviving_bad_marks[:max_tot]
-
+            
             capped_bad_counts = {}
             for bm in surviving_bad_marks:
                 k = (bm['cat_name'], bm['stu_display'], bm['day_pfx'])
                 capped_bad_counts[k] = capped_bad_counts.get(k, 0) + 1
-
-            # 4. TÍNH TỔNG ĐIỂM TRỪ VÀ TẠO CHUỖI GHI CHÚ MỚI
-            diem_tru_final = 0.0
-            final_note_parts = []
-
+                
+            final_parts = []; diem_tru_auto = 0.0
+            
             for (cat_name, stu_display, day_pfx), qty in capped_bad_counts.items():
                 base_str = f"{cat_name} x{qty} [{stu_display}]" if stu_display else f"{cat_name} x{qty}"
-                final_note_parts.append(f"{day_pfx} {base_str}".strip())
+                final_parts.append(f"{day_pfx} {base_str}".strip())
                 for cat in sorted_cats:
                     if cat.name == cat_name and getattr(cat, 'point_type', 'Điểm trừ') != 'Điểm cộng':
-                        diem_tru_final += float(cat.penalty_points * qty); break
+                        diem_tru_auto += float(cat.penalty_points * qty); break
                         
             for cat_name, stu_display, qty, day_pfx in other_errors:
-                if cat_name == "MANUAL":
-                    final_note_parts.append(f"{day_pfx} {stu_display}".strip() if day_pfx else stu_display)
+                if cat_name == "MANUAL": 
+                    final_parts.append(f"{day_pfx} {stu_display}".strip() if day_pfx else stu_display)
                 else:
                     base_str = f"{cat_name} x{qty} [{stu_display}]" if stu_display else f"{cat_name} x{qty}"
-                    final_note_parts.append(f"{day_pfx} {base_str}".strip())
+                    final_parts.append(f"{day_pfx} {base_str}".strip())
                     for cat in sorted_cats:
                         if cat.name == cat_name and getattr(cat, 'point_type', 'Điểm trừ') != 'Điểm cộng':
-                            diem_tru_final += float(cat.penalty_points * qty); break
-
-            final_note = " ; ".join(final_note_parts)
-
-            # 5. TÍNH TỔNG ĐIỂM DỰ KIẾN
-            truc = float(score.score_truc) if score and score.score_truc is not None else 100.0
-            cong = float(score.score_cong) if score and score.score_cong is not None else 0.0
+                            diem_tru_auto += float(cat.penalty_points * qty); break
             
             D8, D9, D10, TK, TT = 1.0, 3.0, 5.0, 20.0, 30.0
             if settings:
                 D8, D9, D10 = float(settings.diem_8), float(settings.diem_9), float(settings.diem_10)
                 TK, TT = float(settings.diem_tuan_kha), float(settings.diem_tuan_tot)
+                
+            score_truc = float(request.form.get('score_truc', score.score_truc if score else 100.0))
+            score_cong = float(request.form.get('score_cong', score.score_cong if score else 0.0))
             
             diem_quy_uoc = (f9 * D9) + (f10 * D10)
-            if "2" in b_group: diem_quy_uoc += (f8 * D8)
-
-            diem_xep_loai = 0.0
-            if rating == "Tuần Tốt": diem_xep_loai = TT
-            elif rating == "Tuần Khá": diem_xep_loai = TK
+            if "1" not in b_group: diem_quy_uoc += (f8 * D8)
+            diem_xep_loai = TT if rating == "Tuần Tốt" else (TK if rating == "Tuần Khá" else 0.0)
             
-            total_val = truc + diem_xep_loai + diem_quy_uoc + cong - diem_tru_final
+            total_val = score_truc + diem_xep_loai + diem_quy_uoc + score_cong - diem_tru_auto
 
-            # 6. GHI VÀO DATABASE
-            saved_image_path = process_and_save_evidence(evidence_base64, branch.id, current_week)
-            
-            if score:
-                score.week_rating = rating
-                score.count_8 = f8; score.count_9 = f9; score.count_10 = f10
-                score.note = final_note
-                score.score_tru = diem_tru_final
-                score.total_score = total_val
+            # --- [CƠ CHẾ LƯU MỚI: TÁI TỔ HỢP ẢNH CLOUDINARY] ---
+            if saved_image_path:
+                current_images = getattr(score, 'evidence_image', '') or '' if score else ''
+                existing_urls = [url.strip() for url in current_images.split('|') if url.strip()]
+                new_urls = [url.strip() for url in saved_image_path.split('|') if url.strip()]
                 
-                # --- [BẢN VÁ LỖI TỐI THƯỢNG]: LỌC ẢNH TRÙNG LẶP TRONG CSDL ---
-                if saved_image_path:
-                    current_images = getattr(score, 'evidence_image', '') or ''
-                    existing_urls = [url.strip() for url in current_images.split('|') if url.strip()]
-                    new_urls = [url.strip() for url in saved_image_path.split('|') if url.strip()]
-                    
-                    for n_url in new_urls:
-                        if n_url not in existing_urls:
-                            existing_urls.append(n_url)
-                            
-                    score.evidence_image = "|".join(existing_urls)
-                # -------------------------------------------------------------
+                for n_url in new_urls:
+                    if n_url not in existing_urls: existing_urls.append(n_url)
+                img_links = "|".join(existing_urls)
             else:
-                score = WeeklyScore(
-                    branch_id=branch.id, week=current_week, week_rating=rating,
-                    count_8=f8, count_9=f9, count_10=f10,
-                    score_truc=truc, score_cong=cong, score_tru=diem_tru_final,
-                    note=final_note, total_score=total_val,
-                    evidence_image=saved_image_path
-                )
-                db_session.add(score)
-                db_session.flush()
+                # Cực kỳ quan trọng: Nếu đợt này không tải ảnh mới, PHẢI GIỮ LẠI CÁC ẢNH CŨ
+                img_links = getattr(score, 'evidence_image', '') or '' if score else ''
 
+            if score:
+                score.week_rating = rating; score.count_8 = f8; score.count_9 = f9; score.count_10 = f10
+                score.score_truc = score_truc; score.score_cong = score_cong; score.score_tru = diem_tru_auto
+                score.note = " ; ".join(final_parts); score.total_score = total_val
+                score.evidence_image = img_links
+            else:
+                score = WeeklyScore(branch_id=branch.id, week=current_week, week_rating=rating, count_8=f8, count_9=f9, count_10=f10, 
+                                    score_truc=score_truc, score_cong=score_cong, score_tru=diem_tru_auto, 
+                                    note=" ; ".join(final_parts), total_score=total_val, evidence_image=img_links)
+                db_session.add(score); db_session.flush()
+                
             db_session.query(WeeklyViolation).filter_by(weekly_score_id=score.id).delete()
-            
             for (cat_name, stu_display, day_pfx), qty in capped_bad_counts.items():
                 cat_id = next((c.id for c in sorted_cats if c.name == cat_name), None)
                 if cat_id: db_session.add(WeeklyViolation(weekly_score_id=score.id, violation_id=cat_id, quantity=qty, student_name=stu_display if stu_display else None))
@@ -7409,33 +7366,20 @@ def submit_mobile_sao_do():
                     cat_id = next((c.id for c in sorted_cats if c.name == cat_name), None)
                     if cat_id: db_session.add(WeeklyViolation(weekly_score_id=score.id, violation_id=cat_id, quantity=qty, student_name=stu_display if stu_display else None))
 
-            log_system_action("MOBILE SAO ĐỎ", f"SD{session.get('username')} đã chấm điểm và cập nhật lớp {branch.name}.")
-            
-            # =========================================================
-            # [NÂNG CẤP]: BẮN THÔNG BÁO ĐẨY CHO GVCN KHI CHỐT SỔ LỚP
-            # =========================================================
             try:
-                new_errors = []
-                if new_checkbox_notes: new_errors.extend(new_checkbox_notes)
-                if manual_parts: new_errors.extend(manual_parts)
-                
-                if new_errors:
-                    error_summary = " ; ".join(new_errors)
-                    gvcn_username = branch.name.strip().upper()
-                    push_title = f"⚠️ Lớp {branch.name} vừa bị trừ điểm!"
-                    push_body = f"Sao đỏ ghi nhận: {error_summary[:50]}... \nBấm vào đây để xem chi tiết."
-                    send_web_push(gvcn_username, push_title, push_body)
-            except Exception as push_err:
-                print(f"Lỗi gửi Push cho GVCN {branch.name}: {push_err}")
-            # =========================================================
+                gvcn_username = branch.name.strip().upper() 
+                push_body = " ; ".join(final_parts)
+                send_web_push(gvcn_username, f"⚠️ Lớp {branch.name} vừa bị trừ điểm!", f"Sao đỏ chấm: {push_body[:40]}...")
+            except: pass
 
-            flash(f"Đã nộp điểm và đồng bộ vào hệ thống cho lớp {branch.name} thành công!", "success")
-            return redirect(url_for('mobile_sao_do'))
+            log_system_action("MOBILE TRỰC", f"Nạp điểm lớp {branch.name}")
+            flash(f"⚡ Đã nạp thành công báo cáo chấm điểm cho lớp {branch.name}!", "success")
             
     except Exception as e:
         import traceback; traceback.print_exc()
-        flash(f"Lỗi: {e}", "error")
-        return redirect(url_for('mobile_sao_do'))
+        flash(f"Lỗi lưu trữ dữ liệu: {e}", "error")
+        
+    return redirect(url_for('mobile_sao_do'))
     
 # =====================================================================
 # MODULE: PHIẾU PHÂN TÍCH CHUYÊN SÂU LỚP HỌC (DÀNH CHO HỌP GVCN)
