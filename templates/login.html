@@ -161,8 +161,9 @@
     <div class="login-wrapper">
         <div class="login-card">
             <div class="text-center">
+				<!-- LOGO HUY HIỆU ĐOÀN TỪ THƯ MỤC STATIC -->
                 <div class="text-center mb-4">
-                    <img src="https://upload.wikimedia.org/wikipedia/vi/a/ad/Huy_hieu_Doan.png" 
+                    <img src="{{ url_for('static', filename='logo_doan.png') }}" 
                          alt="Huy hiệu Đoàn" 
                          style="width: 95px; height: 95px; object-fit: contain; filter: drop-shadow(0 10px 20px rgba(0, 84, 166, 0.4)); transition: transform 0.3s ease;"
                          onmouseover="this.style.transform='scale(1.08)'" 
