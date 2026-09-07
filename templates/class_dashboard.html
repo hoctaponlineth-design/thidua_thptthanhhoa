@@ -1639,21 +1639,19 @@
             }
         }
 
-		// XỬ LÝ MỞ MODAL PHÚC KHẢO VÀ SINH GIAO DIỆN HIỆN ĐẠI
-        function openAppealModal(btn) {
+		function openAppealModal(btn) {
             let scoreId = btn.getAttribute('data-score-id');
             let weekName = btn.getAttribute('data-week');
             let noteText = btn.getAttribute('data-note');
 
             document.getElementById('appealScoreId').value = scoreId;
             document.getElementById('appealWeekName').value = weekName;
-            document.getElementById('appealWeekNameDisplay').innerText = weekName; // Hiển thị trên Header
+            document.getElementById('appealWeekNameDisplay').innerText = weekName; 
             
             let container = document.getElementById('appealViolationsContainer');
             let section = document.getElementById('appealViolationsSection');
             container.innerHTML = ''; 
             
-            // XÁC ĐỊNH THỨ HỆ THỐNG ĐỂ KHÓA LỖI CŨ
             const dayOrder = { 'CN': 0, 'T2': 1, 'T3': 2, 'T4': 3, 'T5': 4, 'T6': 5, 'T7': 6 };
             const jsDay = new Date().getDay(); 
             const dayMap = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -1676,8 +1674,19 @@
                                 isPastDay = true;
                             }
                         }
+                        
+                        // [TÍNH NĂNG MỚI]: Tự động tra cứu và gắn điểm phạt cho GVCN thấy
+                        let qtyMatch = vClean.match(/x\s*(\d+)/i);
+                        let qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
+                        let foundPoints = 0.0;
+                        for (let i = 0; i < violationBankData.length; i++) {
+                            if (vClean.toLowerCase().includes(violationBankData[i].name.toLowerCase())) {
+                                foundPoints = violationBankData[i].points;
+                                break;
+                            }
+                        }
+                        let itemPoints = foundPoints * qty;
 
-                        // THIẾT KẾ CARD HIỆN ĐẠI CHO TỪNG LỖI
                         let labelNode = document.createElement('label');
                         labelNode.className = 'd-flex align-items-center p-3 border rounded-3 w-100 mb-1 transition-all';
                         labelNode.style.cursor = isPastDay ? 'not-allowed' : 'pointer';
@@ -1685,33 +1694,34 @@
                         labelNode.style.borderColor = '#e2e8f0';
                         
                         let disabledAttr = isPastDay ? 'disabled' : '';
-                        let badgePast = isPastDay ? '<span class="badge bg-secondary ms-2 opacity-75" style="font-size: 10px; font-weight: 500;">Hết hạn khiếu nại</span>' : '';
+                        let badgePast = isPastDay ? '<span class="badge bg-secondary ms-2 opacity-75" style="font-size: 10px;">Hết hạn</span>' : '';
+                        
+                        // Hiển thị điểm phạt bằng nhãn đỏ
+                        let pointBadge = itemPoints > 0 ? `<span class="badge bg-danger ms-2">-${itemPoints}đ</span>` : '';
 
                         labelNode.innerHTML = `
                             <div class="form-check m-0 pe-3 d-flex align-items-center">
-                                <input class="form-check-input shadow-none" type="checkbox" value="${vClean}" id="viol_app_${index}" ${disabledAttr} style="width: 20px; height: 20px; cursor: inherit;">
+                                <input class="form-check-input shadow-none appeal-err-cb" type="checkbox" value="${vClean}" data-points="${itemPoints}" ${disabledAttr} style="width: 20px; height: 20px; cursor: inherit;">
                             </div>
                             <div class="flex-grow-1" style="line-height: 1.4;">
                                 <div class="fw-bold ${isPastDay ? 'text-muted opacity-50 text-decoration-line-through' : 'text-main'}" style="font-size: 14px;">
-                                    ${vClean} ${badgePast}
+                                    ${vClean} ${pointBadge} ${badgePast}
                                 </div>
                             </div>
                         `;
 
-                        // JS Xử lý đổi màu viền khi Tích/Bỏ tích (UI/UX)
                         if (!isPastDay) {
                             let checkbox = labelNode.querySelector('input');
                             checkbox.addEventListener('change', function() {
                                 if(this.checked) {
                                     labelNode.style.borderColor = 'var(--primary)';
-                                    labelNode.style.background = '#eff6ff'; // Màu xanh nhạt
+                                    labelNode.style.background = '#eff6ff'; 
                                 } else {
                                     labelNode.style.borderColor = '#e2e8f0';
                                     labelNode.style.background = '#ffffff';
                                 }
                             });
                         }
-
                         container.appendChild(labelNode);
                     }
                 });
@@ -1719,11 +1729,9 @@
                 section.style.display = 'none';
             }
             
-            // Focus vào ô nhập văn bản khi mở modal
             let textarea = document.getElementById('appealReasonText');
             textarea.value = ''; 
             textarea.style.borderColor = 'var(--border)';
-            
             textarea.addEventListener('focus', function() { this.style.borderColor = 'var(--primary)'; this.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.1)';});
             textarea.addEventListener('blur', function() { this.style.borderColor = 'var(--border)'; this.style.boxShadow = 'none';});
 
@@ -1731,12 +1739,20 @@
             myModal.show();
         }
 
+        // [TÍNH NĂNG MỚI]: Đóng gói "(Phạt Xđ)" vào chuỗi dữ liệu gửi lên Server
         document.getElementById('appealForm').addEventListener('submit', function(e) {
             let selected = [];
-            let container = document.getElementById('appealViolationsContainer');
-            let checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+            let checkboxes = document.querySelectorAll('.appeal-err-cb:checked');
             
-            checkboxes.forEach(cb => { selected.push(cb.value); });
+            checkboxes.forEach(cb => { 
+                let pts = cb.getAttribute('data-points');
+                let val = cb.value;
+                if(pts && parseFloat(pts) > 0) {
+                    selected.push(`${val} (Phạt ${pts}đ)`);
+                } else {
+                    selected.push(val);
+                }
+            });
             
             let textReason = document.getElementById('appealReasonText').value;
             let finalReason = "";
@@ -1748,15 +1764,8 @@
             }
             document.getElementById('finalReason').value = finalReason;
         });
-        
-		// NẠP DỮ LIỆU BAREM LỖI TỪ SERVER XUỐNG ĐỂ JS TRA CỨU
-        const violationBankData = [
-            {% for cat in violation_bank %}
-            { name: "{{ cat.name | safe }}", points: parseFloat('{{ cat.penalty_points }}') || 0 },
-            {% endfor %}
-        ];
 
-function openResolveModal(btn) {
+        function openResolveModal(btn) {
             document.getElementById('resolveScoreId').value = btn.getAttribute('data-score-id');
             document.getElementById('resolveBranch').value = "Lớp " + btn.getAttribute('data-branch-name') + " (" + btn.getAttribute('data-week') + ")";
             
@@ -1769,14 +1778,12 @@ function openResolveModal(btn) {
             let refundInput = document.querySelector('input[name="refund_points"]');
             let totalRefund = 0.0;
             
-            // Xử lý loại bỏ đoạn thời gian ở đầu chuỗi (VD: [07/09/2026 22:53] )
             let cleanReasonText = reasonText;
             let timeMatch = reasonText.match(/^\[\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}\]\s*/);
             if (timeMatch) {
                 cleanReasonText = reasonText.replace(timeMatch[0], '');
             }
             
-            // Thuật toán bóc tách dữ liệu thông minh (Chống nhiễu dấu ngoặc lồng nhau)
             let regex = /Phúc khảo các lỗi:\s*(.*?)\s*\|\s*Lý do:(.*)/is;
             let match = cleanReasonText.match(regex);
             
@@ -1785,19 +1792,17 @@ function openResolveModal(btn) {
                 let reasonStr = match[2];
                 if(reasonDiv) reasonDiv.innerHTML = '"' + reasonStr.trim().replace(/ \| /g, '<br>') + '"';
                 
-                // Cắt bằng ký tự "&" để tránh đứt chuỗi tên học sinh
                 let appealedErrors = errorsStr.split(" & "); 
-                appealedErrors.forEach((errStr, idx) => {
+                appealedErrors.forEach((errStr) => {
                     let cleanErr = errStr.trim();
-                    // Gọt sạch ngoặc vuông dư thừa ở 2 đầu
                     if (cleanErr.startsWith('[')) cleanErr = cleanErr.substring(1);
                     if (cleanErr.endsWith(']')) cleanErr = cleanErr.substring(0, cleanErr.length - 1);
-                    cleanErr = cleanErr.trim();
                     
+                    // [TÍNH NĂNG MỚI]: Gọt bỏ chữ "(Phạt Xđ)" để tính toán nội bộ an toàn
+                    cleanErr = cleanErr.replace(/\(Phạt .*?đ\)/i, '').trim();
                     if (!cleanErr) return;
                     
-                    // Tính điểm tự động tra cứu từ ngân hàng lỗi
-                    let qtyMatch = cleanErr.match(/(?:x|:|-)\s*(\d+)/i);
+                    let qtyMatch = cleanErr.match(/x\s*(\d+)/i);
                     let qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
                     
                     let foundPoints = 0.0;
@@ -1810,7 +1815,6 @@ function openResolveModal(btn) {
                     let itemPoints = foundPoints * qty;
                     totalRefund += itemPoints; 
                     
-                    // Vẽ giao diện Checkbox lên màn hình
                     if(checkboxesDiv) {
                         let html = `
                         <label class="d-flex align-items-center p-2 border rounded-3 bg-white transition-all error-cb-label" style="cursor:pointer; border-color: #2563eb;">
@@ -1822,7 +1826,6 @@ function openResolveModal(btn) {
                     }
                 });
                 
-                // Lắng nghe sự kiện Bỏ tích/Tích để cộng trừ điểm tự động theo thời gian thực
                 if(checkboxesDiv) {
                     let cbs = checkboxesDiv.querySelectorAll('.resolve-err-cb');
                     cbs.forEach(cb => {
