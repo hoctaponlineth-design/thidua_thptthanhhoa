@@ -552,7 +552,28 @@
             </div>
         </div>
 
-        <script>
+		<script>
+        // [BỔ SUNG 1]: TỰ ĐỘNG KIỂM TRA TRÍ NHỚ KHI VỪA MỞ TRANG HOẶC F5
+        document.addEventListener("DOMContentLoaded", function() {
+            {% if is_gvcn and selected_branch %}
+            const branchId = '{{ selected_branch.id }}';
+            const today = new Date().toLocaleDateString('vi-VN'); 
+            const storageKey = 'checkin_status_' + branchId + '_' + today;
+            
+            let btn = document.getElementById('btn-checkin');
+            
+            // Nếu điện thoại nhớ ra là hôm nay đã điểm danh rồi -> Khóa nút luôn
+            if(btn && localStorage.getItem(storageKey) === 'done') {
+                btn.disabled = true;
+                btn.classList.remove('btn-checkin-pulse', 'text-success');
+                btn.style.color = '#64748b';
+                btn.style.background = '#e2e8f0';
+                btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ĐÃ GHI NHẬN';
+            }
+            {% endif %}
+        });
+
+        // GIỮ NGUYÊN HÀM CŨ CỦA THẦY - CHỈ CẤY THÊM LỆNH LƯU TRÍ NHỚ
         function diemDanh15Phut(branchId, weekName) {
             if(!confirm("Xác nhận Thầy/Cô đang có mặt tại lớp để đồng hành cùng các em?")) return;
             
@@ -568,7 +589,14 @@
             })
             .then(res => res.json())
             .then(data => {
+                // Tự động tạo chìa khóa lưu trí nhớ cho ngày hôm nay
+                const today = new Date().toLocaleDateString('vi-VN');
+                const storageKey = 'checkin_status_' + branchId + '_' + today;
+
                 if(data.success) {
+                    // [BỔ SUNG 2]: Bấm thành công -> Lưu vào bộ nhớ điện thoại
+                    localStorage.setItem(storageKey, 'done'); 
+                    
                     btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ĐÃ GHI NHẬN';
                     btn.classList.remove('text-success');
                     btn.style.color = '#64748b';
@@ -576,6 +604,9 @@
                 } else {
                     alert("⚠️ " + data.error);
                     if(data.error.includes("rồi")) {
+                        // [BỔ SUNG 3]: Nếu hệ thống báo "đã ghi nhận rồi" -> Cập nhật luôn trí nhớ để lần sau không hiện lại
+                        localStorage.setItem(storageKey, 'done'); 
+                        
                         btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ĐÃ GHI NHẬN';
                         btn.style.color = '#64748b';
                         btn.style.background = '#e2e8f0';
