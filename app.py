@@ -4055,8 +4055,12 @@ def class_dashboard():
                 if is_gvcn:
                     branches = db_session.query(Branch).filter(Branch.name == session_username, Branch.school_year_id == active_year.id).all()
                 else:
-                    branches = db_session.query(Branch).filter(Branch.school_year_id == active_year.id).order_by(Branch.name).all()
-            
+                    branches = db_session.query(Branch).filter(Branch.school_year_id == active_year.id).all()
+                    
+                    # [THUẬT TOÁN SẮP XẾP TỰ NHIÊN - NATURAL SORT]
+                    import re
+                    branches.sort(key=lambda b: [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', str(b.name))])
+                    
             selected_branch_id = request.args.get('branch_id', type=int)
             if not selected_branch_id and branches:
                 selected_branch_id = branches[0].id
@@ -6488,6 +6492,8 @@ def mobile_sao_do():
 
             assignment = db_session.query(Assignment).filter_by(red_star_id=star_id).order_by(Assignment.week_number.desc()).first()
             all_branches = db_session.query(Branch).filter_by(school_year_id=active_year.id).all()
+            import re
+            all_branches.sort(key=lambda b: [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', str(b.name))])
             
             if not assignment:
                 return render_template('sao_do_dashboard.html', assignment=None, all_branches=all_branches)
