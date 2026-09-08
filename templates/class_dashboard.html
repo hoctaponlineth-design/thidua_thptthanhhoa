@@ -512,22 +512,41 @@
         </div>
 
         {% if selected_branch %}
-        <!-- BẮT ĐẦU: KHỐI ĐIỂM DANH GVCN 15 PHÚT -->
-		{% if is_gvcn %}
-        <div class="glass-card mt-4 mb-4 border-0" style="background: linear-gradient(135deg, #10b981, #047857); color: white; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);">
-            <div class="p-3 p-md-4 d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+		<!-- BẮT ĐẦU: KHỐI ĐIỂM DANH GVCN 15 PHÚT (ĐÃ NÂNG CẤP TOÀN DIỆN) -->
+        {% if is_gvcn %}
+        
+        <!-- Bổ sung CSS Hiệu ứng nhịp đập trái tim -->
+        <style>
+            @keyframes pulse-white {
+                0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.6); }
+                70% { box-shadow: 0 0 0 12px rgba(255, 255, 255, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+            }
+            .btn-checkin-pulse { animation: pulse-white 2s infinite; }
+        </style>
+
+        <div class="glass-card mt-3 mb-4 border-0 position-relative overflow-hidden" style="background: linear-gradient(135deg, #10b981, #047857); color: white; box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.4); border-radius: 16px;">
+            <!-- Họa tiết chìm trang trí (Watermark chiếc lá) -->
+            <i class="fa-solid fa-seedling position-absolute opacity-10" style="font-size: 120px; right: -20px; bottom: -20px; transform: rotate(-15deg);"></i>
+            
+            <div class="p-3 p-md-4 d-flex flex-column flex-md-row align-items-center justify-content-between gap-3 position-relative z-1">
                 <div class="d-flex align-items-center gap-3 w-100">
-                    <div class="bg-white text-success rounded-circle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 50px; height: 50px;">
-                        <i class="fa-solid fa-hand-holding-heart fs-4 fa-beat"></i>
+                    <div class="bg-white text-success rounded-circle d-flex align-items-center justify-content-center shadow flex-shrink-0" style="width: 55px; height: 55px;">
+                        <i class="fa-solid fa-hand-holding-heart fs-3 fa-beat"></i>
                     </div>
                     <div>
-                        <h5 class="fw-bold mb-1" style="font-size: 16px;">Đồng hành 15 phút đầu giờ</h5>
-                        <p class="mb-0 opacity-75" style="font-size: 13px;">Thầy/Cô bấm xác nhận để ghi nhận sự có mặt tại lớp nhé!</p>
+                        <!-- Lời chào cá nhân hóa tự động gọi tên GVCN -->
+                        <div class="text-warning fw-bold mb-1" style="font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase;">
+                            <i class="fa-regular fa-sun me-1 fa-spin-pulse"></i> Chào buổi sáng, {% if selected_branch and selected_branch.gvcn %}{{ selected_branch.gvcn }}{% else %}Thầy/Cô{% endif %}!
+                        </div>
+                        <h5 class="fw-bold mb-1" style="font-size: 17px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">Đồng hành 15 phút đầu giờ</h5>
+                        <p class="mb-0 opacity-90" style="font-size: 13px;">Thầy/Cô bấm xác nhận để ghi nhận sự có mặt tại lớp nhé!</p>
                     </div>
                 </div>
-                <button id="btn-checkin" class="btn btn-light text-success fw-bold px-4 py-2 shadow-sm w-100 w-md-auto" style="border-radius: 12px; font-size: 14px; white-space: nowrap;" 
+                <!-- Nút bấm có class btn-checkin-pulse tạo hiệu ứng nhịp thở -->
+                <button id="btn-checkin" class="btn btn-light text-success fw-bold px-4 py-3 shadow w-100 w-md-auto btn-checkin-pulse" style="border-radius: 12px; font-size: 15px; white-space: nowrap; transition: all 0.3s;" 
                         onclick="diemDanh15Phut({{ selected_branch.id }}, 'Tuần hiện tại')">
-                    <i class="fa-solid fa-check-circle me-1"></i> GHI NHẬN CÓ MẶT
+                    <i class="fa-solid fa-face-smile-wink me-2 fs-5"></i> GHI NHẬN CÓ MẶT
                 </button>
             </div>
         </div>
@@ -538,7 +557,8 @@
             
             let btn = document.getElementById('btn-checkin');
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
+            btn.classList.remove('btn-checkin-pulse'); // Tắt nhịp đập khi đã bấm
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang xử lý...';
 
             fetch('/api/gvcn_checkin', {
                 method: 'POST',
@@ -548,7 +568,6 @@
             .then(res => res.json())
             .then(data => {
                 if(data.success) {
-                    alert(data.message);
                     btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ĐÃ GHI NHẬN';
                     btn.classList.remove('text-success');
                     btn.style.color = '#64748b';
@@ -561,14 +580,16 @@
                         btn.style.background = '#e2e8f0';
                     } else {
                         btn.disabled = false;
-                        btn.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i> GHI NHẬN CÓ MẶT';
+                        btn.classList.add('btn-checkin-pulse'); // Bật lại nhịp đập nếu bị lỗi
+                        btn.innerHTML = '<i class="fa-solid fa-face-smile-wink me-2 fs-5"></i> GHI NHẬN CÓ MẶT';
                     }
                 }
             })
             .catch(err => {
                 alert("Lỗi kết nối mạng!");
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i> GHI NHẬN CÓ MẶT';
+                btn.classList.add('btn-checkin-pulse'); // Bật lại nhịp đập nếu bị lỗi
+                btn.innerHTML = '<i class="fa-solid fa-face-smile-wink me-2 fs-5"></i> GHI NHẬN CÓ MẶT';
             });
         }
         </script>
