@@ -422,16 +422,19 @@
             </div>
         </div>
 
-		<!-- BỘ LỌC TÌM KIẾM VÀ HÀNH ĐỘNG -->
-        <div class="glass-card mb-3">
+		BỘ LỌC TÌM KIẾM VÀ HÀNH ĐỘNG -->
+        <div class="glass-card mb-3" {% if is_gvcn %}style="background: transparent; border: none; box-shadow: none; margin-bottom: 0px !important;"{% endif %}>
+            
+            {% if not is_gvcn %}
             <div class="card-header-modern py-3">
                 <h2 class="card-title-modern"><i class="fa-solid fa-magnifying-glass text-primary"></i> Tra Cứu Dữ Liệu</h2>
                 <div class="badge-soft badge-success d-none d-md-flex">
                     {% if active_year %} <i class="fa-solid fa-calendar-check"></i> NH: {{ active_year.name }} {% else %} Chưa kích hoạt {% endif %}
                 </div>
             </div>
+            {% endif %}
             
-            <div class="p-3">
+            <div class="{% if not is_gvcn %}p-3{% else %}p-0{% endif %}">
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
@@ -444,9 +447,10 @@
 
                 <form method="GET" action="/class-dashboard" class="row g-2 align-items-end w-100 m-0">
                     
+                    {% if not is_gvcn %}
                     <div class="col-12 col-md-6 px-0 pe-md-2">
                         <label class="widget-label d-block mb-1">Lớp / Chi đoàn</label>
-						<select class="form-select w-100 form-select-modern py-2" name="branch_id" onchange="this.form.submit()" {% if is_gvcn %}disabled{% endif %}>
+                        <select class="form-select w-100 form-select-modern py-2" name="branch_id" onchange="this.form.submit()">
                             {% for b in branches %}
                                 <option value="{{ b.id }}" {% if selected_branch and selected_branch.id == b.id %}selected{% endif %}>
                                     Lớp {{ b.name }} ({{ b.group }})
@@ -454,6 +458,10 @@
                             {% endfor %}
                         </select>
                     </div>
+                    {% else %}
+                    <!-- Đã ẨN hoàn toàn ô chọn Lớp và thanh tiêu đề đối với tài khoản GVCN -->
+                    <input type="hidden" name="branch_id" value="{{ selected_branch.id if selected_branch else '' }}">
+                    {% endif %}
                     
                     <div class="col-12 px-0 mt-2">
                         {% if selected_branch %}
@@ -499,23 +507,23 @@
             <div class="p-3 p-md-4 d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
                 <div class="d-flex align-items-center gap-3 w-100">
                     <div class="bg-white text-success rounded-circle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 50px; height: 50px;">
-                        <i class="fa-solid fa-fingerprint fs-4 fa-pulse"></i>
+                        <i class="fa-solid fa-hand-holding-heart fs-4 fa-beat"></i>
                     </div>
                     <div>
-                        <h5 class="fw-bold mb-1" style="font-size: 16px;">Điểm danh Sinh hoạt 15 phút</h5>
-                        <p class="mb-0 opacity-75" style="font-size: 13px;">Xác nhận sự có mặt của GVCN tại lớp hôm nay.</p>
+                        <h5 class="fw-bold mb-1" style="font-size: 16px;">Đồng hành 15 phút đầu giờ</h5>
+                        <p class="mb-0 opacity-75" style="font-size: 13px;">Thầy/Cô bấm xác nhận để ghi nhận sự có mặt tại lớp nhé!</p>
                     </div>
                 </div>
                 <button id="btn-checkin" class="btn btn-light text-success fw-bold px-4 py-2 shadow-sm w-100 w-md-auto" style="border-radius: 12px; font-size: 14px; white-space: nowrap;" 
                         onclick="diemDanh15Phut({{ selected_branch.id }}, 'Tuần hiện tại')">
-                    <i class="fa-solid fa-check-circle me-1"></i> XÁC NHẬN CÓ MẶT
+                    <i class="fa-solid fa-check-circle me-1"></i> GHI NHẬN CÓ MẶT
                 </button>
             </div>
         </div>
 
         <script>
         function diemDanh15Phut(branchId, weekName) {
-            if(!confirm("Xác nhận Thầy/Cô đang có mặt sinh hoạt 15 phút đầu giờ tại lớp?")) return;
+            if(!confirm("Xác nhận Thầy/Cô đang có mặt tại lớp để đồng hành cùng các em?")) return;
             
             let btn = document.getElementById('btn-checkin');
             btn.disabled = true;
@@ -530,26 +538,26 @@
             .then(data => {
                 if(data.success) {
                     alert(data.message);
-                    btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ĐÃ ĐIỂM DANH';
+                    btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ĐÃ GHI NHẬN';
                     btn.classList.remove('text-success');
                     btn.style.color = '#64748b';
                     btn.style.background = '#e2e8f0';
                 } else {
                     alert("⚠️ " + data.error);
                     if(data.error.includes("rồi")) {
-                        btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ĐÃ ĐIỂM DANH';
+                        btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ĐÃ GHI NHẬN';
                         btn.style.color = '#64748b';
                         btn.style.background = '#e2e8f0';
                     } else {
                         btn.disabled = false;
-                        btn.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i> XÁC NHẬN CÓ MẶT';
+                        btn.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i> GHI NHẬN CÓ MẶT';
                     }
                 }
             })
             .catch(err => {
                 alert("Lỗi kết nối mạng!");
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i> XÁC NHẬN CÓ MẶT';
+                btn.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i> GHI NHẬN CÓ MẶT';
             });
         }
         </script>
@@ -2408,6 +2416,42 @@
                 alert("❌ Lỗi kết nối máy chủ Push.");
             }
         }
+    </script>
+	<!-- THUẬT TOÁN TỰ ĐỘNG CHUẨN HÓA SỐ ĐIỆN THOẠI BỊ LỖI .0 TỪ EXCEL -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            function formatPhoneNumber(phoneStr) {
+                if (!phoneStr || phoneStr.trim() === '' || phoneStr.includes('---')) return phoneStr;
+                let p = phoneStr.trim();
+                
+                // 1. Cắt bỏ đuôi .0 do Excel tự sinh
+                if (p.endsWith('.0')) {
+                    p = p.slice(0, -2);
+                }
+                // 2. Bù số 0 ở đầu nếu hệ thống nhận nhầm thành kiểu Toán học
+                if (p.length > 0 && !p.startsWith('0') && !isNaN(p)) {
+                    p = '0' + p;
+                }
+                return p;
+            }
+
+            // Sửa hiển thị trên các nút bấm Gọi điện của App
+            document.querySelectorAll('a[href^="tel:"]').forEach(a => {
+                let originalPhone = a.getAttribute('href').replace('tel:', '');
+                if (originalPhone && originalPhone !== '---') {
+                    let cleanPhone = formatPhoneNumber(originalPhone);
+                    a.setAttribute('href', 'tel:' + cleanPhone);
+                    a.innerHTML = '<i class="fa-solid fa-phone"></i> ' + cleanPhone;
+                }
+            });
+
+            // Tự động điền số ĐÃ LÀM SẠCH vào Modal Cập nhật (Để làm sạch CSDL khi GVCN ấn Lưu)
+            let editGvcnPhone = document.getElementById('editGvcnPhone');
+            if (editGvcnPhone) editGvcnPhone.value = formatPhoneNumber(editGvcnPhone.value);
+            
+            let editMonitorPhone = document.getElementById('editMonitorPhone');
+            if (editMonitorPhone) editMonitorPhone.value = formatPhoneNumber(editMonitorPhone.value);
+        });
     </script>
 </body>
 </html>
