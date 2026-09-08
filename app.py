@@ -8771,7 +8771,44 @@ def manage_appeals():
         import traceback; traceback.print_exc()
         flash(f"Lỗi tải danh sách phúc khảo: {e}", "error")
         return redirect(url_for('dashboard'))
+
+# ========================================================
+# [TÍNH NĂNG MỚI]: BẢNG ĐIỆN TỬ GVCN - CẬP NHẬT TỪ QUẢN TRỊ
+# ========================================================
+@app.context_processor
+def inject_slogan():
+    import os
+    slogan_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config", "slogan.txt")
+    # Câu chào mặc định nếu file chưa được tạo
+    slogan_text = "CHÀO MỪNG NĂM HỌC MỚI - ĐOÀN VIÊN THANH NIÊN TRƯỜNG THPT THANH HÒA TIÊN PHONG, BẢN LĨNH, SÁNG TẠO!"
+    if os.path.exists(slogan_file):
+        with open(slogan_file, 'r', encoding='utf-8') as f:
+            content = f.read().strip()
+            if content:
+                slogan_text = content
+    return dict(global_slogan_text=slogan_text)
+
+@app.route('/update_slogan', methods=['POST'])
+def update_slogan():
+    if session.get('role') not in ['Quản trị viên', 'Admin', 'Bí thư Đoàn trường']:
+        flash("Bạn không có quyền thay đổi thông báo!", "error")
+        return redirect(request.referrer)
+        
+    new_text = request.form.get('slogan_text', '').strip()
+    import os
+    config_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config")
+    os.makedirs(config_dir, exist_ok=True) # Tự động tạo thư mục config nếu chưa có
+    slogan_file = os.path.join(config_dir, "slogan.txt")
     
+    try:
+        with open(slogan_file, 'w', encoding='utf-8') as f:
+            f.write(new_text)
+        flash("Đã phát sóng nội dung mới lên toàn bộ App GVCN thành công!", "success")
+    except Exception as e:
+        flash(f"Lỗi hệ thống khi lưu: {e}", "error")
+        
+    return redirect(request.referrer)
+
 if __name__ == "__main__":
     auto_init_accounts()
     init_db()
