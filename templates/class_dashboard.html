@@ -422,7 +422,18 @@
             </div>
         </div>
 
-		<--BỘ LỌC TÌM KIẾM VÀ HÀNH ĐỘNG -->
+		<!-- BỘ LỌC TÌM KIẾM VÀ HÀNH ĐỘNG (Đã sửa lỗi dấu chú thích) -->
+        
+        <!-- BẢNG ĐIỆN TỬ: KHẨU HIỆU / CHỦ ĐỀ THÁNG -->
+        <div class="mb-2 mt-3" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); border: 1px solid #7dd3fc; border-radius: 12px; padding: 10px 15px; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm me-3" style="width: 32px; height: 32px;">
+                <i class="fa-solid fa-bullhorn fa-shake" style="font-size: 14px;"></i>
+            </div>
+            <marquee behavior="scroll" direction="left" scrollamount="6" style="font-weight: 800; color: #0369a1; font-size: 14px; letter-spacing: 0.5px; margin-top: 2px;">
+                {{ global_slogan_text }}
+            </marquee>
+        </div>
+
         <div class="glass-card mb-3" {% if is_gvcn %}style="background: transparent; border: none; box-shadow: none; margin-bottom: 0px !important;"{% endif %}>
             
             {% if not is_gvcn %}
