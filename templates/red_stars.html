@@ -168,7 +168,20 @@
                                 <span class="badge bg-danger">Tạm nghỉ</span>
                             {% endif %}
                         </td>
-                        <td class="text-start text-muted">{{ star.notes }}</td>
+                        <!-- [NÂNG CẤP]: HIỂN THỊ LỊCH TRỰC TUẦN HIỆN TẠI -->
+                        <td class="text-start">
+                            {% if star.notes %}
+                                <div class="mb-1 text-dark fw-medium" style="font-size: 13px;">{{ star.notes }}</div>
+                            {% endif %}
+                            
+                            {% if current_assignments_map and star.id in current_assignments_map %}
+                                {{ current_assignments_map[star.id] | safe }}
+                            {% else %}
+                                <div class="mt-1 p-1 rounded text-muted fst-italic" style="background-color: #f1f5f9; font-size: 12px; border: 1px dashed #cbd5e1;">
+                                    <i class="fa-solid fa-bed me-1 text-secondary"></i> Trống ca tuần này
+                                </div>
+                            {% endif %}
+                        </td>
                         <td>
                             <!-- [NÂNG CẤP] Nút Xem Lịch sử trực -->
                             <button class="btn btn-sm btn-info text-white py-0 px-2" onclick="viewHistory({{ star.id }}, '{{ star.full_name }}')" title="Xem lịch sử phân công trực"><i class="fa-solid fa-clock-rotate-left"></i></button>
