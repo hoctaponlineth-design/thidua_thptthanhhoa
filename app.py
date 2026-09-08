@@ -1641,7 +1641,6 @@ def import_branches():
         
     return redirect(url_for('branches'))
 
-
 # ==========================================
 # MODULE: QUẢN LÝ ĐỘI SAO ĐỎ
 # ==========================================
@@ -1678,6 +1677,9 @@ def red_stars():
             branches_list = []
             search_name = request.args.get('search_name', '').strip()
             filter_branch = request.args.get('filter_branch', '')
+            
+            # [TÍNH NĂNG MỚI]: BẢN ĐỒ LỊCH TRỰC TUẦN HIỆN TẠI
+            current_assignments_map = {}
 
             if active_year:
                 branches_list = db_session.query(Branch).filter(Branch.school_year_id == active_year.id).all()
@@ -1691,11 +1693,47 @@ def red_stars():
                         query = query.filter(RedStar.branch_id == int(filter_branch))
                     stars_list = query.all()
                     
+                    # 1. Tìm tuần trực mới nhất
+                    latest_assign = db_session.query(Assignment).order_by(Assignment.week_number.desc()).first()
+                    current_week_num = latest_assign.week_number if latest_assign else 0
+                    
+                    # 2. Đọc Sơ đồ Cụm (class_zones.json) để dịch tên Khu vực ra Các lớp cụ thể
+                    import os, json
+                    zones_map = {}
+                    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config", "class_zones.json")
+                    if os.path.exists(config_path):
+                        with open(config_path, "r", encoding="utf-8") as f:
+                            try: zones_map = json.load(f)
+                            except: pass
+                            
+                    # 3. Quét lịch trực tuần hiện tại và đóng gói dữ liệu cho từng Sao đỏ
+                    if current_week_num > 0:
+                        current_assigns = db_session.query(Assignment).filter(Assignment.week_number == current_week_num).all()
+                        for a in current_assigns:
+                            if a.duty_area:
+                                area_name = a.duty_area.name
+                                classes = zones_map.get(area_name, [])
+                                target_str = ", ".join(classes) if classes else "Khu vực chung"
+                                
+                                # Tạo chuỗi hiển thị HTML (Có icon và màu sắc bắt mắt)
+                                info_str = f"<div class='mt-1 p-2 rounded bg-primary bg-opacity-10 border border-primary border-opacity-25' style='font-size: 12px;'>" \
+                                           f"<span class='text-primary fw-bold'><i class='fa-solid fa-location-dot me-1'></i>Tuần {current_week_num}: {area_name}</span><br>" \
+                                           f"<span class='text-secondary fw-bold'><i class='fa-solid fa-school me-1'></i>Chấm: {target_str}</span>" \
+                                           f"</div>"
+                                           
+                                # Nếu một Sao đỏ trực 2 ca/tuần, sẽ cộng dồn chuỗi lại
+                                if a.red_star_id not in current_assignments_map:
+                                    current_assignments_map[a.red_star_id] = info_str
+                                else:
+                                    current_assignments_map[a.red_star_id] += info_str
+                    
             return render_template(
                 'red_stars.html', stars=stars_list, branches=branches_list, 
-                active_year=active_year, search_name=search_name, filter_branch=filter_branch
+                active_year=active_year, search_name=search_name, filter_branch=filter_branch,
+                current_assignments_map=current_assignments_map # Truyền bản đồ lịch trực ra Giao diện
             )
     except Exception as e:
+        import traceback; traceback.print_exc()
         flash(f"Lỗi phân hệ Sao đỏ: {e}", "error")
         return redirect(url_for('dashboard'))
 
