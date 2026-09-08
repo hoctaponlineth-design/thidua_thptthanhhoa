@@ -535,9 +535,10 @@
                         <i class="fa-solid fa-hand-holding-heart fs-3 fa-beat"></i>
                     </div>
                     <div>
-                        <!-- Lời chào cá nhân hóa tự động gọi tên GVCN -->
-                        <div class="text-warning fw-bold mb-1" style="font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase;">
-                            <i class="fa-regular fa-sun me-1 fa-spin-pulse"></i> Chào buổi sáng, {% if selected_branch and selected_branch.gvcn %}{{ selected_branch.gvcn }}{% else %}Thầy/Cô{% endif %}!
+						<!-- Lời chào cá nhân hóa tự động gọi tên GVCN -->
+                        <div class="text-warning fw-bold mb-1" style="letter-spacing: 0.5px; text-transform: uppercase;">
+                            <div style="font-size: 11px; opacity: 0.9;" class="mb-1"><i class="fa-regular fa-sun me-1 fa-spin-pulse"></i> Chào buổi sáng,</div>
+                            <div style="font-size: 14px;">{% if selected_branch and selected_branch.gvcn %}{{ selected_branch.gvcn }}{% else %}THẦY/CÔ{% endif %}!</div>
                         </div>
                         <h5 class="fw-bold mb-1" style="font-size: 17px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">Đồng hành 15 phút đầu giờ</h5>
                         <p class="mb-0 opacity-90" style="font-size: 13px;">Thầy/Cô bấm xác nhận để ghi nhận sự có mặt tại lớp nhé!</p>
