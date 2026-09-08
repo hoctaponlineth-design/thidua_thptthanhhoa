@@ -351,8 +351,8 @@
                                     <button type="button" class="btn btn-sm btn-outline-danger fw-bold shadow-sm" onclick="document.getElementById('cameraInput_{{ b.id }}').click()" style="border-radius: 8px;">
                                         <i class="fa-solid fa-camera"></i> Chụp thêm ảnh
                                     </button>
-                                    <input type="file" id="cameraInput_{{ b.id }}" accept="image/*" capture="environment" style="display: none;" onchange="processEvidenceImage(this, 'preview_{{ b.id }}Container', 'evidenceBase64_{{ b.id }}')">
-                                    <input type="hidden" name="evidence_base64" id="evidenceBase64_{{ b.id }}" value="[]">
+                                    <input type="file" id="cameraInput_{{ b.id }}" accept="image/*" style="display: none;" onchange="processEvidenceImage(this, 'preview_{{ b.id }}Container', 'evidenceBase64_{{ b.id }}')">
+									<input type="hidden" name="evidence_base64" id="evidenceBase64_{{ b.id }}" value="[]">
                                 </div>
                                 
                                 <div id="preview_{{ b.id }}Container" class="d-flex flex-wrap gap-2 mt-2"></div>
@@ -508,7 +508,7 @@
                                 <button type="button" class="btn btn-outline-danger fw-bold bg-white" onclick="document.getElementById('quickCameraInput').click()" style="border-radius: 10px;">
                                     <i class="fa-solid fa-camera fs-5"></i> Bật Camera
                                 </button>
-                                <input type="file" id="quickCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="processEvidenceImage(this, 'quickPreviewContainer', 'quickEvidenceBase64')">
+                                <input type="file" id="quickCameraInput" accept="image/*" style="display: none;" onchange="processEvidenceImage(this, 'quickPreviewContainer', 'quickEvidenceBase64')">
                                 <input type="hidden" name="evidence_base64" id="quickEvidenceBase64" value="[]">
                             </div>
                             <div id="quickPreviewContainer" class="d-flex flex-wrap gap-2 mt-2"></div>
