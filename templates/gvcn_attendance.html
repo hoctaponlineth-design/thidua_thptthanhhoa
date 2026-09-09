@@ -14,8 +14,19 @@
     
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow-x: hidden; margin: 0; padding: 0; }
+        
+        /* =========================================
+           BỔ SUNG CSS CHO SIDEBAR & MAIN CONTENT ĐỂ ĐỒNG BỘ APP
+           ========================================= */
+        .sidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; background-color: #1e293b; color: white; padding-top: 20px; z-index: 1050; overflow-y: auto; transition: transform 0.3s ease;}
+        .main-content { margin-left: 260px; padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
+        
         .glass-card { background: #ffffff; border-radius: 16px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; width: 100%; }
         
+        /* CSS cho thẻ KPI Thống kê */
+        .stat-card { border-radius: 16px; padding: 20px; color: white; position: relative; overflow: hidden; }
+        .stat-card i.bg-icon { position: absolute; right: -10px; bottom: -20px; font-size: 100px; opacity: 0.15; transform: rotate(-15deg); }
+
         .table-responsive-scroll { max-height: 65vh; overflow-y: auto; overflow-x: auto; width: 100%; }
         .table-modern { width: 100%; border-collapse: separate; border-spacing: 0; }
         .table-modern thead th { 
@@ -40,11 +51,13 @@
         .bottom-nav-item i { font-size: 20px; margin-bottom: 4px; transition: all 0.3s ease; }
         .bottom-nav-item span { font-size: 10.5px; font-weight: 600; white-space: nowrap; }
         .bottom-nav-item.active { color: #e11d48; }
-        .bottom-nav-item.active i { transform: translateY(-2px); }
-
-        @media (max-width: 1200px) { .bottom-nav { display: flex; } body { padding-bottom: 85px !important; } }
+        
+        @media (max-width: 1200px) { 
+            .sidebar { transform: translateX(-100%); }
+            .main-content { margin-left: 0; padding: 15px; padding-bottom: 90px !important;}
+            .bottom-nav { display: flex; } 
+        }
         @media (max-width: 768px) {
-            .container-fluid { padding-left: 8px !important; padding-right: 8px !important; }
             .glass-card { border-radius: 12px; }
             .table-modern tbody td { padding: 12px 10px !important; font-size: 14px; }
             .table-modern thead th { padding: 12px 10px !important; font-size: 13px; }
@@ -56,9 +69,9 @@
         @media print {
             @page { size: A4 portrait; margin: 20mm; }
             body { background: #fff !important; color: #000 !important; font-family: "Times New Roman", Times, serif !important; overflow: visible !important; }
-            .no-print, .bottom-nav { display: none !important; }
+            .no-print, .sidebar, .bottom-nav, .stat-card-container { display: none !important; }
+            .main-content { margin: 0 !important; padding: 0 !important; }
             .glass-card { border: none !important; box-shadow: none !important; border-radius: 0 !important; }
-            .container-fluid { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
             .print-only { display: block !important; }
             .table-responsive-scroll { max-height: none !important; overflow: visible !important; }
             .table-modern { border-collapse: collapse !important; margin-top: 15px !important; width: 100% !important; }
@@ -72,7 +85,13 @@
 </head>
 <body>
     
-    <div class="container-fluid py-3 py-md-4 px-3 px-xl-5">
+    <!-- BỔ SUNG SIDEBAR CỦA HỆ THỐNG -->
+    <div class="no-print">
+        {% include 'sidebar.html' %}
+    </div>
+
+    <!-- MAIN CONTENT ĐÃ ĐƯỢC CĂN LỀ -->
+    <div class="main-content">
         
         <!-- NÚT QUAY LẠI VÀ XUẤT PDF TRÊN CÙNG -->
         <div class="d-flex justify-content-between align-items-center mb-3 mb-md-4 no-print">
@@ -86,7 +105,7 @@
 
         <div class="glass-card overflow-hidden">
             
-            <!-- QUỐC HIỆU BẢN IN -->
+            <!-- QUỐC HIỆU BẢN IN (GIỮ NGUYÊN) -->
             <div class="print-only" style="margin-bottom: 20px;">
                 <table style="width: 100%; border: none;">
                     <tr>
@@ -108,14 +127,13 @@
                 </p>
             </div>
 
-            <!-- HEADER WEB -->
+            <!-- HEADER WEB & BỘ LỌC THÔNG MINH -->
             <div class="p-3 p-md-4 border-bottom bg-white d-flex justify-content-between align-items-center flex-wrap gap-3 no-print filter-container">
                 <div>
                     <h4 class="fw-bold mb-1" style="color: #0f172a;"><i class="fa-solid fa-fingerprint text-success me-2"></i> Báo Cáo Điểm Danh GVCN</h4>
                     <p class="text-muted mb-0" style="font-size: 14px;">Hệ thống thống kê tự động số buổi lên lớp sinh hoạt 15 phút.</p>
                 </div>
                 
-                <!-- BỘ LỌC ĐÃ NÂNG CẤP ĐẦY ĐỦ CÁC MỐC -->
                 <form action="/gvcn_attendance_stats" method="GET" class="d-flex gap-2">
                     <select name="time_mode" class="form-select fw-bold border-secondary" style="width: 140px;" onchange="this.form.submit()">
                         <option value="week" {% if time_mode == 'week' %}selected{% endif %}>Theo Tuần</option>
@@ -138,16 +156,44 @@
                 </form>
             </div>
 
-            <!-- THANH TÌM KIẾM GVCN TRỰC TIẾP -->
-            <div class="px-3 px-md-4 py-3 bg-light border-bottom d-flex justify-content-between align-items-center search-container no-print">
-                <span class="fw-bold text-secondary d-none d-md-inline"><i class="fa-solid fa-list me-2"></i>Chi tiết dữ liệu điểm danh</span>
-                <div class="input-group search-box" style="width: 300px;">
-                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
-                    <input type="text" id="searchInput" class="form-control border-start-0 ps-0 fw-bold text-primary" placeholder="Nhập tên GVCN hoặc Lớp..." onkeyup="filterTable()">
+            <!-- =========================================
+                 BỔ SUNG KHỐI KPI THỐNG KÊ NHANH CHO BGH 
+                 ========================================= -->
+            <div class="row g-3 p-3 p-md-4 border-bottom bg-light no-print stat-card-container">
+                <!-- Các biến summary_total, summary_good, summary_bad sẽ được tính ở Python -->
+                <div class="col-12 col-md-4">
+                    <div class="stat-card shadow-sm" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                        <i class="fa-solid fa-users bg-icon"></i>
+                        <h6 class="fw-bold opacity-75 mb-1 text-uppercase" style="font-size: 12px;">Tổng Số Chi Đoàn</h6>
+                        <h3 class="fw-bold m-0">{{ summary_total | default('0') }} <span class="fs-6 fw-normal opacity-75">lớp</span></h3>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="stat-card shadow-sm" style="background: linear-gradient(135deg, #10b981, #059669);">
+                        <i class="fa-solid fa-check-circle bg-icon"></i>
+                        <h6 class="fw-bold opacity-75 mb-1 text-uppercase" style="font-size: 12px;">Đạt Chuyên Cần (≥3 buổi)</h6>
+                        <h3 class="fw-bold m-0">{{ summary_good | default('0') }} <span class="fs-6 fw-normal opacity-75">GVCN</span></h3>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="stat-card shadow-sm" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                        <i class="fa-solid fa-circle-exclamation bg-icon"></i>
+                        <h6 class="fw-bold opacity-75 mb-1 text-uppercase" style="font-size: 12px;">Không Điểm Danh (0 buổi)</h6>
+                        <h3 class="fw-bold m-0">{{ summary_bad | default('0') }} <span class="fs-6 fw-normal opacity-75">GVCN</span></h3>
+                    </div>
                 </div>
             </div>
 
-            <!-- BẢNG DỮ LIỆU -->
+            <!-- THANH TÌM KIẾM GVCN -->
+            <div class="px-3 px-md-4 py-3 bg-white border-bottom d-flex justify-content-between align-items-center search-container no-print">
+                <span class="fw-bold text-secondary d-none d-md-inline"><i class="fa-solid fa-list me-2"></i>Chi tiết dữ liệu điểm danh</span>
+                <div class="input-group search-box" style="width: 300px;">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" id="searchInput" class="form-control bg-light border-start-0 ps-0 fw-bold text-primary" placeholder="Nhập tên GVCN hoặc Lớp..." onkeyup="filterTable()">
+                </div>
+            </div>
+
+            <!-- BẢNG DỮ LIỆU CHÍNH -->
             <div class="table-responsive table-responsive-scroll border-bottom">
                 <table class="table-modern" id="attendanceTable">
                     <thead>
