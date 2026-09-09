@@ -1,12 +1,15 @@
 <!-- ========================================== -->
 <!-- BỘ MÃ CSS PHỤC HỒI GIAO DIỆN KHUNG         -->
-
+<!-- ========================================== -->
 <style>
+    /* Bổ sung transition để menu trượt êm ái, z-index 1050 để không đè màn hình */
     .sidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; background-color: #004080; color: white; padding-top: 20px; z-index: 1050; overflow-y: auto; overflow-x: hidden; transition: transform 0.3s ease; }
     .sidebar h4 { font-size: 18px; font-weight: bold; text-align: center; padding-bottom: 15px; border-bottom: 1px solid #0054a6; }
     .sidebar .nav-link { color: #cce6ff; font-weight: 600; padding: 12px 20px; font-size: 14px; }
     .sidebar .nav-link:hover, .sidebar .nav-link.active { background-color: #002244; color: white; border-left: 4px solid #4da6ff; }
-    .main-content { margin-left: 260px; padding: 20px 25px; transition: margin-left 0.3s ease; }
+    
+    /* Bổ sung transition để phần nội dung co giãn mềm mại */
+    .main-content { margin-left: 260px; padding: 20px 25px; transition: margin-left 0.3s ease, padding 0.3s ease; }
 
     /* [NÂNG CẤP MỚI]: TỐI ƯU THANH ĐIỀU HƯỚNG TỐI GIẢN CHO APP BAN GIÁM HIỆU */
     {% if session.get('role') == 'Ban Giám hiệu' %}
@@ -17,24 +20,17 @@
     {% endif %}
 
     /* ======================================================== */
-    /* [SỬA LỖI]: BỘ CHỐNG ÉP KHUNG & CHỐNG CHE KHUẤT MÀN HÌNH  */
+    /* QUAN TRỌNG: CHỮA LỖI ĐEN MÀN HÌNH VÀ BỊ CHÈN HEADER ĐỎ   */
     /* ======================================================== */
     @media (max-width: 768px) {
-        /* 1. Trượt Sidebar ra khỏi màn hình (Xóa bỏ khối đen đè lên giao diện) */
+        /* Trượt Sidebar sang bên trái để ẩn đi, trị dứt điểm khối đen */
         .sidebar { 
             transform: translateX(-100%); 
         }
         
-        /* Hỗ trợ Menu Hamburger: Khi bấm nút menu, sidebar sẽ trượt vào */
-        .sidebar.show, .sidebar.active {
-            transform: translateX(0);
-            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
-        }
-
-        /* 2. Trả lại không gian cho nội dung chính và CHỐNG TRÀN LÊN HEADER ĐỎ */
+        /* Trả lại 100% giao diện, TĂNG KHOẢNG TRỐNG TRÊN CÙNG LÊN 90px ĐỂ TRÁNH HEADER ĐỎ */
         .main-content { 
             margin-left: 0px !important; 
-            /* Tăng khoảng cách phía trên (padding-top) lên 90px để Bảng chữ chạy có chỗ thở */
             padding: 90px 15px 20px 15px !important; 
             width: 100% !important; 
         }
