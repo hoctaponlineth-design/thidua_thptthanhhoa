@@ -13,30 +13,57 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow-x: hidden; margin: 0; padding: 0; }
+        :root {
+            --primary: #2563eb;
+            --surface: #ffffff;
+            --background: #f8fafc;
+            --border: #e2e8f0;
+            --text-main: #0f172a;
+            --sidebar-bg: #1e293b;
+        }
+
+        body { font-family: 'Inter', sans-serif; background-color: var(--background); overflow-x: hidden; margin: 0; padding: 0; }
         
-        /* =========================================
-           BỔ SUNG CSS CHO SIDEBAR & MAIN CONTENT ĐỂ ĐỒNG BỘ APP
-           ========================================= */
-        .sidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; background-color: #1e293b; color: white; padding-top: 20px; z-index: 1050; overflow-y: auto; transition: transform 0.3s ease;}
+        /* SIDEBAR DESKTOP */
+        #desktopSidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; background-color: var(--sidebar-bg); color: white; transition: transform 0.3s ease; z-index: 1050; overflow-y: auto;}
         .main-content { margin-left: 260px; padding: 30px; min-height: 100vh; transition: all 0.3s ease; }
         
-        .glass-card { background: #ffffff; border-radius: 16px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; width: 100%; }
-        
-        /* CSS cho thẻ KPI Thống kê */
-        .stat-card { border-radius: 16px; padding: 20px; color: white; position: relative; overflow: hidden; }
+        .glass-card { background: var(--surface); border-radius: 16px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); border: 1px solid var(--border); width: 100%; }
+        .stat-card { border-radius: 16px; padding: 20px; color: white; position: relative; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);}
         .stat-card i.bg-icon { position: absolute; right: -10px; bottom: -20px; font-size: 100px; opacity: 0.15; transform: rotate(-15deg); }
 
-        .table-responsive-scroll { max-height: 65vh; overflow-y: auto; overflow-x: auto; width: 100%; }
+        /* BẢNG DỮ LIỆU CHUẨN APP */
+        .table-responsive-scroll { max-height: 65vh; overflow-y: auto; overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; }
         .table-modern { width: 100%; border-collapse: separate; border-spacing: 0; }
         .table-modern thead th { 
             position: sticky; top: 0; z-index: 10; background: #f1f5f9; color: #64748b; 
-            font-size: 14px; font-weight: 600; text-transform: uppercase; padding: 16px; 
+            font-size: 13px; font-weight: 600; text-transform: uppercase; padding: 14px; 
             white-space: nowrap; box-shadow: 0 1px 0px #e2e8f0; 
         }
-        .table-modern tbody td { padding: 16px; font-size: 15px; font-weight: 500; border-bottom: 1px solid #e2e8f0; vertical-align: middle;}
-        .table-modern tbody tr:hover { background-color: #f8fafc; }
+        .table-modern tbody td { padding: 14px; font-size: 14px; font-weight: 500; border-bottom: 1px solid #e2e8f0; vertical-align: middle; white-space: nowrap;}
         
+        /* =========================================
+           UI APP ĐIỆN THOẠI (BANNER ĐỎ & THANH ĐÁY)
+           ========================================= */
+        .mobile-red-banner {
+            background: linear-gradient(135deg, #e11d48, #be123c);
+            color: white; border-radius: 0 0 24px 24px;
+            padding: 12px 15px; padding-top: max(15px, env(safe-area-inset-top));
+            box-shadow: 0 6px 15px rgba(225, 29, 72, 0.3);
+            display: none; flex-direction: row; align-items: center; justify-content: center; 
+            width: 100%; position: relative; 
+        }
+        .mobile-red-banner .banner-title-wrapper { display: flex; align-items: center; gap: 10px; }
+        .mobile-red-banner h2 { font-size: 17px; font-weight: 800; margin: 0; letter-spacing: 0.5px; }
+        .mobile-red-banner p { font-size: 11px; font-weight: 500; margin: 0; opacity: 0.9; }
+        
+        .mobile-red-banner .btn-back, .mobile-red-banner .btn-menu {
+            position: absolute; color: white; background: rgba(255,255,255,0.15);
+            border: none; border-radius: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; text-decoration: none;
+        }
+        .mobile-red-banner .btn-back { left: 15px; }
+        .mobile-red-banner .btn-menu { right: 15px; }
+
         .bottom-nav {
             display: none; position: fixed; bottom: 0; left: 0; width: 100%;
             background-color: #ffffff; box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
@@ -46,66 +73,95 @@
         .bottom-nav-item {
             flex: 1; text-align: center; color: #94a3b8; text-decoration: none;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: all 0.3s ease; background: transparent; border: none; padding: 5px 0;
+            background: transparent; border: none; padding: 5px 0;
         }
-        .bottom-nav-item i { font-size: 20px; margin-bottom: 4px; transition: all 0.3s ease; }
-        .bottom-nav-item span { font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+        .bottom-nav-item i { font-size: 20px; margin-bottom: 4px; }
+        .bottom-nav-item span { font-size: 10px; font-weight: 600; white-space: nowrap; }
         .bottom-nav-item.active { color: #e11d48; }
         
+        /* RESPONSIVE CHUYÊN SÂU CHO ĐIỆN THOẠI */
         @media (max-width: 1200px) { 
-            .sidebar { transform: translateX(-100%); }
-            .main-content { margin-left: 0; padding: 15px; padding-bottom: 90px !important;}
+            .mobile-red-banner { display: flex; }
+            .mobile-sticky-wrapper { position: fixed; top: 0; left: 0; width: 100%; z-index: 1030; }
+            #desktopSidebar { transform: translateX(-100%); box-shadow: 10px 0 30px rgba(0,0,0,0.3); }
+            #desktopSidebar.show { transform: translateX(0); }
+            .d-none.d-lg-flex { display: none !important; }
+            
+            .main-content { 
+                margin-left: 0; padding: 12px; 
+                padding-top: 90px !important; padding-bottom: 85px !important; 
+            }
             .bottom-nav { display: flex; } 
-        }
-        @media (max-width: 768px) {
+            
             .glass-card { border-radius: 12px; }
-            .table-modern tbody td { padding: 12px 10px !important; font-size: 14px; }
-            .table-modern thead th { padding: 12px 10px !important; font-size: 13px; }
-            .filter-container, .search-container { flex-direction: column; align-items: stretch !important; gap: 10px; }
-            .filter-container form { width: 100%; justify-content: space-between;}
+            .filter-container { flex-direction: column; gap: 10px; align-items: stretch !important; padding: 15px !important;}
+            .filter-container form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+            .filter-container form select { width: 100% !important; font-size: 14px;}
             .search-box { width: 100% !important; }
+            .stat-card { padding: 15px; }
+            .stat-card h3 { font-size: 24px; }
         }
 
         @media print {
-            @page { size: A4 portrait; margin: 20mm; }
-            body { background: #fff !important; color: #000 !important; font-family: "Times New Roman", Times, serif !important; overflow: visible !important; }
-            .no-print, .sidebar, .bottom-nav, .stat-card-container { display: none !important; }
+            /* Ẩn các thành phần App khi in PDF */
+            .no-print, .mobile-sticky-wrapper, .bottom-nav, #desktopSidebar, .stat-card-container { display: none !important; }
             .main-content { margin: 0 !important; padding: 0 !important; }
-            .glass-card { border: none !important; box-shadow: none !important; border-radius: 0 !important; }
+            .glass-card { border: none !important; box-shadow: none !important; }
             .print-only { display: block !important; }
-            .table-responsive-scroll { max-height: none !important; overflow: visible !important; }
-            .table-modern { border-collapse: collapse !important; margin-top: 15px !important; width: 100% !important; }
-            .table-modern th, .table-modern td { border: 1px solid #000 !important; padding: 8px 10px !important; font-size: 13pt !important; color: #000 !important; box-shadow: none !important;}
-            .table-modern thead th { position: static !important; background: #fff !important; font-weight: bold !important; text-transform: none !important; }
-            .badge { background: transparent !important; color: #000 !important; border: none !important; padding: 0 !important; font-size: 13pt !important; font-weight: normal !important; }
-            .badge i { display: none !important; } 
+            .table-modern { border-collapse: collapse !important; width: 100% !important; }
+            .table-modern th, .table-modern td { border: 1px solid #000 !important; color: #000 !important; font-size: 13pt !important; white-space: normal;}
+            .badge { color: #000 !important; background: none !important; border: none !important; }
         }
         .print-only { display: none; }
     </style>
 </head>
 <body>
     
-    <!-- BỔ SUNG SIDEBAR CỦA HỆ THỐNG -->
-    <div class="no-print">
+    <!-- SIDEBAR -->
+    <div id="desktopSidebar" class="no-print">
         {% include 'sidebar.html' %}
     </div>
 
-    <!-- MAIN CONTENT ĐÃ ĐƯỢC CĂN LỀ -->
+    <!-- MAIN CONTENT -->
     <div class="main-content">
         
-        <!-- NÚT QUAY LẠI VÀ XUẤT PDF TRÊN CÙNG -->
-        <div class="d-flex justify-content-between align-items-center mb-3 mb-md-4 no-print">
-            <a href="/dashboard" class="btn btn-light shadow-sm fw-bold d-flex align-items-center justify-content-center" style="border-radius: 10px; color: #475569; padding: 10px 20px; text-decoration: none;">
-                <i class="fa-solid fa-arrow-left me-2"></i> Quay lại
-            </a>
-            <button onclick="window.print()" class="btn btn-danger shadow-sm fw-bold d-flex align-items-center justify-content-center" style="border-radius: 10px; padding: 10px 20px;">
-                <i class="fa-solid fa-file-pdf me-2"></i> <span class="d-none d-md-inline">Xuất file PDF</span>
+        <!-- HEADER MOBILE APP BANNER (HIỆN TRÊN ĐIỆN THOẠI) -->
+        <div class="mobile-sticky-wrapper no-print">
+            <div class="mobile-red-banner">
+                <a href="/dashboard" class="btn-back"><i class="fa-solid fa-chevron-left fs-5"></i></a>
+                <div class="banner-title-wrapper">
+                    <i class="fa-solid fa-fingerprint fs-4"></i>
+                    <div>
+                        <h2>KIỂM TRA ĐIỂM DANH</h2>
+                        <p>Giám sát chuyên cần 15p đầu giờ</p>
+                    </div>
+                </div>
+                <button class="btn-menu" onclick="document.getElementById('desktopSidebar').classList.toggle('show')">
+                    <i class="fa-solid fa-bars fs-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- TIÊU ĐỀ TRANG DESKTOP (HIỆN TRÊN MÁY TÍNH) -->
+        <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-4 rounded-4 shadow-sm border-start border-5 border-success d-none d-lg-flex no-print">
+            <div class="d-flex align-items-center gap-3">
+                <a href="/dashboard" class="btn btn-light shadow-sm d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; border-radius: 12px; color: #64748b; text-decoration: none;">
+                    <i class="fa-solid fa-arrow-left fs-5"></i>
+                </a>
+                <div>
+                    <h3 class="fw-bold text-success m-0"><i class="fa-solid fa-fingerprint me-2"></i> Hệ Thống Giám Sát Điểm Danh GVCN</h3>
+                    <p class="text-muted small m-0 mt-1">Cập nhật thời gian thực trạng thái lên lớp sinh hoạt 15 phút đầu giờ.</p>
+                </div>
+            </div>
+            <button onclick="window.print()" class="btn btn-danger shadow-sm fw-bold px-4 py-2" style="border-radius: 10px;">
+                <i class="fa-solid fa-file-pdf me-2"></i> Xuất Báo Cáo PDF
             </button>
         </div>
 
+        <!-- KHỐI CHỨA DỮ LIỆU CHÍNH -->
         <div class="glass-card overflow-hidden">
             
-            <!-- QUỐC HIỆU BẢN IN (GIỮ NGUYÊN) -->
+            <!-- QUỐC HIỆU BẢN IN -->
             <div class="print-only" style="margin-bottom: 20px;">
                 <table style="width: 100%; border: none;">
                     <tr>
@@ -127,22 +183,20 @@
                 </p>
             </div>
 
-            <!-- HEADER WEB & BỘ LỌC THÔNG MINH -->
+            <!-- BỘ LỌC THỜI GIAN -->
             <div class="p-3 p-md-4 border-bottom bg-white d-flex justify-content-between align-items-center flex-wrap gap-3 no-print filter-container">
-                <div>
-                    <h4 class="fw-bold mb-1" style="color: #0f172a;"><i class="fa-solid fa-fingerprint text-success me-2"></i> Báo Cáo Điểm Danh GVCN</h4>
-                    <p class="text-muted mb-0" style="font-size: 14px;">Hệ thống thống kê tự động số buổi lên lớp sinh hoạt 15 phút.</p>
+                <div class="d-none d-lg-block">
+                    <h5 class="fw-bold mb-1 text-dark"><i class="fa-regular fa-calendar me-2"></i> Tùy chọn Mốc thời gian</h5>
                 </div>
                 
-                <form action="/gvcn_attendance_stats" method="GET" class="d-flex gap-2">
-                    <select name="time_mode" class="form-select fw-bold border-secondary" style="width: 140px;" onchange="this.form.submit()">
-                        <option value="week" {% if time_mode == 'week' %}selected{% endif %}>Theo Tuần</option>
-                        <option value="month" {% if time_mode == 'month' %}selected{% endif %}>Theo Tháng</option>
-                        <option value="semester" {% if time_mode == 'semester' %}selected{% endif %}>Theo Học kỳ</option>
-                        <option value="year" {% if time_mode == 'year' %}selected{% endif %}>Theo Năm học</option>
+                <form action="/gvcn_attendance_stats" method="GET" class="d-flex gap-2 w-100 w-md-auto">
+                    <select name="time_mode" class="form-select fw-bold bg-light border-0 shadow-sm" onchange="this.form.submit()">
+                        <option value="week" {% if time_mode == 'week' %}selected{% endif %}>Tuần</option>
+                        <option value="month" {% if time_mode == 'month' %}selected{% endif %}>Tháng</option>
+                        <option value="semester" {% if time_mode == 'semester' %}selected{% endif %}>Học kỳ</option>
+                        <option value="year" {% if time_mode == 'year' %}selected{% endif %}>Năm học</option>
                     </select>
-                    
-                    <select name="time_value" class="form-select fw-bold text-primary border-primary" style="min-width: 150px; max-width: 250px;" onchange="this.form.submit()">
+                    <select name="time_value" class="form-select fw-bold text-primary bg-primary bg-opacity-10 border-0 shadow-sm" onchange="this.form.submit()">
                         {% if time_mode == 'week' %}
                             {% for w in available_weeks %}<option value="{{ w }}" {% if time_value == w %}selected{% endif %}>{{ w }}</option>{% endfor %}
                         {% elif time_mode == 'month' %}
@@ -156,68 +210,65 @@
                 </form>
             </div>
 
-            <!-- =========================================
-                 BỔ SUNG KHỐI KPI THỐNG KÊ NHANH CHO BGH 
-                 ========================================= -->
-            <div class="row g-3 p-3 p-md-4 border-bottom bg-light no-print stat-card-container">
-                <!-- Các biến summary_total, summary_good, summary_bad sẽ được tính ở Python -->
-                <div class="col-12 col-md-4">
-                    <div class="stat-card shadow-sm" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
-                        <i class="fa-solid fa-users bg-icon"></i>
-                        <h6 class="fw-bold opacity-75 mb-1 text-uppercase" style="font-size: 12px;">Tổng Số Chi Đoàn</h6>
-                        <h3 class="fw-bold m-0">{{ summary_total | default('0') }} <span class="fs-6 fw-normal opacity-75">lớp</span></h3>
+            <!-- KPI THỐNG KÊ NHANH -->
+            <div class="row g-2 g-md-3 p-3 p-md-4 border-bottom bg-light no-print stat-card-container">
+                <div class="col-4 col-md-4">
+                    <div class="stat-card shadow-sm px-2 px-md-3 py-3" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                        <i class="fa-solid fa-users bg-icon d-none d-md-block"></i>
+                        <h6 class="fw-bold opacity-75 mb-1" style="font-size: 10px; text-transform: uppercase;">Tổng số</h6>
+                        <h3 class="fw-bold m-0 text-truncate">{{ summary_total | default('0') }} <span class="fs-6 fw-normal d-none d-md-inline">lớp</span></h3>
                     </div>
                 </div>
-                <div class="col-12 col-md-4">
-                    <div class="stat-card shadow-sm" style="background: linear-gradient(135deg, #10b981, #059669);">
-                        <i class="fa-solid fa-check-circle bg-icon"></i>
-                        <h6 class="fw-bold opacity-75 mb-1 text-uppercase" style="font-size: 12px;">Đạt Chuyên Cần (≥3 buổi)</h6>
-                        <h3 class="fw-bold m-0">{{ summary_good | default('0') }} <span class="fs-6 fw-normal opacity-75">GVCN</span></h3>
+                <div class="col-4 col-md-4">
+                    <div class="stat-card shadow-sm px-2 px-md-3 py-3" style="background: linear-gradient(135deg, #10b981, #059669);">
+                        <i class="fa-solid fa-check-circle bg-icon d-none d-md-block"></i>
+                        <h6 class="fw-bold opacity-75 mb-1" style="font-size: 10px; text-transform: uppercase;">Đạt (≥3 buổi)</h6>
+                        <h3 class="fw-bold m-0 text-truncate">{{ summary_good | default('0') }}</h3>
                     </div>
                 </div>
-                <div class="col-12 col-md-4">
-                    <div class="stat-card shadow-sm" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
-                        <i class="fa-solid fa-circle-exclamation bg-icon"></i>
-                        <h6 class="fw-bold opacity-75 mb-1 text-uppercase" style="font-size: 12px;">Không Điểm Danh (0 buổi)</h6>
-                        <h3 class="fw-bold m-0">{{ summary_bad | default('0') }} <span class="fs-6 fw-normal opacity-75">GVCN</span></h3>
+                <div class="col-4 col-md-4">
+                    <div class="stat-card shadow-sm px-2 px-md-3 py-3" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                        <i class="fa-solid fa-circle-exclamation bg-icon d-none d-md-block"></i>
+                        <h6 class="fw-bold opacity-75 mb-1" style="font-size: 10px; text-transform: uppercase;">Vắng (0 buổi)</h6>
+                        <h3 class="fw-bold m-0 text-truncate">{{ summary_bad | default('0') }}</h3>
                     </div>
                 </div>
             </div>
 
-            <!-- THANH TÌM KIẾM GVCN -->
+            <!-- TÌM KIẾM THEO THỜI GIAN THỰC -->
             <div class="px-3 px-md-4 py-3 bg-white border-bottom d-flex justify-content-between align-items-center search-container no-print">
-                <span class="fw-bold text-secondary d-none d-md-inline"><i class="fa-solid fa-list me-2"></i>Chi tiết dữ liệu điểm danh</span>
-                <div class="input-group search-box" style="width: 300px;">
-                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
-                    <input type="text" id="searchInput" class="form-control bg-light border-start-0 ps-0 fw-bold text-primary" placeholder="Nhập tên GVCN hoặc Lớp..." onkeyup="filterTable()">
+                <span class="fw-bold text-secondary d-none d-md-inline"><i class="fa-solid fa-list me-2"></i>Danh sách GVCN</span>
+                <div class="input-group search-box" style="width: 300px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <span class="input-group-text bg-light border-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" id="searchInput" class="form-control bg-light border-0 ps-0 fw-bold text-primary py-2" placeholder="Nhập tên GVCN hoặc Lớp..." onkeyup="filterTable()">
                 </div>
             </div>
 
-            <!-- BẢNG DỮ LIỆU CHÍNH -->
+            <!-- BẢNG DỮ LIỆU ĐIỂM DANH CÓ THỂ VUỐT NGANG TRÊN ĐIỆN THOẠI -->
             <div class="table-responsive table-responsive-scroll border-bottom">
                 <table class="table-modern" id="attendanceTable">
                     <thead>
                         <tr>
-                            <th class="text-center" style="width: 5%">STT</th>
-                            <th style="width: 15%">Lớp</th>
-                            <th style="width: 25%">Giáo viên Chủ nhiệm</th>
-                            <th class="text-center" style="width: 15%">Tổng Số Buổi</th>
-                            <th style="width: 40%">Lịch sử điểm danh chi tiết</th>
+                            <th class="text-center">STT</th>
+                            <th>Lớp</th>
+                            <th>GVCN</th>
+                            <th class="text-center">Tổng Số Buổi</th>
+                            <th>Lịch sử điểm danh (Chi tiết ngày)</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in stats_list %}
                         <tr class="data-row">
                             <td class="text-center fw-bold text-muted index-col">{{ loop.index }}</td>
-                            <td class="fw-bold text-primary class-col">{{ item.branch_name }}</td>
+                            <td class="fw-bold text-primary class-col">Lớp {{ item.branch_name }}</td>
                             <td class="fw-bold text-dark gvcn-col">{{ item.gvcn }}</td>
                             <td class="text-center">
                                 {% if item.count >= 3 %}
-                                    <span class="badge bg-success fs-6 rounded-pill px-3 py-2"><i class="fa-solid fa-check me-1"></i> {{ item.count }} buổi</span>
+                                    <span class="badge bg-success fs-6 rounded-pill px-3 py-1 shadow-sm"><i class="fa-solid fa-check me-1 d-none d-md-inline"></i> {{ item.count }} buổi</span>
                                 {% elif item.count > 0 %}
-                                    <span class="badge bg-warning text-dark fs-6 rounded-pill px-3 py-2">{{ item.count }} buổi</span>
+                                    <span class="badge bg-warning text-dark fs-6 rounded-pill px-3 py-1 shadow-sm">{{ item.count }} buổi</span>
                                 {% else %}
-                                    <span class="badge bg-danger fs-6 rounded-pill px-3 py-2"><i class="fa-solid fa-xmark me-1"></i> 0 buổi</span>
+                                    <span class="badge bg-danger fs-6 rounded-pill px-3 py-1 shadow-sm"><i class="fa-solid fa-xmark me-1 d-none d-md-inline"></i> 0 buổi</span>
                                 {% endif %}
                             </td>
                             <td>
@@ -235,7 +286,7 @@
                         {% else %}
                         <tr>
                             <td colspan="5" class="text-center py-5 text-muted">
-                                <i class="fa-regular fa-folder-open fs-1 mb-3 no-print"></i><br>
+                                <i class="fa-regular fa-folder-open fs-1 mb-3 no-print opacity-50"></i><br>
                                 Chưa có dữ liệu điểm danh nào trong khoảng thời gian này.
                             </td>
                         </tr>
@@ -244,7 +295,7 @@
                 </table>
             </div>
 
-            <!-- FOOTER BẢN IN -->
+            <!-- CHỮ KÝ BẢN IN -->
             <div class="print-only" style="margin-top: 30px; font-size: 13pt;">
                 <table style="width: 100%; border: none;">
                     <tr>
@@ -256,21 +307,19 @@
                         </td>
                         <td style="width: 50%; text-align: center; vertical-align: top; border: none;">
                             <em style="font-size: 13pt;">Đồng Nai, ngày .... tháng .... năm 202...</em><br>
-                            <strong>TM. BAN CHẤP HÀNH ĐOÀN TRƯỜNG</strong><br>
-                            <span style="font-style: italic; font-size: 11pt;">(Ký và ghi rõ họ tên)</span>
-                            <br><br><br><br><br>
+                            <strong>TM. BAN GIÁM HIỆU</strong><br>
+                            <span style="font-style: italic; font-size: 11pt;">(Ký và đóng dấu)</span>
                         </td>
                     </tr>
                 </table>
             </div>
-            
         </div>
     </div>
 
-    <!-- THANH ĐIỀU HƯỚNG DƯỚI ĐÁY -->
+    <!-- THANH ĐIỀU HƯỚNG DƯỚI ĐÁY CHO ĐIỆN THOẠI (BOTTOM NAV APP) -->
     <div class="bottom-nav no-print" id="mobileBottomNav">
         <a href="/dashboard" class="bottom-nav-item">
-            <i class="fa-solid fa-arrow-left"></i><span>Quay lại</span>
+            <i class="fa-solid fa-house"></i><span>Trang chủ</span>
         </a>
         <a href="/bgh/dashboard" class="bottom-nav-item">
             <i class="fa-solid fa-building-columns"></i><span>Điều hành</span>
@@ -283,8 +332,19 @@
         </a>
     </div>
 
-    <!-- SCRIPT TÌM KIẾM THÔNG MINH GVCN/LỚP THEO THỜI GIAN THỰC -->
     <script>
+        // Tính năng Đóng/Mở Menu bên trái trên màn hình di động
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('desktopSidebar');
+            const toggleBtn = document.querySelector('.mobile-red-banner .btn-menu');
+            if (window.innerWidth <= 1200 && sidebar && sidebar.classList.contains('show')) {
+                if (!sidebar.contains(event.target) && (!toggleBtn || !toggleBtn.contains(event.target))) {
+                    sidebar.classList.remove('show');
+                }
+            }
+        });
+
+        // Tính năng tìm kiếm động
         function filterTable() {
             let input = document.getElementById("searchInput").value.toLowerCase();
             let rows = document.querySelectorAll("#attendanceTable .data-row");
@@ -303,5 +363,6 @@
             });
         }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
