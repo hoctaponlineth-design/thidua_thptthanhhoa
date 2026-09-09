@@ -1303,11 +1303,18 @@ def add_user():
 
     try:
         with session_scope() as db_session:
-            # [NÂNG CẤP]: Khớp nối chính xác quyền GVCN vào CSDL
+            # [ĐÃ SỬA]: Bổ sung nhận diện đầy đủ các quyền, đặc biệt là Ban Giám hiệu
             role_enum = UserRole.BCH
-            if "Quản trị" in role_text or "Admin" in role_text: role_enum = UserRole.ADMIN
-            elif "Bí thư" in role_text: role_enum = UserRole.BI_THU
-            elif "Giáo viên chủ nhiệm" in role_text: role_enum = UserRole.GVCN
+            if "Quản trị" in role_text or "Admin" in role_text: 
+                role_enum = UserRole.ADMIN
+            elif "Bí thư" in role_text: 
+                role_enum = UserRole.BI_THU
+            elif "Giáo viên chủ nhiệm" in role_text: 
+                role_enum = UserRole.GVCN
+            elif "Sao đỏ" in role_text: 
+                role_enum = UserRole.SAO_DO
+            elif "Ban Giám hiệu" in role_text or "BGH" in role_text: 
+                role_enum = getattr(UserRole, 'BGH', getattr(UserRole, 'BAN_GIAM_HIEU', UserRole.BCH))
 
             exist = db_session.query(User).filter_by(username=username).first()
             if exist:
@@ -1361,11 +1368,18 @@ def edit_user(id):
                 user.full_name = new_fullname
                 changes_made = True
 
-            # [NÂNG CẤP]: Khớp nối chính xác quyền GVCN vào CSDL
+            # [ĐÃ SỬA]: Bổ sung nhận diện phân quyền khi chỉnh sửa
             new_role_enum = UserRole.BCH
-            if "Quản trị" in new_role_text or "Admin" in new_role_text: new_role_enum = UserRole.ADMIN
-            elif "Bí thư" in new_role_text: new_role_enum = UserRole.BI_THU
-            elif "Giáo viên chủ nhiệm" in new_role_text: new_role_enum = UserRole.GVCN
+            if "Quản trị" in new_role_text or "Admin" in new_role_text: 
+                new_role_enum = UserRole.ADMIN
+            elif "Bí thư" in new_role_text: 
+                new_role_enum = UserRole.BI_THU
+            elif "Giáo viên chủ nhiệm" in new_role_text: 
+                new_role_enum = UserRole.GVCN
+            elif "Sao đỏ" in new_role_text: 
+                new_role_enum = UserRole.SAO_DO
+            elif "Ban Giám hiệu" in new_role_text or "BGH" in new_role_text: 
+                new_role_enum = getattr(UserRole, 'BGH', getattr(UserRole, 'BAN_GIAM_HIEU', UserRole.BCH))
                 
             if user.role != new_role_enum:
                 change_details.append(f"Quyền: '{user.role.value}' -> '{new_role_text}'")
