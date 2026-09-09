@@ -27,13 +27,18 @@
     {% include 'sidebar.html' %}
 
     <div class="main-content">
-        <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded-4 shadow-sm border">
+		<div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded-4 shadow-sm border">
             <h4 class="m-0 fw-bold text-primary"><i class="fa-solid fa-scale-balanced me-2"></i> Trung tâm Quản lý Phúc khảo Toàn trường</h4>
-            <div class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-bold border border-success border-opacity-25">
-                <i class="fa-solid fa-calendar-check me-1"></i> NH: {{ active_year.name }}
+            <div class="d-flex gap-2 align-items-center">
+                <!-- NÚT THỐNG KÊ NHANH CHO BGH -->
+                <button type="button" class="btn fw-bold shadow-sm rounded-pill px-4" style="background-color: #f59e0b; color: white;" onclick="showAppealStats()">
+                    <i class="fa-solid fa-chart-pie fa-spin-pulse me-2" style="--fa-animation-duration: 3s;"></i> THỐNG KÊ LỚP
+                </button>
+                <div class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-bold border border-success border-opacity-25 d-flex align-items-center" style="height: 38px;">
+                    <i class="fa-solid fa-calendar-check me-1"></i> NH: {{ active_year.name }}
+                </div>
             </div>
         </div>
-
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -45,7 +50,7 @@
             {% endif %}
         {% endwith %}
 
-        <!-- BỘ LỌC TÌM KIẾM -->
+		<!-- BỘ LỌC TÌM KIẾM -->
         <div class="glass-card p-4">
             <form method="GET" action="/appeals" class="row g-3 align-items-end">
                 <div class="col-md-3">
@@ -74,12 +79,22 @@
                         <option value="resolved" {% if search_status == 'resolved' %}selected{% endif %}>Đã giải quyết</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <!-- Thu gọn ô tìm kiếm còn 2 cột (col-md-2) -->
+                <div class="col-md-2">
                     <label class="form-label fw-bold text-muted small">Tìm Tên HS / Nội dung</label>
-                    <input type="text" name="search_name" value="{{ search_name }}" class="form-control form-control-modern" placeholder="Gõ tên học sinh, lỗi...">
+                    <input type="text" name="search_name" value="{{ search_name }}" class="form-control form-control-modern" placeholder="Gõ tên...">
                 </div>
-                <div class="col-md-1 text-end">
-                    <button type="submit" class="btn btn-primary fw-bold w-100 py-2 rounded-3 shadow-sm" style="background-color: #2563eb;"><i class="fa-solid fa-filter"></i> Lọc</button>
+                <!-- Mở rộng khu vực nút bấm thành 2 cột (col-md-2) và dùng d-flex để 2 nút nằm ngang -->
+                <div class="col-md-2">
+                    <label class="form-label fw-bold text-muted small d-none d-md-block">&nbsp;</label> <!-- Giữ khoảng trống nhô lên cho cân bằng -->
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary fw-bold w-50 py-2 rounded-3 shadow-sm" style="background-color: #2563eb;">
+                            <i class="fa-solid fa-filter"></i> Lọc
+                        </button>
+                        <button type="button" class="btn btn-success fw-bold w-50 py-2 rounded-3 shadow-sm" onclick="exportToExcel()">
+                            <i class="fa-solid fa-file-excel"></i> Xuất
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -88,7 +103,7 @@
         <div class="glass-card">
             <!-- Thêm giới hạn chiều cao (max-height) để tạo thanh cuộn riêng cho bảng -->
             <div class="table-responsive" style="max-height: calc(100vh - 280px); overflow-y: auto;">
-                <table class="table-modern text-center align-middle mb-0">
+                <table id="appealsTable" class="table-modern text-center align-middle mb-0">
                     <!-- Lệnh position: sticky giúp khóa chặt dòng tiêu đề lên Top -->
                     <thead style="position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                         <tr>
@@ -199,8 +214,65 @@
             </div>
         </div>
     </div>
-
+	<!-- ======================================================== -->
+    <!-- MODAL XEM TRƯỚC BẢN IN EXCEL (CHUẨN VĂN BẢN HÀNH CHÍNH)  -->
+    <!-- ======================================================== -->
+    <div class="modal fade" id="previewExcelModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header bg-success text-white pb-3" style="padding: 20px 24px;">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-file-excel me-2"></i> Xem trước Dữ liệu Xuất Excel</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0 bg-light">
+                    <!-- Khu vực Bảng xem trước -->
+                    <div class="p-4">
+                        <div class="text-center mb-4">
+                            <h4 class="fw-bold text-uppercase mb-1" style="color: #0f172a;">BẢNG TỔNG HỢP HỒ SƠ PHÚC KHẢO THI ĐUA</h4>
+                            <p class="fst-italic text-muted mb-0">Trích xuất từ Hệ thống Quản lý Đoàn vụ - Trường THPT Thanh Hòa</p>
+                        </div>
+                        <div class="table-responsive border bg-white shadow-sm" style="border-radius: 12px;">
+                            <!-- Bảng dữ liệu sạch sẽ được JS render tự động vào đây -->
+                            <table class="table table-bordered table-hover mb-0 text-dark" id="previewTable" style="font-size: 14px;">
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-white px-4 py-3" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                    <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal">Hủy bỏ</button>
+                    <button type="button" class="btn btn-success fw-bold px-4 shadow-sm" onclick="executeExcelDownload()">
+                        <i class="fa-solid fa-download me-2"></i> Xác nhận Tải File .XLSX
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+	<!-- ======================================================== -->
+    <!-- MODAL THỐNG KÊ: BẢNG PHONG THẦN "TOP LỚP KHIẾU NẠI"      -->
+    <!-- ======================================================== -->
+    <div class="modal fade" id="statsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header text-white pb-3" style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 20px 24px;">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-chart-pie me-2"></i> Thống kê Tần suất Khiếu nại (Theo bộ lọc hiện tại)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <!-- Nơi hiển thị các thẻ Card biểu đồ của từng lớp -->
+                    <div id="statsContainer">
+                        <div class="text-center text-muted py-5"><i class="fa-solid fa-spinner fa-spin fs-2 mb-3"></i><br>Đang phân tích dữ liệu...</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-white px-4 py-3" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                    <button type="button" class="btn btn-secondary fw-bold px-4" data-bs-dismiss="modal">Đóng cửa sổ</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+	<!-- Thư viện ExcelJS và FileSaver hỗ trợ định dạng khung lưới, màu sắc, font chữ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     
     <!-- Script xử lý Popup và tự động cộng điểm hoàn lại -->
     <script>
@@ -255,6 +327,217 @@
             
             var myModal = new bootstrap.Modal(document.getElementById('resolveModal'));
             myModal.show();
+        }
+    </script>
+	<!-- Script xử lý Trích xuất và Định dạng chuẩn Văn bản Hành chính -->
+    <script>
+        let cleanExcelData = []; // Biến lưu trữ dữ liệu đã làm sạch
+
+        // 1. Hàm trích xuất dữ liệu và hiển thị lên Cửa sổ Xem trước
+        function exportToExcel() {
+            let table = document.getElementById("appealsTable");
+            if (!table) return;
+
+            let rows = table.rows;
+            cleanExcelData = []; 
+            let previewHTML = '<thead class="table-light text-center align-middle"><tr>';
+
+            let headers = [];
+            let headerCells = rows[0].cells;
+            for (let j = 0; j < headerCells.length - 1; j++) {
+                let text = headerCells[j].innerText.trim();
+                headers.push(text);
+                previewHTML += `<th>${text}</th>`;
+            }
+            cleanExcelData.push(headers);
+            previewHTML += '</tr></thead><tbody>';
+
+            for (let i = 1; i < rows.length; i++) {
+                if (rows[i].cells.length === 1) continue; 
+                
+                let rowData = [];
+                previewHTML += '<tr>';
+                for (let j = 0; j < rows[i].cells.length - 1; j++) {
+                    let cellText = rows[i].cells[j].innerText.replace(/\n+/g, ' - ').trim();
+                    rowData.push(cellText);
+                    
+                    let alignClass = (j === 3 || j === 4) ? 'text-start' : 'text-center';
+                    previewHTML += `<td class="${alignClass}">${cellText}</td>`;
+                }
+                cleanExcelData.push(rowData);
+                previewHTML += '</tr>';
+            }
+            previewHTML += '</tbody>';
+
+            document.getElementById('previewTable').innerHTML = previewHTML;
+            var previewModal = new bootstrap.Modal(document.getElementById('previewExcelModal'));
+            previewModal.show();
+        }
+
+        // 2. Hàm Kiến tạo File Excel Siêu Đẹp (Dùng ExcelJS)
+        async function executeExcelDownload() {
+            const workbook = new ExcelJS.Workbook();
+            // Khởi tạo trang tính, cài đặt khổ giấy A4, hướng ngang
+            const sheet = workbook.addWorksheet('Hồ sơ Phúc khảo', {
+                pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true }
+            });
+
+            // ==========================================
+            // THIẾT LẬP TIÊU ĐỀ CHÍNH VÀ PHỤ (Chuẩn VBDH)
+            // ==========================================
+            sheet.mergeCells('A1:F1');
+            const titleCell = sheet.getCell('A1');
+            titleCell.value = 'BẢNG TỔNG HỢP HỒ SƠ PHÚC KHẢO THI ĐUA';
+            titleCell.font = { name: 'Times New Roman', size: 16, bold: true };
+            titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+            sheet.mergeCells('A2:F2');
+            const subTitleCell = sheet.getCell('A2');
+            subTitleCell.value = 'Trích xuất từ Hệ thống Quản lý Đoàn vụ - Trường THPT Thanh Hòa';
+            subTitleCell.font = { name: 'Times New Roman', size: 12, italic: true };
+            subTitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+            sheet.addRow([]); // Dòng trống ngăn cách
+
+            // ==========================================
+            // THIẾT LẬP DÒNG TIÊU ĐỀ BẢNG (HEADER)
+            // ==========================================
+            const headerRow = sheet.addRow(cleanExcelData[0]);
+            headerRow.height = 30; // Cột cao 30
+            headerRow.eachCell((cell) => {
+                cell.font = { name: 'Times New Roman', size: 12, bold: true };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDEBF7' } }; // Đổ màu nền Xanh nhạt
+                cell.border = { // Kẻ khung đen 4 viền
+                    top: { style: 'thin' }, left: { style: 'thin' },
+                    bottom: { style: 'thin' }, right: { style: 'thin' }
+                };
+                cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }; // Căn giữa
+            });
+
+            // ==========================================
+            // ĐỔ DỮ LIỆU & ĐỊNH DẠNG TỪNG Ô
+            // ==========================================
+            for (let i = 1; i < cleanExcelData.length; i++) {
+                const row = sheet.addRow(cleanExcelData[i]);
+                row.eachCell((cell, colNumber) => {
+                    cell.font = { name: 'Times New Roman', size: 12 }; // Đưa toàn bộ về Times New Roman 12
+                    cell.border = {
+                        top: { style: 'thin' }, left: { style: 'thin' },
+                        bottom: { style: 'thin' }, right: { style: 'thin' }
+                    };
+                    
+                    // Cột Lỗi (Cột 4) và Cột Lý do (Cột 5) thì căn lề trái. Các cột còn lại căn lề giữa.
+                    if (colNumber === 4 || colNumber === 5) {
+                        cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+                    } else {
+                        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                    }
+                });
+            }
+
+            // ==========================================
+            // CHỐT KÍCH THƯỚC CỘT (Không bị co dúm)
+            // ==========================================
+            sheet.getColumn(1).width = 6;   // STT
+            sheet.getColumn(2).width = 16;  // Chi đoàn
+            sheet.getColumn(3).width = 20;  // Thời gian
+            sheet.getColumn(4).width = 45;  // Lỗi (Ô rộng)
+            sheet.getColumn(5).width = 45;  // Lý do (Ô rộng)
+            sheet.getColumn(6).width = 25;  // Trạng thái
+
+            // Đóng gói và tải File
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            
+            let today = new Date();
+            let dateStr = today.getDate() + "_" + (today.getMonth() + 1) + "_" + today.getFullYear();
+            saveAs(blob, "TongHop_PhucKhao_THPTThanhHoa_" + dateStr + ".xlsx");
+
+            // Đóng cửa sổ xem trước
+            bootstrap.Modal.getInstance(document.getElementById('previewExcelModal')).hide();
+        }
+		// 3. Hàm Phân tích và Hiển thị Bảng Phong thần
+        function showAppealStats() {
+            // Hiển thị cửa sổ chờ
+            var statsModal = new bootstrap.Modal(document.getElementById('statsModal'));
+            statsModal.show();
+
+            // Đọc dữ liệu từ bảng đang hiển thị
+            let table = document.getElementById("appealsTable");
+            if (!table) return;
+            let rows = table.rows;
+            
+            let classStats = {}; // Bộ đếm
+            
+            // Quét từng dòng trong bảng HTML
+            for (let i = 1; i < rows.length; i++) {
+                if (rows[i].cells.length <= 1) continue;
+                
+                // Trích xuất Tên lớp (Cột 2) và Trạng thái (Cột 6)
+                let branchCell = rows[i].cells[1];
+                let branchName = branchCell.querySelector('.text-primary') ? branchCell.querySelector('.text-primary').innerText.trim() : "";
+                
+                let statusCell = rows[i].cells[5];
+                let statusText = statusCell.innerText.trim();
+                
+                if (!branchName) continue;
+                if (!classStats[branchName]) {
+                    classStats[branchName] = { total: 0, approved: 0, rejected: 0, pending: 0 };
+                }
+                
+                // Cộng dồn số liệu
+                classStats[branchName].total++;
+                if (statusText.includes("Đã duyệt")) classStats[branchName].approved++;
+                else if (statusText.includes("Từ chối")) classStats[branchName].rejected++;
+                else classStats[branchName].pending++;
+            }
+            
+            // Chuyển sang mảng và Sắp xếp xếp hạng (Lớp kiện nhiều nhất lên Top)
+            let sortedStats = Object.keys(classStats).map(key => {
+                return { name: key, ...classStats[key] };
+            });
+            sortedStats.sort((a, b) => b.total - a.total);
+            
+            // Vẽ biểu đồ trực quan (Render HTML)
+            let html = '<div class="row g-3">';
+            if (sortedStats.length === 0) {
+                html = '<div class="text-center text-muted py-5"><i class="fa-solid fa-box-open fs-1 mb-3 opacity-50"></i><br>Không có dữ liệu khiếu nại nào để phân tích.</div>';
+            } else {
+                sortedStats.forEach((stat, index) => {
+                    // Hiệu ứng: Lớp nào kiện >= 3 đơn sẽ bị tô viền Đỏ cảnh báo, các lớp khác viền Xám
+                    let borderClass = stat.total >= 3 ? 'border-danger' : 'border-secondary border-opacity-25';
+                    let rankIcon = index === 0 ? '👑 (Top 1)' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : ''));
+                    let textClass = index === 0 ? 'text-danger fw-bold' : 'text-dark';
+
+                    html += `
+                    <div class="col-md-6">
+                        <div class="card shadow-sm h-100 bg-white" style="border-radius: 12px; border: 2px solid ${stat.total >= 3 ? '#ef4444' : '#e2e8f0'};">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="m-0 fs-6 ${textClass}">${rankIcon} ${stat.name}</h6>
+                                    <span class="badge bg-dark rounded-pill fs-6 px-3 shadow-sm">${stat.total} Đơn</span>
+                                </div>
+                                
+                                <!-- Thanh tiến trình phân tích tỷ lệ -->
+                                <div class="progress mb-2 bg-light border" style="height: 12px; border-radius: 6px;">
+                                    <div class="progress-bar bg-success" style="width: ${(stat.approved/stat.total)*100}%" title="Duyệt"></div>
+                                    <div class="progress-bar bg-danger" style="width: ${(stat.rejected/stat.total)*100}%" title="Từ chối"></div>
+                                    <div class="progress-bar" style="background-color: #f59e0b; width: ${(stat.pending/stat.total)*100}%" title="Đang chờ"></div>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between small fw-bold mt-2 px-1">
+                                    <span class="text-success"><i class="fa-solid fa-check-double me-1"></i>Oan (Duyệt): ${stat.approved}</span>
+                                    <span class="text-danger"><i class="fa-solid fa-ban me-1"></i>Cãi (Từ chối): ${stat.rejected}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+            }
+            html += '</div>';
+            
+            // Trả kết quả lên giao diện
+            setTimeout(() => { document.getElementById('statsContainer').innerHTML = html; }, 400); // Trễ 0.4s tạo hiệu ứng đang load
         }
     </script>
 </body>
