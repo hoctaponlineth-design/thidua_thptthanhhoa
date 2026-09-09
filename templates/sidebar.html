@@ -30,6 +30,22 @@
         border-left: none !important;
     }
     {% endif %}
+
+    /* ======================================================== */
+    /* [SỬA LỖI DÀN TRANG]: ĐIỀU CHỈNH GIAO DIỆN TRÊN ĐIỆN THOẠI  */
+    /* ======================================================== */
+    @media (max-width: 768px) {
+        {% if session.get('role') == 'Giáo viên chủ nhiệm' %}
+        /* Ẩn thanh Sidebar màu xanh này đi đối với GVCN vì đã có App riêng */
+        .sidebar { display: none !important; }
+        {% else %}
+        /* Với Admin/BGH, chuyển Sidebar thành khối linh hoạt nằm phía trên để không bị ép khung */
+        .sidebar { position: relative !important; width: 100% !important; height: auto !important; padding-bottom: 20px; }
+        {% endif %}
+        
+        /* TRẢ LẠI 100% KHÔNG GIAN CHO PHẦN NỘI DUNG CHÍNH (Xóa khoảng lề 260px) */
+        .main-content { margin-left: 0px !important; padding: 15px 10px !important; width: 100% !important; }
+    }
 </style>
 
 <!-- SIDEBAR -->
