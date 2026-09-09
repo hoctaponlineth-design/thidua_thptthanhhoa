@@ -2,39 +2,34 @@
 <!-- BỘ MÃ CSS PHỤC HỒI GIAO DIỆN KHUNG         -->
 <!-- ========================================== -->
 <style>
-    /* Bổ sung transition để menu trượt êm ái, z-index 1050 để không đè màn hình */
-    .sidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; background-color: #004080; color: white; padding-top: 20px; z-index: 1050; overflow-y: auto; overflow-x: hidden; transition: transform 0.3s ease; }
+    .sidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; background-color: #004080; color: white; padding-top: 20px; z-index: 1000; overflow-y: auto; overflow-x: hidden; }
     .sidebar h4 { font-size: 18px; font-weight: bold; text-align: center; padding-bottom: 15px; border-bottom: 1px solid #0054a6; }
     .sidebar .nav-link { color: #cce6ff; font-weight: 600; padding: 12px 20px; font-size: 14px; }
     .sidebar .nav-link:hover, .sidebar .nav-link.active { background-color: #002244; color: white; border-left: 4px solid #4da6ff; }
-    
-    /* Bổ sung transition để phần nội dung co giãn mềm mại */
-    .main-content { margin-left: 260px; padding: 20px 25px; transition: margin-left 0.3s ease, padding 0.3s ease; }
+    .main-content { margin-left: 260px; padding: 20px 25px; }
 
     /* [NÂNG CẤP MỚI]: TỐI ƯU THANH ĐIỀU HƯỚNG TỐI GIẢN CHO APP BAN GIÁM HIỆU */
     {% if session.get('role') == 'Ban Giám hiệu' %}
-    .sidebar { background-color: #0f172a !important; }
-    .sidebar h4 { background: #1e293b; border-bottom: 1px solid #334155; padding: 18px 10px; font-size: 16px; }
-    .sidebar .nav-link { padding: 16px 20px; font-size: 15px; border-radius: 8px; margin: 6px 12px; }
-    .sidebar .nav-link:hover, .sidebar .nav-link.active { background-color: #2563eb !important; border-left: none !important; }
-    {% endif %}
-
-    /* ======================================================== */
-    /* QUAN TRỌNG: CHỮA LỖI ĐEN MÀN HÌNH VÀ BỊ CHÈN HEADER ĐỎ   */
-    /* ======================================================== */
-    @media (max-width: 768px) {
-        /* Trượt Sidebar sang bên trái để ẩn đi, trị dứt điểm khối đen */
-        .sidebar { 
-            transform: translateX(-100%); 
-        }
-        
-        /* Trả lại 100% giao diện, TĂNG KHOẢNG TRỐNG TRÊN CÙNG LÊN 90px ĐỂ TRÁNH HEADER ĐỎ */
-        .main-content { 
-            margin-left: 0px !important; 
-            padding: 90px 15px 20px 15px !important; 
-            width: 100% !important; 
-        }
+    .sidebar {
+        background-color: #0f172a !important; /* Xanh đậm trang trọng */
     }
+    .sidebar h4 {
+        background: #1e293b;
+        border-bottom: 1px solid #334155;
+        padding: 18px 10px;
+        font-size: 16px;
+    }
+    .sidebar .nav-link {
+        padding: 16px 20px; /* Tăng kích thước vùng chạm để thao tác một tay trên mobile */
+        font-size: 15px;
+        border-radius: 8px;
+        margin: 6px 12px;
+    }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+        background-color: #2563eb !important;
+        border-left: none !important;
+    }
+    {% endif %}
 </style>
 
 <!-- SIDEBAR -->
