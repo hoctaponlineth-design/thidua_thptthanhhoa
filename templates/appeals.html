@@ -98,7 +98,7 @@
         <div class="glass-card">
             <!-- Thêm giới hạn chiều cao (max-height) để tạo thanh cuộn riêng cho bảng -->
             <div class="table-responsive" style="max-height: calc(100vh - 280px); overflow-y: auto;">
-                <table class="table-modern text-center align-middle mb-0">
+                <table id="appealsTable" class="table-modern text-center align-middle mb-0">
                     <!-- Lệnh position: sticky giúp khóa chặt dòng tiêu đề lên Top -->
                     <thead style="position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                         <tr>
@@ -209,7 +209,39 @@
             </div>
         </div>
     </div>
-
+	<!-- ======================================================== -->
+    <!-- MODAL XEM TRƯỚC BẢN IN EXCEL (CHUẨN VĂN BẢN HÀNH CHÍNH)  -->
+    <!-- ======================================================== -->
+    <div class="modal fade" id="previewExcelModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header bg-success text-white pb-3" style="padding: 20px 24px;">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-file-excel me-2"></i> Xem trước Dữ liệu Xuất Excel</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0 bg-light">
+                    <!-- Khu vực Bảng xem trước -->
+                    <div class="p-4">
+                        <div class="text-center mb-4">
+                            <h4 class="fw-bold text-uppercase mb-1" style="color: #0f172a;">BẢNG TỔNG HỢP HỒ SƠ PHÚC KHẢO THI ĐUA</h4>
+                            <p class="fst-italic text-muted mb-0">Trích xuất từ Hệ thống Quản lý Đoàn vụ - Trường THPT Thanh Hòa</p>
+                        </div>
+                        <div class="table-responsive border bg-white shadow-sm" style="border-radius: 12px;">
+                            <!-- Bảng dữ liệu sạch sẽ được JS render tự động vào đây -->
+                            <table class="table table-bordered table-hover mb-0 text-dark" id="previewTable" style="font-size: 14px;">
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-white px-4 py-3" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                    <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal">Hủy bỏ</button>
+                    <button type="button" class="btn btn-success fw-bold px-4 shadow-sm" onclick="executeExcelDownload()">
+                        <i class="fa-solid fa-download me-2"></i> Xác nhận Tải File .XLSX
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     
@@ -268,32 +300,95 @@
             myModal.show();
         }
     </script>
-	<script>
+	<!-- Script xử lý Trích xuất và Định dạng chuẩn Excel -->
+    <script>
+        let cleanExcelData = []; // Biến lưu trữ dữ liệu đã làm sạch
+
+        // 1. Hàm bấm nút Xuất ở ngoài giao diện -> Hiển thị Modal Xem trước
         function exportToExcel() {
-            // Lấy bảng dữ liệu hiện tại
             let table = document.getElementById("appealsTable");
             if (!table) return;
 
-            // Tạo một bản sao của bảng để không làm ảnh hưởng giao diện khi cắt gọt dữ liệu
-            let cloneTable = table.cloneNode(true);
-            let rows = cloneTable.rows;
+            let rows = table.rows;
+            cleanExcelData = []; 
+            let previewHTML = '<thead class="table-light text-center align-middle"><tr>';
 
-            // Xóa cột cuối cùng (cột "Xử lý" chứa nút bấm) vì không cần đưa vào file Excel
-            for (let i = 0; i < rows.length; i++) {
-                if (rows[i].cells.length > 0) {
-                    rows[i].deleteCell(-1);
-                }
+            // Trích xuất Tiêu đề cột (Bỏ cột "Xử lý" cuối cùng)
+            let headers = [];
+            let headerCells = rows[0].cells;
+            for (let j = 0; j < headerCells.length - 1; j++) {
+                let text = headerCells[j].innerText.trim();
+                headers.push(text);
+                previewHTML += `<th>${text}</th>`;
             }
+            cleanExcelData.push(headers);
+            previewHTML += '</tr></thead><tbody>';
 
-            // Chuyển đổi bảng thành Workbook Excel
-            let wb = XLSX.utils.table_to_book(cloneTable, { sheet: "Danh sách Phúc khảo" });
+            // Trích xuất Dữ liệu các dòng
+            for (let i = 1; i < rows.length; i++) {
+                if (rows[i].cells.length === 1) continue; // Bỏ qua dòng trống báo lỗi
+                
+                let rowData = [];
+                previewHTML += '<tr>';
+                for (let j = 0; j < rows[i].cells.length - 1; j++) {
+                    // Mẹo hay: Làm sạch dữ liệu, biến các cục HTML badge/span thành text thuần túy
+                    let cellText = rows[i].cells[j].innerText.replace(/\n+/g, ' - ').trim();
+                    rowData.push(cellText);
+                    
+                    // Định dạng xem trước: Cột Lỗi và Lý do thì căn trái, còn lại căn giữa
+                    let alignClass = (j === 3 || j === 4) ? 'text-start' : 'text-center';
+                    previewHTML += `<td class="${alignClass}">${cellText}</td>`;
+                }
+                cleanExcelData.push(rowData);
+                previewHTML += '</tr>';
+            }
+            previewHTML += '</tbody>';
 
-            // Tự động tạo tên file có chứa ngày tháng hiện tại
+            // Đẩy dữ liệu sạch lên bảng Xem trước và Mở Modal
+            document.getElementById('previewTable').innerHTML = previewHTML;
+            var previewModal = new bootstrap.Modal(document.getElementById('previewExcelModal'));
+            previewModal.show();
+        }
+
+        // 2. Hàm bấm nút "Xác nhận Tải File" ở trong Modal
+        function executeExcelDownload() {
+            let wb = XLSX.utils.book_new();
+            
+            // Xây dựng Cấu trúc văn bản: [Dòng Tiêu đề Lớn] + [Dòng Phụ đề] + [Cách 1 dòng trống] + [Dữ liệu bảng]
+            let documentData = [
+                ["BẢNG TỔNG HỢP HỒ SƠ PHÚC KHẢO THI ĐUA"],
+                ["Trích xuất từ Hệ thống Quản lý Đoàn vụ - Trường THPT Thanh Hòa"],
+                [""], 
+                ...cleanExcelData 
+            ];
+
+            let ws = XLSX.utils.aoa_to_sheet(documentData);
+
+            // Gộp ô (Merge cells) cho 2 dòng Tiêu đề để nó nằm giữa trang
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: cleanExcelData[0].length - 1 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: cleanExcelData[0].length - 1 } } 
+            ];
+
+            // Ép độ rộng các cột chuẩn chỉ, không bị co dúm chữ
+            ws['!cols'] = [
+                { wch: 6 },   // Cột 1: STT
+                { wch: 18 },  // Cột 2: Chi đoàn
+                { wch: 22 },  // Cột 3: Thời gian gửi
+                { wch: 50 },  // Cột 4: Lỗi vi phạm (rộng)
+                { wch: 50 },  // Cột 5: Lý do (rộng)
+                { wch: 20 }   // Cột 6: Trạng thái
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, "Ho_So_Phuc_Khao");
+
+            // Đặt tên file xuất tự động theo ngày
             let today = new Date();
             let dateStr = today.getDate() + "_" + (today.getMonth() + 1) + "_" + today.getFullYear();
+            XLSX.writeFile(wb, "PhucKhao_THPTThanhHoa_" + dateStr + ".xlsx");
             
-            // Tải file xuống
-            XLSX.writeFile(wb, "Ho_So_Phuc_Khao_" + dateStr + ".xlsx");
+            // Tự động đóng Modal sau khi tải xong
+            bootstrap.Modal.getInstance(document.getElementById('previewExcelModal')).hide();
         }
     </script>
 </body>
