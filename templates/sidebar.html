@@ -1,50 +1,43 @@
 <!-- ========================================== -->
 <!-- BỘ MÃ CSS PHỤC HỒI GIAO DIỆN KHUNG         -->
-<!-- ========================================== -->
+
 <style>
-    .sidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; background-color: #004080; color: white; padding-top: 20px; z-index: 1000; overflow-y: auto; overflow-x: hidden; }
+    .sidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; background-color: #004080; color: white; padding-top: 20px; z-index: 1050; overflow-y: auto; overflow-x: hidden; transition: transform 0.3s ease; }
     .sidebar h4 { font-size: 18px; font-weight: bold; text-align: center; padding-bottom: 15px; border-bottom: 1px solid #0054a6; }
     .sidebar .nav-link { color: #cce6ff; font-weight: 600; padding: 12px 20px; font-size: 14px; }
     .sidebar .nav-link:hover, .sidebar .nav-link.active { background-color: #002244; color: white; border-left: 4px solid #4da6ff; }
-    .main-content { margin-left: 260px; padding: 20px 25px; }
+    .main-content { margin-left: 260px; padding: 20px 25px; transition: margin-left 0.3s ease; }
 
     /* [NÂNG CẤP MỚI]: TỐI ƯU THANH ĐIỀU HƯỚNG TỐI GIẢN CHO APP BAN GIÁM HIỆU */
     {% if session.get('role') == 'Ban Giám hiệu' %}
-    .sidebar {
-        background-color: #0f172a !important; /* Xanh đậm trang trọng */
-    }
-    .sidebar h4 {
-        background: #1e293b;
-        border-bottom: 1px solid #334155;
-        padding: 18px 10px;
-        font-size: 16px;
-    }
-    .sidebar .nav-link {
-        padding: 16px 20px; /* Tăng kích thước vùng chạm để thao tác một tay trên mobile */
-        font-size: 15px;
-        border-radius: 8px;
-        margin: 6px 12px;
-    }
-    .sidebar .nav-link:hover, .sidebar .nav-link.active {
-        background-color: #2563eb !important;
-        border-left: none !important;
-    }
+    .sidebar { background-color: #0f172a !important; }
+    .sidebar h4 { background: #1e293b; border-bottom: 1px solid #334155; padding: 18px 10px; font-size: 16px; }
+    .sidebar .nav-link { padding: 16px 20px; font-size: 15px; border-radius: 8px; margin: 6px 12px; }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active { background-color: #2563eb !important; border-left: none !important; }
     {% endif %}
 
     /* ======================================================== */
-    /* [SỬA LỖI DÀN TRANG]: ĐIỀU CHỈNH GIAO DIỆN TRÊN ĐIỆN THOẠI  */
+    /* [SỬA LỖI]: BỘ CHỐNG ÉP KHUNG & CHỐNG CHE KHUẤT MÀN HÌNH  */
     /* ======================================================== */
     @media (max-width: 768px) {
-        {% if session.get('role') == 'Giáo viên chủ nhiệm' %}
-        /* Ẩn thanh Sidebar màu xanh này đi đối với GVCN vì đã có App riêng */
-        .sidebar { display: none !important; }
-        {% else %}
-        /* Với Admin/BGH, chuyển Sidebar thành khối linh hoạt nằm phía trên để không bị ép khung */
-        .sidebar { position: relative !important; width: 100% !important; height: auto !important; padding-bottom: 20px; }
-        {% endif %}
+        /* 1. Trượt Sidebar ra khỏi màn hình (Xóa bỏ khối đen đè lên giao diện) */
+        .sidebar { 
+            transform: translateX(-100%); 
+        }
         
-        /* TRẢ LẠI 100% KHÔNG GIAN CHO PHẦN NỘI DUNG CHÍNH (Xóa khoảng lề 260px) */
-        .main-content { margin-left: 0px !important; padding: 15px 10px !important; width: 100% !important; }
+        /* Hỗ trợ Menu Hamburger: Khi bấm nút menu, sidebar sẽ trượt vào */
+        .sidebar.show, .sidebar.active {
+            transform: translateX(0);
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+        }
+
+        /* 2. Trả lại không gian cho nội dung chính và CHỐNG TRÀN LÊN HEADER ĐỎ */
+        .main-content { 
+            margin-left: 0px !important; 
+            /* Tăng khoảng cách phía trên (padding-top) lên 90px để Bảng chữ chạy có chỗ thở */
+            padding: 90px 15px 20px 15px !important; 
+            width: 100% !important; 
+        }
     }
 </style>
 
