@@ -243,7 +243,9 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+	<!-- Thư viện ExcelJS và FileSaver hỗ trợ định dạng khung lưới, màu sắc, font chữ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     
     <!-- Script xử lý Popup và tự động cộng điểm hoàn lại -->
     <script>
@@ -300,11 +302,11 @@
             myModal.show();
         }
     </script>
-	<!-- Script xử lý Trích xuất và Định dạng chuẩn Excel -->
+	<!-- Script xử lý Trích xuất và Định dạng chuẩn Văn bản Hành chính -->
     <script>
         let cleanExcelData = []; // Biến lưu trữ dữ liệu đã làm sạch
 
-        // 1. Hàm bấm nút Xuất ở ngoài giao diện -> Hiển thị Modal Xem trước
+        // 1. Hàm trích xuất dữ liệu và hiển thị lên Cửa sổ Xem trước
         function exportToExcel() {
             let table = document.getElementById("appealsTable");
             if (!table) return;
@@ -313,7 +315,6 @@
             cleanExcelData = []; 
             let previewHTML = '<thead class="table-light text-center align-middle"><tr>';
 
-            // Trích xuất Tiêu đề cột (Bỏ cột "Xử lý" cuối cùng)
             let headers = [];
             let headerCells = rows[0].cells;
             for (let j = 0; j < headerCells.length - 1; j++) {
@@ -324,18 +325,15 @@
             cleanExcelData.push(headers);
             previewHTML += '</tr></thead><tbody>';
 
-            // Trích xuất Dữ liệu các dòng
             for (let i = 1; i < rows.length; i++) {
-                if (rows[i].cells.length === 1) continue; // Bỏ qua dòng trống báo lỗi
+                if (rows[i].cells.length === 1) continue; 
                 
                 let rowData = [];
                 previewHTML += '<tr>';
                 for (let j = 0; j < rows[i].cells.length - 1; j++) {
-                    // Mẹo hay: Làm sạch dữ liệu, biến các cục HTML badge/span thành text thuần túy
                     let cellText = rows[i].cells[j].innerText.replace(/\n+/g, ' - ').trim();
                     rowData.push(cellText);
                     
-                    // Định dạng xem trước: Cột Lỗi và Lý do thì căn trái, còn lại căn giữa
                     let alignClass = (j === 3 || j === 4) ? 'text-start' : 'text-center';
                     previewHTML += `<td class="${alignClass}">${cellText}</td>`;
                 }
@@ -344,50 +342,91 @@
             }
             previewHTML += '</tbody>';
 
-            // Đẩy dữ liệu sạch lên bảng Xem trước và Mở Modal
             document.getElementById('previewTable').innerHTML = previewHTML;
             var previewModal = new bootstrap.Modal(document.getElementById('previewExcelModal'));
             previewModal.show();
         }
 
-        // 2. Hàm bấm nút "Xác nhận Tải File" ở trong Modal
-        function executeExcelDownload() {
-            let wb = XLSX.utils.book_new();
+        // 2. Hàm Kiến tạo File Excel Siêu Đẹp (Dùng ExcelJS)
+        async function executeExcelDownload() {
+            const workbook = new ExcelJS.Workbook();
+            // Khởi tạo trang tính, cài đặt khổ giấy A4, hướng ngang
+            const sheet = workbook.addWorksheet('Hồ sơ Phúc khảo', {
+                pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true }
+            });
+
+            // ==========================================
+            // THIẾT LẬP TIÊU ĐỀ CHÍNH VÀ PHỤ (Chuẩn VBDH)
+            // ==========================================
+            sheet.mergeCells('A1:F1');
+            const titleCell = sheet.getCell('A1');
+            titleCell.value = 'BẢNG TỔNG HỢP HỒ SƠ PHÚC KHẢO THI ĐUA';
+            titleCell.font = { name: 'Times New Roman', size: 16, bold: true };
+            titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+            sheet.mergeCells('A2:F2');
+            const subTitleCell = sheet.getCell('A2');
+            subTitleCell.value = 'Trích xuất từ Hệ thống Quản lý Đoàn vụ - Trường THPT Thanh Hòa';
+            subTitleCell.font = { name: 'Times New Roman', size: 12, italic: true };
+            subTitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+            sheet.addRow([]); // Dòng trống ngăn cách
+
+            // ==========================================
+            // THIẾT LẬP DÒNG TIÊU ĐỀ BẢNG (HEADER)
+            // ==========================================
+            const headerRow = sheet.addRow(cleanExcelData[0]);
+            headerRow.height = 30; // Cột cao 30
+            headerRow.eachCell((cell) => {
+                cell.font = { name: 'Times New Roman', size: 12, bold: true };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDEBF7' } }; // Đổ màu nền Xanh nhạt
+                cell.border = { // Kẻ khung đen 4 viền
+                    top: { style: 'thin' }, left: { style: 'thin' },
+                    bottom: { style: 'thin' }, right: { style: 'thin' }
+                };
+                cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }; // Căn giữa
+            });
+
+            // ==========================================
+            // ĐỔ DỮ LIỆU & ĐỊNH DẠNG TỪNG Ô
+            // ==========================================
+            for (let i = 1; i < cleanExcelData.length; i++) {
+                const row = sheet.addRow(cleanExcelData[i]);
+                row.eachCell((cell, colNumber) => {
+                    cell.font = { name: 'Times New Roman', size: 12 }; // Đưa toàn bộ về Times New Roman 12
+                    cell.border = {
+                        top: { style: 'thin' }, left: { style: 'thin' },
+                        bottom: { style: 'thin' }, right: { style: 'thin' }
+                    };
+                    
+                    // Cột Lỗi (Cột 4) và Cột Lý do (Cột 5) thì căn lề trái. Các cột còn lại căn lề giữa.
+                    if (colNumber === 4 || colNumber === 5) {
+                        cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+                    } else {
+                        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                    }
+                });
+            }
+
+            // ==========================================
+            // CHỐT KÍCH THƯỚC CỘT (Không bị co dúm)
+            // ==========================================
+            sheet.getColumn(1).width = 6;   // STT
+            sheet.getColumn(2).width = 16;  // Chi đoàn
+            sheet.getColumn(3).width = 20;  // Thời gian
+            sheet.getColumn(4).width = 45;  // Lỗi (Ô rộng)
+            sheet.getColumn(5).width = 45;  // Lý do (Ô rộng)
+            sheet.getColumn(6).width = 25;  // Trạng thái
+
+            // Đóng gói và tải File
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             
-            // Xây dựng Cấu trúc văn bản: [Dòng Tiêu đề Lớn] + [Dòng Phụ đề] + [Cách 1 dòng trống] + [Dữ liệu bảng]
-            let documentData = [
-                ["BẢNG TỔNG HỢP HỒ SƠ PHÚC KHẢO THI ĐUA"],
-                ["Trích xuất từ Hệ thống Quản lý Đoàn vụ - Trường THPT Thanh Hòa"],
-                [""], 
-                ...cleanExcelData 
-            ];
-
-            let ws = XLSX.utils.aoa_to_sheet(documentData);
-
-            // Gộp ô (Merge cells) cho 2 dòng Tiêu đề để nó nằm giữa trang
-            ws['!merges'] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: cleanExcelData[0].length - 1 } },
-                { s: { r: 1, c: 0 }, e: { r: 1, c: cleanExcelData[0].length - 1 } } 
-            ];
-
-            // Ép độ rộng các cột chuẩn chỉ, không bị co dúm chữ
-            ws['!cols'] = [
-                { wch: 6 },   // Cột 1: STT
-                { wch: 18 },  // Cột 2: Chi đoàn
-                { wch: 22 },  // Cột 3: Thời gian gửi
-                { wch: 50 },  // Cột 4: Lỗi vi phạm (rộng)
-                { wch: 50 },  // Cột 5: Lý do (rộng)
-                { wch: 20 }   // Cột 6: Trạng thái
-            ];
-
-            XLSX.utils.book_append_sheet(wb, ws, "Ho_So_Phuc_Khao");
-
-            // Đặt tên file xuất tự động theo ngày
             let today = new Date();
             let dateStr = today.getDate() + "_" + (today.getMonth() + 1) + "_" + today.getFullYear();
-            XLSX.writeFile(wb, "PhucKhao_THPTThanhHoa_" + dateStr + ".xlsx");
-            
-            // Tự động đóng Modal sau khi tải xong
+            saveAs(blob, "TongHop_PhucKhao_THPTThanhHoa_" + dateStr + ".xlsx");
+
+            // Đóng cửa sổ xem trước
             bootstrap.Modal.getInstance(document.getElementById('previewExcelModal')).hide();
         }
     </script>
