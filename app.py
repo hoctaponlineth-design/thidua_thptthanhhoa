@@ -8616,27 +8616,28 @@ def api_class_blacklist():
 
             results = query.order_by(WeeklyScore.id.desc()).all()
             
-            data = []
-            # Lặp qua kết quả truy vấn (Tên biến có thể là v, sc, b, c)
-            for v, sc, c in results: # Hoặc for v, s, b, c in raw_violations
+            # --- ĐÃ SỬA TÊN BIẾN THÀNH 'data' CHO ĐỒNG BỘ ---
+            data = [] 
+            for v, sc, c in results: 
                 if v.student_name and str(v.student_name).strip() != "":
                     raw_names = str(v.student_name).replace(';', ',').split(',')
                     valid_names = [n.strip().title() for n in raw_names if n.strip()]
                     
-                    # [THUẬT TOÁN CHIA ĐỀU BỘ ĐẾM SỐ LẦN VÀ ĐIỂM TRỪ CHO GVCN]
+                    # [THUẬT TOÁN CHIA ĐỀU LỖI VÀ ĐIỂM TRỪ CHO GVCN]
                     num_names = len(valid_names)
                     qty_per_student = max(1, v.quantity // num_names) if num_names > 0 else v.quantity
                     
                     for n_clean in valid_names:
-                        violations.append({
+                        data.append({  # Gọi đúng biến data.append
                             'week': sc.week,
                             'student_name': n_clean,
                             'violation_name': c.name,
-                            'quantity': qty_per_student, # Đã áp dụng chia đều
+                            'quantity': qty_per_student, 
                             'penalty': float(c.penalty_points * qty_per_student) if getattr(c, 'point_type', 'Điểm trừ') != 'Điểm cộng' else 0
                         })
             return {"success": True, "data": data}
     except Exception as e:
+        import traceback; traceback.print_exc()
         return {"success": False, "error": str(e)}
 
 @app.route('/export_class_blacklist')
@@ -8683,7 +8684,7 @@ def export_class_blacklist():
             results = query.order_by(WeeklyScore.id.desc()).all()
             
             violation_data = []
-            for v, sc, c in results: # Hoặc for v, s, b, c in raw_violations
+            for v, sc, c in results: 
                 if v.student_name and str(v.student_name).strip() != "":
                     raw_names = str(v.student_name).replace(';', ',').split(',')
                     valid_names = [n.strip().title() for n in raw_names if n.strip()]
@@ -8693,11 +8694,11 @@ def export_class_blacklist():
                     qty_per_student = max(1, v.quantity // num_names) if num_names > 0 else v.quantity
                     
                     for n_clean in valid_names:
-                        violations.append({
+                        violation_data.append({ 
                             'week': sc.week,
                             'student_name': n_clean,
                             'violation_name': c.name,
-                            'quantity': qty_per_student, # Đã áp dụng chia đều
+                            'quantity': qty_per_student,
                             'penalty': float(c.penalty_points * qty_per_student) if getattr(c, 'point_type', 'Điểm trừ') != 'Điểm cộng' else 0
                         })
                         
@@ -8711,21 +8712,22 @@ def export_class_blacklist():
             ws = wb.active
             ws.title = "So_Den_Cua_Lop"
             
-            ws.merge_cells('A1:E1')
+            ws.merge_cells('A1:F1')
             ws['A1'] = "ĐOÀN TRƯỜNG THPT THANH HÒA"
             ws['A1'].font = Font(name="Times New Roman", size=11, bold=True)
             
-            ws.merge_cells('A3:E3')
+            ws.merge_cells('A3:F3')
             ws['A3'] = f"DANH SÁCH HỌC SINH VI PHẠM KỶ LUẬT - LỚP {branch.name}"
             ws['A3'].font = Font(name="Times New Roman", size=14, bold=True)
             ws['A3'].alignment = Alignment(horizontal="center")
             
-            ws.merge_cells('A4:E4')
+            ws.merge_cells('A4:F4')
             ws['A4'] = f"Thời gian thống kê: {time_value}"
             ws['A4'].font = Font(name="Times New Roman", size=12, italic=True)
             ws['A4'].alignment = Alignment(horizontal="center")
             
-            headers = ["STT", "Thời gian", "Họ và Tên", "Lỗi Vi Phạm", "Số Lần"]
+            # --- ĐÃ BỔ SUNG CỘT ĐIỂM TRỪ CHO ĐỒNG BỘ VỚI WEB ---
+            headers = ["STT", "Thời gian", "Họ và Tên", "Lỗi Vi Phạm", "Số Lần", "Điểm Trừ"]
             thin = Side(border_style="thin", color="000000")
             border = Border(left=thin, right=thin, top=thin, bottom=thin)
             
@@ -8742,19 +8744,22 @@ def export_class_blacklist():
                 c3 = ws.cell(row=row_idx, column=3, value=item['student_name'])
                 c4 = ws.cell(row=row_idx, column=4, value=item['violation_name'])
                 c5 = ws.cell(row=row_idx, column=5, value=item['quantity'])
+                c6 = ws.cell(row=row_idx, column=6, value=f"-{item['penalty']}đ")
                 
-                for cell in [c1, c2, c3, c4, c5]:
+                for cell in [c1, c2, c3, c4, c5, c6]:
                     cell.font = Font(name="Times New Roman", size=12)
                     cell.border = border
                 c1.alignment = Alignment(horizontal="center")
                 c2.alignment = Alignment(horizontal="center")
                 c5.alignment = Alignment(horizontal="center")
+                c6.alignment = Alignment(horizontal="center", wrap_text=True)
                 
             ws.column_dimensions['A'].width = 6
             ws.column_dimensions['B'].width = 15
             ws.column_dimensions['C'].width = 25
             ws.column_dimensions['D'].width = 35
             ws.column_dimensions['E'].width = 10
+            ws.column_dimensions['F'].width = 10
             
             out = io.BytesIO()
             wb.save(out)
@@ -8764,6 +8769,7 @@ def export_class_blacklist():
             return send_file(out, download_name=filename, as_attachment=True)
             
     except Exception as e:
+        import traceback; traceback.print_exc()
         flash(f"Lỗi xuất Excel: {str(e)}", "error")
         return redirect(url_for('class_dashboard'))
 # ==========================================
