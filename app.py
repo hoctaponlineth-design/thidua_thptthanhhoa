@@ -8617,17 +8617,24 @@ def api_class_blacklist():
             results = query.order_by(WeeklyScore.id.desc()).all()
             
             data = []
-            for v, sc, c in results:
-                raw_names = str(v.student_name).replace(';', ',').split(',')
-                for raw_n in raw_names:
-                    n_clean = raw_n.strip().title()
-                    if n_clean:
-                        data.append({
+            # Lặp qua kết quả truy vấn (Tên biến có thể là v, sc, b, c)
+            for v, sc, b, c in results: # Hoặc for v, s, b, c in raw_violations
+                if v.student_name and str(v.student_name).strip() != "":
+                    raw_names = str(v.student_name).replace(';', ',').split(',')
+                    valid_names = [n.strip().title() for n in raw_names if n.strip()]
+                    
+                    # [THUẬT TOÁN CHIA ĐỀU BỘ ĐẾM SỐ LẦN VÀ ĐIỂM TRỪ CHO GVCN]
+                    num_names = len(valid_names)
+                    qty_per_student = max(1, v.quantity // num_names) if num_names > 0 else v.quantity
+                    
+                    for n_clean in valid_names:
+                        violations.append({
                             'week': sc.week,
+                            'branch_name': b.name,
                             'student_name': n_clean,
                             'violation_name': c.name,
-                            'quantity': v.quantity,
-                            'penalty': float(c.penalty_points * v.quantity) if getattr(c, 'point_type', 'Điểm trừ') != 'Điểm cộng' else 0
+                            'quantity': qty_per_student, # Đã áp dụng chia đều
+                            'penalty': float(c.penalty_points * qty_per_student) if getattr(c, 'point_type', 'Điểm trừ') != 'Điểm cộng' else 0
                         })
             return {"success": True, "data": data}
     except Exception as e:
@@ -8677,16 +8684,23 @@ def export_class_blacklist():
             results = query.order_by(WeeklyScore.id.desc()).all()
             
             violation_data = []
-            for v, sc, c in results:
-                raw_names = str(v.student_name).replace(';', ',').split(',')
-                for raw_n in raw_names:
-                    n_clean = raw_n.strip().title()
-                    if n_clean:
-                        violation_data.append({
+            for v, sc, b, c in results: # Hoặc for v, s, b, c in raw_violations
+                if v.student_name and str(v.student_name).strip() != "":
+                    raw_names = str(v.student_name).replace(';', ',').split(',')
+                    valid_names = [n.strip().title() for n in raw_names if n.strip()]
+                    
+                    # [THUẬT TOÁN CHIA ĐỀU CHO FILE EXCEL GVCN TẢI VỀ]
+                    num_names = len(valid_names)
+                    qty_per_student = max(1, v.quantity // num_names) if num_names > 0 else v.quantity
+                    
+                    for n_clean in valid_names:
+                        violations.append({
                             'week': sc.week,
+                            'branch_name': b.name,
                             'student_name': n_clean,
                             'violation_name': c.name,
-                            'quantity': v.quantity
+                            'quantity': qty_per_student, # Đã áp dụng chia đều
+                            'penalty': float(c.penalty_points * qty_per_student) if getattr(c, 'point_type', 'Điểm trừ') != 'Điểm cộng' else 0
                         })
                         
             # Tạo Excel
