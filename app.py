@@ -1070,9 +1070,14 @@ def dashboard():
                             if viol.student_name and str(viol.student_name).strip() != "":
                                 raw_names = str(viol.student_name).replace(';', ',').split(',')
                                 names = [n.strip().upper() for n in raw_names if n.strip()]
+                                
+                                # [THUẬT TOÁN CHIA ĐỀU BỘ ĐẾM]
+                                num_names = len(names)
+                                total_qty = int(viol.quantity) if viol.quantity else 1
+                                qty_per_student = max(1, total_qty // num_names) if num_names > 0 else total_qty
+                                
                                 for name in names:
-                                    qty = int(viol.quantity) if viol.quantity else 1
-                                    student_viol_counts[name] = student_viol_counts.get(name, 0) + qty
+                                    student_viol_counts[name] = student_viol_counts.get(name, 0) + qty_per_student
                         
                         # Nếu ai >= 3 lỗi, ném ngay ra bảng phong thần
                         for name, count in student_viol_counts.items():
@@ -3242,19 +3247,23 @@ def preview_blacklist():
                 ).all()
                 
             violations = []
+            
             for v, s, b, c in raw_violations:
                 if v.student_name and str(v.student_name).strip() != "":
-                    # Bóc tách tên học sinh nếu có dấu phẩy hoặc chấm phẩy
                     raw_names = str(v.student_name).replace(';', ',').split(',')
-                    for raw_n in raw_names:
-                        n_clean = raw_n.strip().title()
-                        if n_clean:
-                            violations.append({
-                                'branch_name': b.name,
-                                'student_name': n_clean,
-                                'violation_name': c.name,
-                                'quantity': v.quantity
-                            })
+                    valid_names = [n.strip().title() for n in raw_names if n.strip()]
+                    num_names = len(valid_names)
+                    
+                    # [THUẬT TOÁN CHIA ĐỀU LỖI CHO SỐ LƯỢNG HỌC SINH]
+                    qty_per_student = max(1, v.quantity // num_names) if num_names > 0 else v.quantity
+                    
+                    for n_clean in valid_names:
+                        violations.append({
+                            'branch_name': b.name,
+                            'student_name': n_clean,
+                            'violation_name': c.name,
+                            'quantity': qty_per_student
+                        })
                     
             # Sắp xếp danh sách vi phạm theo tên Chi đoàn (từ A-Z)
             violations.sort(key=lambda x: x['branch_name'])
@@ -3285,18 +3294,26 @@ def export_blacklist():
                 ).all()
                 
             violations = []
-            for v, s, b, c in raw_violations:
-                if v.student_name and str(v.student_name).strip() != "":
-                    raw_names = str(v.student_name).replace(';', ',').split(',')
-                    for raw_n in raw_names:
-                        n_clean = raw_n.strip().title()
-                        if n_clean:
-                            violations.append({
-                                'branch_name': b.name,
-                                'student_name': n_clean,
-                                'violation_name': c.name,
-                                'quantity': v.quantity
-                            })
+            for v, sc, b, c in results:
+                raw_names = str(v.student_name).replace(';', ',').split(',')
+                valid_names = [n.strip().title() for n in raw_names if n.strip()]
+                num_names = len(valid_names)
+                
+                # [THUẬT TOÁN CHIA ĐỀU LỖI VÀ ĐIỂM TRỪ]
+                qty_per_student = max(1, v.quantity // num_names) if num_names > 0 else v.quantity
+                
+                for n_clean in valid_names:
+                    if search_name and search_name.lower() not in n_clean.lower():
+                        continue
+                        
+                    violation_data.append({
+                        'week': sc.week,
+                        'branch_name': b.name,
+                        'student_name': n_clean,
+                        'violation_name': c.name,
+                        'quantity': qty_per_student,
+                        'penalty': float(c.penalty_points * qty_per_student) if getattr(c, 'point_type', 'Điểm trừ') != 'Điểm cộng' else 0
+                    })
                     
             violations.sort(key=lambda x: x['branch_name'])
                 
@@ -4127,9 +4144,14 @@ def class_dashboard():
                                 if viol.student_name and str(viol.student_name).strip() != "":
                                     raw_names = str(viol.student_name).replace(';', ',').split(',')
                                     names = [n.strip().upper() for n in raw_names if n.strip()]
+                                    
+                                    # [THUẬT TOÁN CHIA ĐỀU BỘ ĐẾM]
+                                    num_names = len(names)
+                                    total_qty = int(viol.quantity) if viol.quantity else 1
+                                    qty_per_student = max(1, total_qty // num_names) if num_names > 0 else total_qty
+                                    
                                     for name in names:
-                                        qty = int(viol.quantity) if viol.quantity else 1
-                                        student_viol_counts[name] = student_viol_counts.get(name, 0) + qty
+                                        student_viol_counts[name] = student_viol_counts.get(name, 0) + qty_per_student
                             
                             current_warnings = [{'name': name.title(), 'count': count, 'week': score.week} 
                                                 for name, count in student_viol_counts.items() if count >= 3]
@@ -6970,17 +6992,19 @@ def export_global_blacklist():
             
             for v, sc, b, c in results:
                 raw_names = str(v.student_name).replace(';', ',').split(',')
-                for raw_n in raw_names:
-                    n_clean = raw_n.strip().title()
-                    if n_clean:
-                        if search_name and search_name.lower() not in n_clean.lower(): continue
-                        violation_data.append({
-                            'week': sc.week,
-                            'branch_name': b.name,
-                            'student_name': n_clean,
-                            'violation_name': c.name,
-                            'quantity': v.quantity
-                        })
+                valid_names = [n.strip().title() for n in raw_names if n.strip()]
+                num_names = len(valid_names)
+                qty_per_student = max(1, v.quantity // num_names) if num_names > 0 else v.quantity
+                
+                for n_clean in valid_names:
+                    if search_name and search_name.lower() not in n_clean.lower(): continue
+                    violation_data.append({
+                        'week': sc.week,
+                        'branch_name': b.name,
+                        'student_name': n_clean,
+                        'violation_name': c.name,
+                        'quantity': qty_per_student
+                    })
                         
             if search_branch and search_branch.isdigit():
                 b_obj = db_session.query(Branch).filter_by(id=int(search_branch)).first()
