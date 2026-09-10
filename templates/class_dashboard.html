@@ -387,6 +387,38 @@
     }
     .btn-gvcn-equal:active { transform: scale(0.95); }
     .btn-gvcn-equal i { font-size: 16px; margin-bottom: 4px; }
+	/* =========================================
+           UI NÂNG CẤP: PHIẾU ĐÁNH GIÁ SAO ĐỎ CHUẨN APP
+           ========================================= */
+        .eval-category-card {
+            border: 1px solid var(--border); background: #ffffff; 
+            border-radius: 16px; margin-bottom: 20px; overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        }
+        .eval-category-header {
+            background: #f8fafc; padding: 12px 16px; border-bottom: 1px solid var(--border);
+            font-weight: 700; color: var(--primary); font-size: 15px; display: flex; align-items: center; gap: 8px;
+        }
+        .eval-option-box {
+            display: flex; gap: 12px; align-items: flex-start;
+            padding: 14px 16px; border: 2px solid transparent; border-radius: 12px;
+            margin: 10px 12px; cursor: pointer; transition: all 0.2s ease;
+            background-color: #f8fafc;
+        }
+        .eval-option-box input[type="radio"] {
+            transform: scale(1.3); margin-top: 3px; cursor: pointer; flex-shrink: 0;
+        }
+        .eval-option-box span { font-size: 14px; font-weight: 600; line-height: 1.4; color: #475569; transition: all 0.2s; }
+
+        /* HIỆU ỨNG MỚI: ĐỒNG NHẤT 1 MÀU XANH CHỦ ĐẠO CHO MỌI LỰA CHỌN (TRÁNH RỐI MẮT) */
+        .eval-option-box:has(input[type="radio"]:checked) { 
+            border-color: var(--primary); 
+            background: #eff6ff; 
+        }
+        .eval-option-box:has(input[type="radio"]:checked) span { 
+            color: var(--primary); 
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -882,7 +914,7 @@
                         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
                             <div>
                                 <h5 class="fw-bold text-primary m-0"><i class="fa-solid fa-trophy text-warning me-2"></i> Bảng XH Thi Đua Toàn Trường</h5>
-                                <small class="text-muted">TK vị thế các Chi đoàn phân theo nhóm và chu kỳ thời gian.</small>
+                                <small class="text-muted">TK các Chi đoàn phân theo nhóm và thời gian.</small>
                             </div>
                             
                             <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -1341,108 +1373,121 @@
     </div>
     {% endif %}
 
-    <!-- MODAL ĐÁNH GIÁ SAO ĐỎ -->
+	<!-- MODAL ĐÁNH GIÁ SAO ĐỎ (ĐÃ NÂNG CẤP UI) -->
     <div class="modal fade" id="evalModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-fullscreen-md-down">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
-                <div class="modal-header text-white" style="background: linear-gradient(135deg, #0d6efd, #004080);">
-                    <h5 class="modal-title fw-bold">
+                <!-- Header -->
+                <div class="modal-header text-white border-0 pb-3" style="background: linear-gradient(135deg, #2563eb, #1e40af); padding: 20px 24px;">
+                    <h5 class="modal-title fw-bold fs-5">
                         <i class="fa-solid fa-clipboard-check me-2"></i>Phiếu Đánh Giá Sao Đỏ
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body bg-light p-4">
-                    <div class="alert alert-info border-0 shadow-sm rounded-4 mb-4">
-                        <i class="fa-solid fa-user-shield me-2"></i>Đang đánh giá: <strong id="evalStarName" class="text-danger fs-5">...</strong>
-                        <br><small class="text-muted"><i class="fa-regular fa-clock me-1"></i>Kỳ đánh giá: <span id="evalWeekName"></span></small>
+                
+                <div class="modal-body bg-light p-3 p-md-4" style="padding-bottom: 90px !important;">
+                    
+                    <!-- KHỐI THÔNG TIN ĐỐI TƯỢNG (TÊN NẰM DÒNG RIÊNG) -->
+                    <div class="p-3 bg-primary bg-opacity-10 rounded-4 mb-4 border border-primary border-opacity-25 shadow-sm">
+                        <div class="d-flex align-items-center mb-1">
+                            <i class="fa-solid fa-user-shield text-primary me-2"></i>
+                            <span class="text-secondary fw-bold" style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Đối tượng đánh giá:</span>
+                        </div>
+                        <div id="evalStarName" class="fw-bold text-danger mb-2 ps-4" style="font-size: 22px; line-height: 1.2;">
+                            ...
+                        </div>
+                        <div class="ps-4">
+                            <span class="badge bg-white text-dark border shadow-sm px-3 py-2" style="font-size: 12px;">
+                                <i class="fa-regular fa-clock me-1 text-primary"></i> Kỳ đánh giá: <span id="evalWeekName" class="fw-bold text-primary"></span>
+                            </span>
+                        </div>
                     </div>
 
                     <form id="evalForm">
                         <input type="hidden" id="evalStarId">
                         <input type="hidden" id="evalWeek">
 
-                        <div class="card border-0 shadow-sm rounded-4 mb-3">
-                            <div class="card-body">
-                                <h6 class="fw-bold text-primary mb-3">1. Giờ giấc & Chuyên cần</h6>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="score_gio_giac" id="gg5" value="5" checked>
-                                    <label class="form-check-label fw-bold text-success" for="gg5"> Có mặt trực sớm, đúng giờ quy định (5đ)</label>
-                                </div>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="score_gio_giac" id="gg3" value="3">
-                                    <label class="form-check-label text-warning fw-bold" for="gg3"> Có đi muộn nhưng có xin phép/báo cáo (3đ)</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="score_gio_giac" id="gg1" value="1">
-                                    <label class="form-check-label text-danger fw-bold" for="gg1"> Bỏ trực hoặc đi muộn không lý do (1đ)</label>
-                                </div>
-                            </div>
+                        <!-- Tiêu chí 1 -->
+                        <div class="eval-category-card">
+                            <div class="eval-category-header"><i class="fa-solid fa-clock-rotate-left"></i> 1. Giờ giấc & Chuyên cần</div>
+                            <label class="eval-option-box">
+                                <input class="form-check-input" type="radio" name="score_gio_giac" value="5" checked>
+                                <span>Có mặt trực sớm, đúng giờ quy định (5đ)</span>
+                            </label>
+                            <label class="eval-option-box">
+                                <input class="form-check-input" type="radio" name="score_gio_giac" value="3">
+                                <span>Có đi muộn nhưng có xin phép/báo cáo (3đ)</span>
+                            </label>
+                            <label class="eval-option-box mb-3">
+                                <input class="form-check-input" type="radio" name="score_gio_giac" value="1">
+                                <span>Bỏ trực hoặc đi muộn không lý do (1đ)</span>
+                            </label>
                         </div>
 
-                        <div class="card border-0 shadow-sm rounded-4 mb-3">
-                            <div class="card-body">
-                                <h6 class="fw-bold text-primary mb-3">2. Tác phong & Đồng phục</h6>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="score_tac_phong" id="tp5" value="5" checked>
-                                    <label class="form-check-label fw-bold text-success" for="tp5"> Trang phục nghiêm túc, đeo thẻ tên/huy hiệu đầy đủ (5đ)</label>
-                                </div>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="score_tac_phong" id="tp3" value="3">
-                                    <label class="form-check-label text-warning fw-bold" for="tp3"> Đồng phục đúng quy định nhưng quên đeo thẻ tên/ huy hiệu (3đ)</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="score_tac_phong" id="tp1" value="1">
-                                    <label class="form-check-label text-danger fw-bold" for="tp1"> Vi phạm nội quy đồng phục của nhà trường (1đ)</label>
-                                </div>
-                            </div>
+                        <!-- Tiêu chí 2 -->
+                        <div class="eval-category-card">
+                            <div class="eval-category-header"><i class="fa-solid fa-shirt"></i> 2. Tác phong & Đồng phục</div>
+                            <label class="eval-option-box">
+                                <input class="form-check-input" type="radio" name="score_tac_phong" value="5" checked>
+                                <span>Trang phục nghiêm túc, đeo thẻ tên/huy hiệu đầy đủ (5đ)</span>
+                            </label>
+                            <label class="eval-option-box">
+                                <input class="form-check-input" type="radio" name="score_tac_phong" value="3">
+                                <span>Đồng phục đúng quy định nhưng quên đeo thẻ (3đ)</span>
+                            </label>
+                            <label class="eval-option-box mb-3">
+                                <input class="form-check-input" type="radio" name="score_tac_phong" value="1">
+                                <span>Vi phạm nội quy đồng phục của nhà trường (1đ)</span>
+                            </label>
                         </div>
 
-                        <div class="card border-0 shadow-sm rounded-4 mb-3">
-                            <div class="card-body">
-                                <h6 class="fw-bold text-primary mb-3">3. Thái độ & Giao tiếp</h6>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="score_thai_do" id="td5" value="5" checked>
-                                    <label class="form-check-label fw-bold text-success" for="td5"> Lễ phép với giáo viên, nhắc nhở học sinh hòa nhã (5đ)</label>
-                                </div>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="score_thai_do" id="td3" value="3">
-                                    <label class="form-check-label text-warning fw-bold" for="td3"> Hoàn thành nhiệm vụ nhưng giao tiếp còn cứng nhắc (3đ)</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="score_thai_do" id="td1" value="1">
-                                    <label class="form-check-label text-danger fw-bold" for="td1"> Có thái độ hách dịch, lớn tiếng, thiếu tôn trọng (1đ)</label>
-                                </div>
-                            </div>
+                        <!-- Tiêu chí 3 -->
+                        <div class="eval-category-card">
+                            <div class="eval-category-header"><i class="fa-solid fa-comments"></i> 3. Thái độ & Giao tiếp</div>
+                            <label class="eval-option-box">
+                                <input class="form-check-input" type="radio" name="score_thai_do" value="5" checked>
+                                <span>Lễ phép với giáo viên, nhắc nhở học sinh hòa nhã (5đ)</span>
+                            </label>
+                            <label class="eval-option-box">
+                                <input class="form-check-input" type="radio" name="score_thai_do" value="3">
+                                <span>Hoàn thành nhiệm vụ nhưng giao tiếp còn cứng nhắc (3đ)</span>
+                            </label>
+                            <label class="eval-option-box mb-3">
+                                <input class="form-check-input" type="radio" name="score_thai_do" value="1">
+                                <span>Có thái độ hách dịch, lớn tiếng, thiếu tôn trọng (1đ)</span>
+                            </label>
                         </div>
 
-                        <div class="card border-0 shadow-sm rounded-4 mb-3">
-                            <div class="card-body">
-                                <h6 class="fw-bold text-primary mb-3">4. Tính Công tâm & Chính xác</h6>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="score_cong_tam" id="ct5" value="5" checked>
-                                    <label class="form-check-label fw-bold text-success" for="ct5"> Ghi nhận lỗi chính xác, trung thực, khách quan (5đ)</label>
-                                </div>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="score_cong_tam" id="ct3" value="3">
-                                    <label class="form-check-label text-warning fw-bold" for="ct3"> Chấm tương đối, đôi chỗ còn bỏ sót lỗi nhỏ (3đ)</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="score_cong_tam" id="ct1" value="1">
-                                    <label class="form-check-label text-danger fw-bold" for="ct1"> Bao che cho học sinh vi phạm hoặc trù dập lớp trực (1đ)</label>
-                                </div>
-                            </div>
+                        <!-- Tiêu chí 4 -->
+                        <div class="eval-category-card">
+                            <div class="eval-category-header"><i class="fa-solid fa-scale-balanced"></i> 4. Tính Công tâm & Chính xác</div>
+                            <label class="eval-option-box">
+                                <input class="form-check-input" type="radio" name="score_cong_tam" value="5" checked>
+                                <span>Ghi nhận lỗi chính xác, trung thực, khách quan (5đ)</span>
+                            </label>
+                            <label class="eval-option-box">
+                                <input class="form-check-input" type="radio" name="score_cong_tam" value="3">
+                                <span>Chấm tương đối, đôi chỗ còn bỏ sót lỗi nhỏ (3đ)</span>
+                            </label>
+                            <label class="eval-option-box mb-3">
+                                <input class="form-check-input" type="radio" name="score_cong_tam" value="1">
+                                <span>Bao che cho học sinh vi phạm hoặc trù dập lớp trực (1đ)</span>
+                            </label>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="fw-bold text-secondary mb-2">Góp ý ẩn danh (Không bắt buộc):</label>
-                            <textarea class="form-control rounded-3" id="evalComment" rows="3" placeholder="Nhập nhận xét chi tiết để Bí thư Đoàn trường xem xét..."></textarea>
+                        <!-- Ghi chú ẩn danh -->
+                        <div class="mb-2">
+                            <label class="fw-bold text-secondary mb-2 ms-1"><i class="fa-solid fa-pen-to-square me-1"></i> Góp ý ẩn danh (Không bắt buộc):</label>
+                            <textarea class="form-control" id="evalComment" rows="3" placeholder="Nhập nhận xét chi tiết để Bí thư Đoàn trường xem xét..." style="border-radius: 12px; resize: none; background: #ffffff; border: 1.5px solid var(--border); padding: 14px; font-size: 14px;"></textarea>
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer bg-white border-0 p-3">
-                    <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Hủy</button>
-                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" id="btnSubmitEval" onclick="submitEvaluation()">
-                        <i class="fa-solid fa-paper-plane me-2"></i> Gửi Đánh Giá
+                
+                <!-- Footer dính dưới đáy trên Mobile -->
+                <div class="modal-footer bg-white border-top p-3" style="position: sticky; bottom: 0; z-index: 10; box-shadow: 0 -4px 15px rgba(0,0,0,0.05);">
+                    <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal" style="border-radius: 12px; height: 45px;">Hủy</button>
+                    <button type="button" class="btn btn-primary fw-bold px-4 shadow-sm flex-grow-1" id="btnSubmitEval" onclick="submitEvaluation()" style="border-radius: 12px; height: 45px; background: var(--primary);">
+                        <i class="fa-solid fa-paper-plane me-1"></i> Gửi Đánh Giá
                     </button>
                 </div>
             </div>
