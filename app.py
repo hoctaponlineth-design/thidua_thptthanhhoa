@@ -3549,6 +3549,8 @@ def monthly():
                         ).all()
                         
                         total_score = sum([(s.total_score or 0.0) for s in scores])
+                        total_tru = sum([(s.score_tru or 0.0) for s in scores])   # Rút trích tổng lỗi
+                        total_cong = sum([(s.score_cong or 0.0) for s in scores]) # Rút trích tổng thưởng
                         week_scores_dict = {s.week: (s.total_score or 0.0) for s in scores}
                         
                         temp_groups[grp].append({
@@ -3557,16 +3559,29 @@ def monthly():
                             'group': grp,
                             'gvcn': b.gvcn,
                             'total_score': total_score,
+                            'total_tru': total_tru,
+                            'total_cong': total_cong,
                             'weeks_count': len(scores),
                             'week_scores': week_scores_dict 
                         })
                     
                     for grp, lst in temp_groups.items():
-                        lst.sort(key=lambda x: x['total_score'], reverse=True)
+                        # Áp dụng bộ lọc 4 lớp cho Thi đua Tháng
+                        lst.sort(key=lambda x: (
+                            -float(x['total_score']), 
+                            float(x['total_tru']), 
+                            -float(x['total_cong']),
+                            x['branch_name']
+                        ))
+                        
                         current_rank = 1
                         for i, d in enumerate(lst):
-                            if i > 0 and d['total_score'] < lst[i-1]['total_score']:
-                                current_rank = i + 1
+                            if i > 0:
+                                prev = lst[i-1]
+                                if not (d['total_score'] == prev['total_score'] and 
+                                        d['total_tru'] == prev['total_tru'] and 
+                                        d['total_cong'] == prev['total_cong']):
+                                    current_rank = i + 1
                             d['rank'] = current_rank
                         monthly_data[grp] = lst
                         
@@ -4132,11 +4147,26 @@ def class_dashboard():
                         ).all()
                         
                         same_group_scores = [s for s in all_in_week if (s.branch.group or "Nhóm 1") == group_val]
-                        same_group_scores.sort(key=lambda x: float(x.total_score or 0), reverse=True)
+                        
+                        # =======================================================
+                        # [THUẬT TOÁN ĐỒNG HẠNG TIE-BREAKER CHUẨN XÁC]
+                        # =======================================================
+                        same_group_scores.sort(key=lambda x: (
+                            -float(x.total_score or 0),   # Ưu tiên 1: Tổng điểm (Từ cao xuống thấp)
+                            float(x.score_tru or 0),      # Ưu tiên 2: Ít điểm trừ vi phạm hơn sẽ xếp trên
+                            -float(x.score_cong or 0),    # Ưu tiên 3: Nhiều điểm thưởng hơn sẽ xếp trên
+                            x.branch.name                 # Ưu tiên 4: Cùng điểm thì xếp hạng theo Tên Lớp (A-Z)
+                        ))
                         
                         rk = 1
                         for i, s in enumerate(same_group_scores):
-                            if i > 0 and float(s.total_score or 0) < float(same_group_scores[i-1].total_score or 0): rk = i + 1
+                            if i > 0:
+                                prev = same_group_scores[i-1]
+                                # Phải hoàn toàn giống nhau 3 hệ số mới được cấp Đồng Hạng
+                                if not (float(s.total_score or 0) == float(prev.total_score or 0) and 
+                                        float(s.score_tru or 0) == float(prev.score_tru or 0) and 
+                                        float(s.score_cong or 0) == float(prev.score_cong or 0)):
+                                    rk = i + 1 # Nhảy bậc xếp hạng (VD: 1, 2, 2, 4)
                             if s.branch_id == selected_branch.id: break
                         
                         so_luong_diem_tot = int(sc.count_9 or 0) + int(sc.count_10 or 0)
@@ -4728,11 +4758,23 @@ def export_weekly_excel():
                     grp = sc.branch.group or "Nhóm 1"
                     if grp not in prev_data: prev_data[grp] = []
                     prev_data[grp].append(sc)
+                    
                 for grp, lst in prev_data.items():
-                    lst.sort(key=lambda x: float(x.total_score or 0), reverse=True)
+                    # Xếp hạng đa tầng cho tuần trước
+                    lst.sort(key=lambda x: (
+                        -float(x.total_score or 0),
+                        float(x.score_tru or 0),
+                        -float(x.score_cong or 0),
+                        x.branch.name
+                    ))
                     rk = 1
                     for i, s in enumerate(lst):
-                        if i > 0 and float(s.total_score or 0) < float(lst[i-1].total_score or 0): rk = i + 1
+                        if i > 0:
+                            prev = lst[i-1]
+                            if not (float(s.total_score or 0) == float(prev.total_score or 0) and 
+                                    float(s.score_tru or 0) == float(prev.score_tru or 0) and 
+                                    float(s.score_cong or 0) == float(prev.score_cong or 0)):
+                                rk = i + 1
                         prev_rank_map[s.branch_id] = rk
 
             report_data = {}; start_date_str = ""; end_date_str = ""
@@ -4748,6 +4790,7 @@ def export_weekly_excel():
                     
                 report_data[grp].append({
                     'branch_name': b.name, 'total_score': float(sc.total_score or 0),
+                    'score_tru': float(sc.score_tru or 0), 'score_cong': float(sc.score_cong or 0),
                     'diem_tot': so_luong_diem_tot,
                     'note': sc.note or "", 'prev_rank': prev_rank_map.get(b.id, "N/A")
                 })
@@ -4799,11 +4842,22 @@ def export_weekly_excel():
             current_row = 5
             for group in sorted(report_data.keys()):
                 group_items = report_data[group]
-                group_items.sort(key=lambda x: x['total_score'], reverse=True)
+                # Xếp hạng đa tầng khi in ra Excel
+                group_items.sort(key=lambda x: (
+                    -float(x['total_score']),
+                    float(x['score_tru']),
+                    -float(x['score_cong']),
+                    x['branch_name']
+                ))
                 
                 curr_rank = 1
                 for i, item in enumerate(group_items):
-                    if i > 0 and item['total_score'] < group_items[i-1]['total_score']: curr_rank = i + 1
+                    if i > 0:
+                        prev = group_items[i-1]
+                        if not (item['total_score'] == prev['total_score'] and 
+                                item['score_tru'] == prev['score_tru'] and 
+                                item['score_cong'] == prev['score_cong']):
+                            curr_rank = i + 1
                     item['current_rank'] = curr_rank
 
                 ws.cell(row=current_row, column=1, value=str(group)).font = Font(name="Times New Roman", size=11, bold=True)
@@ -5071,10 +5125,14 @@ def semester():
                         })
                         
                     for grp, lst in semester_data.items():
-                        lst.sort(key=lambda x: x['total_score'], reverse=True)
+                        # Sắp xếp theo Tổng điểm giảm dần, nếu bằng điểm thì xếp A-Z
+                        lst.sort(key=lambda x: (-float(x['total_score']), x['branch_name']))
                         rk = 1
                         for i, d in enumerate(lst):
-                            if i > 0 and d['total_score'] < lst[i-1]['total_score']: rk = i + 1
+                            if i > 0:
+                                prev = lst[i-1]
+                                if float(d['total_score']) != float(prev['total_score']):
+                                    rk = i + 1
                             d['rank'] = rk
                             
                             p_rk = d['prev_rank']
@@ -5352,10 +5410,14 @@ def yearly():
                         })
                         
                     for grp, lst in yearly_data.items():
-                        lst.sort(key=lambda x: x['total_score'], reverse=True)
+                        # Sắp xếp theo Tổng điểm giảm dần, nếu bằng điểm thì xếp A-Z
+                        lst.sort(key=lambda x: (-float(x['total_score']), x['branch_name']))
                         rk = 1
                         for i, d in enumerate(lst):
-                            if i > 0 and d['total_score'] < lst[i-1]['total_score']: rk = i + 1
+                            if i > 0:
+                                prev = lst[i-1]
+                                if float(d['total_score']) != float(prev['total_score']):
+                                    rk = i + 1
                             d['rank'] = rk
 
                     if action == 'save':
