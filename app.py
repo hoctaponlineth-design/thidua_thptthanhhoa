@@ -8618,7 +8618,7 @@ def api_class_blacklist():
             
             data = []
             # Lặp qua kết quả truy vấn (Tên biến có thể là v, sc, b, c)
-            for v, sc, b, c in results: # Hoặc for v, s, b, c in raw_violations
+            for v, sc, c in results: # Hoặc for v, s, b, c in raw_violations
                 if v.student_name and str(v.student_name).strip() != "":
                     raw_names = str(v.student_name).replace(';', ',').split(',')
                     valid_names = [n.strip().title() for n in raw_names if n.strip()]
@@ -8630,7 +8630,6 @@ def api_class_blacklist():
                     for n_clean in valid_names:
                         violations.append({
                             'week': sc.week,
-                            'branch_name': b.name,
                             'student_name': n_clean,
                             'violation_name': c.name,
                             'quantity': qty_per_student, # Đã áp dụng chia đều
@@ -8684,7 +8683,7 @@ def export_class_blacklist():
             results = query.order_by(WeeklyScore.id.desc()).all()
             
             violation_data = []
-            for v, sc, b, c in results: # Hoặc for v, s, b, c in raw_violations
+            for v, sc, c in results: # Hoặc for v, s, b, c in raw_violations
                 if v.student_name and str(v.student_name).strip() != "":
                     raw_names = str(v.student_name).replace(';', ',').split(',')
                     valid_names = [n.strip().title() for n in raw_names if n.strip()]
@@ -8696,7 +8695,6 @@ def export_class_blacklist():
                     for n_clean in valid_names:
                         violations.append({
                             'week': sc.week,
-                            'branch_name': b.name,
                             'student_name': n_clean,
                             'violation_name': c.name,
                             'quantity': qty_per_student, # Đã áp dụng chia đều
