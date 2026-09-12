@@ -591,11 +591,23 @@ def parse_sodaubai():
                 current_day = cot0_clean.split('\n')[0].strip()
 
             # =========================================================================
-            # [NÂNG CẤP LÕI 2]: BỘ LỌC CHỈ QUÉT THEO NGÀY CHỈ ĐỊNH
+            # [NÂNG CẤP LÕI 2]: BỘ LỌC CHỈ QUÉT THEO NGÀY CHỈ ĐỊNH (HỖ TRỢ CẢ SÁNG/CHIỀU)
             # =========================================================================
-            # Trực tiếp bỏ qua tất cả các dòng không khớp với ngày được chọn. 
-            if target_day_input != 'Tất cả' and current_day.lower() != target_day_input.lower():
-                continue 
+            if target_day_input != 'Tất cả':
+                # Chuẩn hóa đầu vào để so sánh linh hoạt (VD: "Thứ 5 Chiều" -> "thứ 5")
+                base_target_day = target_day_input.lower().replace(' sáng', '').replace(' chiều', '').strip()
+                
+                # 1. Nếu dòng trên Sổ đầu bài không có chứa "Thứ 5" -> Lập tức bỏ qua
+                if base_target_day not in current_day.lower():
+                    continue 
+                    
+                # 2. Xử lý phân biệt Sáng / Chiều chéo nhau 
+                # (Chỉ hoạt động nếu giáo viên có ghi rõ chữ "Chiều" hoặc "Sáng" trên Sổ)
+                if 'chiều' in target_day_input.lower() and 'sáng' in current_day.lower():
+                    continue
+                if 'sáng' in target_day_input.lower() and 'chiều' in current_day.lower():
+                    continue
+            # =========================================================================
             # =============================================================================
             # --- [BỔ SUNG BƯỚC 2]: TỰ ĐỘNG BẮT LỖI VẮNG HỌC (THÔNG MINH HƠN + HỖ TRỢ K/P) ---
             # =============================================================================
@@ -975,7 +987,7 @@ def resolve_appeal():
                                         
                                 if is_approved:
                                     # LỖI ĐƯỢC DUYỆT GỠ: Không đưa vào remaining_notes nữa & Cộng điểm hoàn trả
-                                    day_pfx_match = re.search(r'\[(T[2-7]|CN)\]', n)
+                                    day_pfx_match = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', n, re.IGNORECASE)
                                     day_pfx = day_pfx_match.group(0) if day_pfx_match else ""
                                     text_to_parse = n.replace(day_pfx, "").strip() if day_pfx else n
                                     
@@ -996,7 +1008,7 @@ def resolve_appeal():
                             db_session.query(WeeklyViolation).filter_by(weekly_score_id=score.id).delete()
                             
                             for part in remaining_notes:
-                                match_day = re.search(r'\[(T[2-7]|CN)\]', part)
+                                match_day = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', part, re.IGNORECASE)
                                 day_pfx = match_day.group(0) if match_day else ""
                                 text_to_parse = part.replace(day_pfx, "").strip() if day_pfx else part
                                 
@@ -3064,7 +3076,7 @@ def weekly():
                             if not part_clean: continue
                             
                             # [VÁ LỖI CỐT LÕI]: Gom nhóm chính xác thẻ ngày [T2] giống hệt App điện thoại
-                            match_day = re.search(r'\[(T[2-7]|CN)\]', part_clean, re.IGNORECASE)
+                            match_day = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', part_clean, re.IGNORECASE)
                             day_pfx = match_day.group(0).upper() if match_day else ""
                             text_to_parse = part_clean.replace(day_pfx, "").strip() if day_pfx else part_clean
                             
@@ -6463,10 +6475,11 @@ def submit_appeal():
                 appealed_errors = [e.strip() for e in errors_str.split("] & [")]
                 
                 for err in appealed_errors:
-                    day_match = re.search(r'\[(T[2-7]|CN)\]', err)
+                    day_match = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', err, re.IGNORECASE)
                     if day_match:
-                        err_day = day_match.group(0)
-                        if err_day != today_pfx:
+                        err_day = day_match.group(0).upper()
+                        # Kiểm tra xem thứ hiện tại (VD: T5) có nằm trong tên lỗi (VD: [T5 CHIỀU]) hay không
+                        if today_pfx.strip('[]') not in err_day:
                             flash(f"⛔ TỪ CHỐI: Lỗi thuộc ngày {err_day} đã quá hạn! Chỉ tiếp nhận khiếu nại trong cùng ngày xảy ra vi phạm.", "error")
                             return redirect(url_for('class_dashboard'))
 
@@ -7242,7 +7255,7 @@ def sao_do_quick_submit_form():
                 if not part_clean: continue
                 
                 # --- [NÂNG CẤP]: BÓC TÁCH TAG NGÀY ĐỂ TRÁNH GỘP LỖI KHÁC NGÀY ---
-                match_day = re.search(r'\[(T[2-7]|CN)\]', part_clean)
+                match_day = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', part_clean, re.IGNORECASE)
                 day_pfx = match_day.group(0) if match_day else ""
                 text_to_parse = part_clean.replace(day_pfx, "").strip() if day_pfx else part_clean
                 
@@ -7490,7 +7503,7 @@ def submit_mobile_sao_do():
                 part_clean = part.strip()
                 if not part_clean: continue
                 
-                match_day = re.search(r'\[(T[2-7]|CN)\]', part_clean)
+                match_day = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', part_clean, re.IGNORECASE)
                 day_pfx = match_day.group(0) if match_day else ""
                 text_to_parse = part_clean.replace(day_pfx, "").strip() if day_pfx else part_clean
                 
