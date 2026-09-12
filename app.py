@@ -652,8 +652,6 @@ def parse_sodaubai():
                         if stu_name:
                             if is_khong_phep:
                                 general_violations_set.add(('Vắng học không phép', stu_name, current_day))
-                            elif is_co_phep:
-                                general_violations_set.add(('Vắng học có phép', stu_name, current_day))
             except Exception as e:
                 pass
             # =============================================================================
