@@ -531,6 +531,23 @@ def parse_sodaubai():
             start_row = df[df[0].astype(str).str.contains('Thứ \nngày tháng', na=False, case=False)].index[0]
         except:
             return {"error": "Hệ thống không nhận diện được biểu mẫu Sổ Đầu Bài này!"}, 400
+        # =========================================================
+        # [BẢN VÁ LỖI]: TỰ ĐỘNG DÒ TÌM CỘT ĐIỂM VÀ NHẬN XÉT
+        # =========================================================
+        col_diem_list = []
+        col_xep_loai_tiet = 18 # Cột mặc định dự phòng
+        
+        # Quét ngang các cột ở dòng tiêu đề (start_row) để tìm đúng vị trí
+        for c in range(len(df.columns)):
+            col_title = str(df.iloc[start_row, c]).lower()
+            if "điểm" in col_title or "nhận xét" in col_title:
+                col_diem_list.append(c)
+            if "xếp loại" in col_title and "tiết" in col_title:
+                col_xep_loai_tiet = c
+                
+        # Nếu biểu mẫu quá lạ không dò ra chữ, quay về giá trị mặc định
+        if not col_diem_list: 
+            col_diem_list = [13, 14, 15]
             
         c10 = c9 = c8 = 0
         
@@ -625,8 +642,8 @@ def parse_sodaubai():
             # =========================================================================
             # 1. Quét riêng cột 18 để phạt tập thể "Tiết Yếu" (nếu có)
             try:
-                if 18 < len(df.columns):
-                    xep_loai_tiet = str(df.iloc[i, 18]).strip().lower()
+                if col_xep_loai_tiet < len(df.columns):
+                    xep_loai_tiet = str(df.iloc[i, col_xep_loai_tiet]).strip().lower()
                     if xep_loai_tiet in ['yếu', 'kém']:
                         general_violations_set.add(('Tiết Yếu', '', current_day))
             except Exception:
@@ -634,7 +651,7 @@ def parse_sodaubai():
 
             # 2. CHỈ gộp Cột 13, 14 (Điểm KT) và 15 (Nhận xét) để AI dò chữ và bắt lỗi cá nhân
             row_scores = []
-            for col in [13, 14, 15]:
+            for col in col_diem_list:
                 if col < len(df.columns):
                     val = str(df.iloc[i, col]).strip()
                     if val.lower() != 'nan': row_scores.append(val)
@@ -698,17 +715,21 @@ def parse_sodaubai():
                 if found_text_violation:
                     continue # Đã là lỗi bằng chữ thì bỏ qua, không quét điểm số nữa để tránh nhầm lẫn
                 # =========================================================================
-
                 # Tìm cặp [Tên học sinh] và [Con số điểm 0-10] ở bất kỳ vị trí nào trong đoạn phân tách
                 match = re.search(r'([A-ZÀ-Ỹa-zà-ỹ\s]+?)\s*[:\-]?\s*\b(10|[0-9])\b', entry)
                 if match:
                     parsed_any = True
-                    raw_name = match.group(1).strip()
-                    # Lấy từ cuối cùng hoặc 2 từ cuối làm tên học sinh nếu chuỗi tên quá dài do dính chữ
-                    name_words = raw_name.split()
-                    name_part = name_words[-1].title() if name_words else "Học sinh"
+                    raw_name = match.group(1).strip()                
+                    # Tách các từ ra để lọc
+                    name_words = raw_name.split()             
+                    # [BẢN VÁ LỖI]: Danh sách các từ vô nghĩa cần loại bỏ khi giáo viên ghi nhận xét
+                    stop_words = ['không', 'thuộc', 'bài', 'kém', 'lười', 'chú', 'ý', 'phát', 'biểu', 'ồn', 'tập', 'trung', 'nói', 'chuyện', 'đùa', 'giỡn', 'mất', 'trật', 'tự', 'thiếu', 'ngủ', 'quên']                  
+                    # Lọc bỏ các từ nằm trong stop_words (không phân biệt hoa/thường)
+                    filtered_words = [w for w in name_words if w.lower() not in stop_words]              
+                    # Lấy từ cuối cùng trong danh sách ĐÃ LỌC SẠCH làm tên học sinh
+                    name_part = filtered_words[-1].title() if filtered_words else "Học sinh"           
                     score_val = int(match.group(2))
-                    
+                
                     tiet = str(df.iloc[i, 2]).strip()
                     tiet_str = f"Tiết {tiet}" if tiet != 'nan' else "Tiết học"
                     
@@ -2883,12 +2904,22 @@ def api_toggle_week_lock():
                         for img_path in image_paths:
                             if img_path.strip():
                                 # Loại bỏ dấu '/' ở đầu để lấy đường dẫn vật lý trên server (VD: static/uploads/...)
-                                physical_path = img_path.strip().lstrip('/')
                                 try:
-                                    if os.path.exists(physical_path):
-                                        os.remove(physical_path) # Xóa file vật lý khỏi ổ cứng
+                                    import cloudinary.uploader
+                                    import os
+                                    # Cấu hình lại Cloudinary nếu cần
+                                    if not os.environ.get("CLOUDINARY_URL"):
+                                        cloudinary.config( 
+                                            cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME"), 
+                                            api_key = os.environ.get("CLOUDINARY_API_KEY"), 
+                                            api_secret = os.environ.get("CLOUDINARY_API_SECRET"),
+                                            secure = True
+                                        )
+                                    # Trích xuất public_id từ URL Cloudinary (Ví dụ lấy: img_1_abcd1234)
+                                    public_id = img_path.split('/')[-1].split('.')[0]
+                                    cloudinary.uploader.destroy(f"thidua_doantruong/{week_name}/{public_id}")
                                 except Exception as e:
-                                    print(f"Lỗi dọn rác ảnh tự động: {e}")
+                                    print(f"Lỗi dọn rác ảnh trên Cloudinary: {e}")
                         
                         # Xóa đường dẫn trong CSDL để nút "Xem ảnh" trên giao diện tự động biến mất
                         s.evidence_image = None
