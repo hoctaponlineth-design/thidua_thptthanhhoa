@@ -361,7 +361,7 @@
                         {% for item in branches_data %}
                         {% set b = item.branch %}
                         {% set sc = item.score %}
-                        <tr class="branch-row" data-group="{{ b.group }}" ondblclick="openDetailModal('{{ b.id }}', '{{ b.name }}', '{{ b.group }}')" style="cursor: pointer;">
+						<tr class="branch-row" data-group="{{ b.group }}" data-so-tot="0" data-so-kha="0" data-so-tb="0" data-so-yeu="0" ondblclick="openDetailModal('{{ b.id }}', '{{ b.name }}', '{{ b.group }}')" style="cursor: pointer;">
                             <td><span class="badge-stt">{{ loop.index }}</span></td>
 							<td style="text-align: left; padding-left: 20px;">
                                 <div class="d-flex flex-column align-items-start">
@@ -913,7 +913,7 @@
             } catch (err) { console.error(err); alert("Lỗi kết nối đến máy chủ!"); }
         }
 
-        async function uploadSDB(inputElement, branchId) {
+		async function uploadSDB(inputElement, branchId) {
             let file = inputElement.files[0];
             if (!file) return;
             
@@ -982,12 +982,50 @@
                             }
                         }
 
-                        // Xếp loại tuần: Ưu tiên Xếp loại tốt nhất
+                        // --- [NÂNG CẤP MỚI]: CỘNG DỒN SỐ TIẾT VÀ XẾP LOẠI TỰ ĐỘNG CHO CẢ TUẦN ---
+                        let rowNode = tr; 
+                        
+                        // Cộng dồn số tiết từ file vừa quét vào bộ nhớ đệm của dòng lớp
+                        let curTot = parseInt(rowNode.getAttribute('data-so-tot') || 0) + (result.so_tot || 0);
+                        let curKha = parseInt(rowNode.getAttribute('data-so-kha') || 0) + (result.so_kha || 0);
+                        let curTb  = parseInt(rowNode.getAttribute('data-so-tb') || 0) + (result.so_tb || 0);
+                        let curYeu = parseInt(rowNode.getAttribute('data-so-yeu') || 0) + (result.so_yeu || 0);
+
+                        rowNode.setAttribute('data-so-tot', curTot);
+                        rowNode.setAttribute('data-so-kha', curKha);
+                        rowNode.setAttribute('data-so-tb', curTb);
+                        rowNode.setAttribute('data-so-yeu', curYeu);
+
+                        // Tính tổng số tiết gộp lại của tuần
+                        let sumTiet = curTot + curKha + curTb + curYeu;
+                        let autoRating = "Bình thường";
+                        
+                        if (sumTiet > 0) {
+                            // 100% tổng số tiết gộp lại phải đạt Tốt mới được Tuần Tốt
+                            if (curTot === sumTiet) {
+                                autoRating = "Tuần Tốt";
+                            } 
+                            // Nếu không có tiết Yếu, không có tiết TB và có tiết Khá -> Tuần Khá
+                            else if (curYeu === 0 && curTb === 0 && curKha > 0) {
+                                autoRating = "Tuần Khá";
+                            }
+                        }
+
+                        // Cập nhật lên ô Xếp loại trong Modal chi tiết
                         const ratingSelect = document.getElementById('detailRating');
                         if (ratingSelect) {
-                            if (result.xep_loai === "Tuần Tốt") ratingSelect.value = result.xep_loai;
-                            else if (result.xep_loai === "Tuần Khá" && ratingSelect.value !== "Tuần Tốt") ratingSelect.value = result.xep_loai;
+                            ratingSelect.value = autoRating;
+                            updateRowStyle(ratingSelect);
                         }
+
+                        // Đồng bộ trực tiếp ra select trên bảng chính để khi bấm Lưu không bị mất dữ liệu
+                        let mainRatingSelect = tr.querySelector('.select-rating');
+                        if (mainRatingSelect) {
+                            mainRatingSelect.value = autoRating;
+                            updateRowStyle(mainRatingSelect);
+                        }
+                        // ----------------------------------------------------
+                        // --------------------------------------------------------------------
 
                         // [BẢN NÂNG CẤP LÕI 2]: CỘNG DỒN GHI CHÚ VI PHẠM (KHÔNG GHI ĐÈ)
                         const noteInput = document.getElementById('detailNote');
@@ -1010,7 +1048,6 @@
             }
             inputElement.value = ""; 
         }
-		
 		document.addEventListener("DOMContentLoaded", async function() {
             const weekSelector = document.getElementById('weekSelector');
             if (!weekSelector) return;
