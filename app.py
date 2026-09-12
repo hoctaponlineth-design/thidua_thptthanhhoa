@@ -716,7 +716,7 @@ def parse_sodaubai():
                     continue # Đã là lỗi bằng chữ thì bỏ qua, không quét điểm số nữa để tránh nhầm lẫn
                 # =========================================================================
                 # Tìm cặp [Tên học sinh] và [Con số điểm 0-10] ở bất kỳ vị trí nào trong đoạn phân tách
-                match = re.search(r'([A-ZÀ-Ỹa-zà-ỹ\s]+?)\s*[:\-]?\s*\b(10|[0-9])\b', entry)
+                match = re.search(r'([A-ZÀ-Ỹa-zà-ỹ\s]+?)\s*[:\-]?\s*(10|[0-9])\s*(?:đ|Đ|điểm|Điểm)?(?!\d)', entry)
                 if match:
                     parsed_any = True
                     raw_name = match.group(1).strip()                
@@ -755,7 +755,7 @@ def parse_sodaubai():
             
             # THUẬT TOÁN DỰ PHÒNG: Nếu không tách được theo tên, quét toàn bộ số nguyên hợp lệ trong ô
             if not parsed_any:
-                numbers = re.findall(r'\b(10|9|8|0|[1-4])\b', diem_raw)
+                numbers = re.findall(r'(?<!\d)(10|9|8|0|[1-2])\s*(?:đ|Đ|điểm|Điểm)?(?!\d)', diem_raw)
                 for num_str in numbers:
                     num = int(num_str)
                     tiet = str(df.iloc[i, 2]).strip()
