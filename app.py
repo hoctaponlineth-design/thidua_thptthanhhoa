@@ -596,10 +596,8 @@ def parse_sodaubai():
             # Trực tiếp bỏ qua tất cả các dòng không khớp với ngày được chọn. 
             if target_day_input != 'Tất cả' and current_day.lower() != target_day_input.lower():
                 continue 
-            # =========================================================================
-
             # =============================================================================
-            # --- [BỔ SUNG BƯỚC 2]: TỰ ĐỘNG BẮT LỖI VẮNG HỌC (CHỈ BẮT KHÔNG PHÉP) ---
+            # --- [BỔ SUNG BƯỚC 2]: TỰ ĐỘNG BẮT LỖI VẮNG HỌC (THÔNG MINH HƠN + HỖ TRỢ K/P) ---
             # =============================================================================
             try:
                 # Tự động dò tìm cột "Tên HS nghỉ tiết" hoặc "Vắng"
@@ -612,22 +610,38 @@ def parse_sodaubai():
                         
                 val_vang = str(df.iloc[i, col_vang]).strip()
                 if val_vang and val_vang.lower() != 'nan':
-                    # Cắt chuỗi theo dấu phẩy/chấm phẩy để tách riêng từng em (nếu vắng nhiều em 1 tiết)
                     import re
+                    # Cắt chuỗi theo dấu phẩy/chấm phẩy để xử lý từng học sinh
                     for p in re.split(r'[,;]+', val_vang):
                         p = p.strip()
                         if not p: continue
+                        p_lower = p.lower()
                         
-                        # [QUY TẮC MỚI]: Chỉ bắt lỗi nếu giáo viên có ghi chữ "không" hoặc "kp"
-                        if 'không' in p.lower() or 'kp' in p.lower():
-                            # Xóa phần ghi chú trong ngoặc () và các chữ thừa để lấy được mỗi Tên học sinh
-                            stu_name = re.sub(r'\(.*?\)', '', p)
-                            stu_name = re.sub(r'(?i)không phép|ko phép|kp', '', stu_name)
-                            stu_name = stu_name.strip(' -:').title()
+                        is_co_phep = False
+                        is_khong_phep = False
+                        
+                        # 1. Nhận diện VẮNG CÓ PHÉP (có chứa chữ p, cp, có phép, ốm, bệnh)
+                        if re.search(r'\b(cp|p|có phép|co phep|ốm|bệnh)\b', p_lower):
+                            is_co_phep = True
+                        
+                        # 2. Nhận diện VẮNG KHÔNG PHÉP (có chứa chữ k, kp, không phép, ko phép)
+                        elif re.search(r'\b(kp|k|không phép|khong phep|ko phép|ko phep|k phép)\b', p_lower) or 'không' in p_lower:
+                            is_khong_phep = True
                             
-                            if stu_name:
-                                # Đưa vào SET vi phạm (Gắn kèm Tên + Ngày để chống lặp)
+                        # 3. NẾU GIÁO VIÊN CHỈ GHI TÊN (Không ghi chú gì thêm) -> Mặc định là Không phép
+                        else:
+                            is_khong_phep = True 
+                        
+                        # Xóa bỏ các thông tin thừa trong ngoặc và các từ viết tắt để lấy đúng Tên HS (Đã thêm "k" và "p")
+                        stu_name = re.sub(r'\(.*?\)', '', p)
+                        stu_name = re.sub(r'(?i)\b(không phép|khong phep|ko phép|ko phep|k phép|kp|k|có phép|co phep|cp|p|không|ko|ốm|bệnh)\b', '', stu_name)
+                        stu_name = stu_name.strip(' -:').title()
+                        
+                        if stu_name:
+                            if is_khong_phep:
                                 general_violations_set.add(('Vắng học không phép', stu_name, current_day))
+                            elif is_co_phep:
+                                general_violations_set.add(('Vắng học có phép', stu_name, current_day))
             except Exception as e:
                 pass
             # =============================================================================
