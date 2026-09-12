@@ -601,11 +601,12 @@ def parse_sodaubai():
                 if base_target_day not in current_day.lower():
                     continue 
                     
-                # 2. Xử lý phân biệt Sáng / Chiều chéo nhau 
-                # (Chỉ hoạt động nếu giáo viên có ghi rõ chữ "Chiều" hoặc "Sáng" trên Sổ)
-                if 'chiều' in target_day_input.lower() and 'sáng' in current_day.lower():
+                # 2. Xử lý phân biệt Sáng / Chiều chéo nhau tự động cho mọi ngày
+                # Nếu người dùng chọn Sáng nhưng dòng trong sổ là Chiều -> Bỏ qua
+                if 'sáng' in target_day_input.lower() and ('chiều' in current_day.lower() or 'chieu' in current_day.lower()):
                     continue
-                if 'sáng' in target_day_input.lower() and 'chiều' in current_day.lower():
+                # Nếu người dùng chọn Chiều nhưng dòng trong sổ là Sáng -> Bỏ qua
+                if 'chiều' in target_day_input.lower() and 'sáng' in current_day.lower():
                     continue
             # =========================================================================
             # =============================================================================
