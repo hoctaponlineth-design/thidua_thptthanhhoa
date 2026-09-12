@@ -488,11 +488,11 @@ def parse_sodaubai():
     if file.filename == '':
         return {"error": "Chưa chọn file nào!"}, 400
         
+    # Lấy tên lớp dự kiến từ giao diện để đối chiếu
     expected_branch = request.form.get('expected_branch_name', '').strip().upper()
     
-    # [NÂNG CẤP LÕI]: Nhận lệnh Ca Chiều từ công tắc giao diện và tự động khóa mục tiêu Thứ 5
-    is_afternoon = request.form.get('is_afternoon', 'false').lower() == 'true'
-    target_day_input = 'Thứ 5' if is_afternoon else request.form.get('target_day', 'Tất cả').strip()
+    # [NÂNG CẤP LÕI 1]: Nhận tham số ngày cần quét từ giao diện (Mặc định "Tất cả")
+    target_day_input = request.form.get('target_day', 'Tất cả').strip()
         
     try:
         import pandas as pd
@@ -500,7 +500,11 @@ def parse_sodaubai():
         
         df = pd.read_excel(file, header=None)
         
+        # =================================================================
+        # THUẬT TOÁN KHIÊN BẢO VỆ & NHẬN DIỆN LỚP TỰ ĐỘNG
+        # =================================================================
         found_class_name = None
+        # Quét tối đa 50 dòng đầu và toàn bộ cột để tìm chữ "Lớp: ..."
         for i in range(min(50, len(df))):
             for j in range(len(df.columns)):
                 cell_val = str(df.iloc[i, j]).strip()
@@ -512,11 +516,16 @@ def parse_sodaubai():
             if found_class_name:
                 break
         
+        # Nếu đang quét đơn lẻ (có expected_branch) thì khóa nòng kiểm tra
         if expected_branch and found_class_name and found_class_name != expected_branch:
-            return {"error": f"⛔ CẢNH BÁO: FILE SỔ ĐẦU BÀI KHÔNG KHỚP!\nBạn đang ở form nhập điểm của lớp {expected_branch}, nhưng file Excel bạn vừa tải lên lại là Sổ đầu bài của lớp {found_class_name}. Vui lòng chọn lại đúng file!"}, 400
+            return {
+                "error": f"⛔ CẢNH BÁO: FILE SỔ ĐẦU BÀI KHÔNG KHỚP!\nBạn đang ở form nhập điểm của lớp {expected_branch}, nhưng file Excel bạn vừa tải lên lại là Sổ đầu bài của lớp {found_class_name}. Vui lòng chọn lại đúng file!"
+            }, 400
         
+        # Nếu quét hàng loạt nhưng không tìm thấy tên lớp trong file
         if not expected_branch and not found_class_name:
             return {"error": "Không nhận diện được Tên lớp trong file Excel này (Thiếu ô 'Lớp: ...')."}, 400
+        # =================================================================
         
         try:
             start_row = df[df[0].astype(str).str.contains('Thứ \nngày tháng', na=False, case=False)].index[0]
@@ -524,49 +533,54 @@ def parse_sodaubai():
             return {"error": "Hệ thống không nhận diện được biểu mẫu Sổ Đầu Bài này!"}, 400
             
         c10 = c9 = c8 = 0
-        subject_scores = {}  
-        bad_marks_list = []  
+        
+        subject_scores = {}  # Phân loại điểm tốt (8, 9, 10) theo Tên Môn Học
+        bad_marks_list = []  # Lưu tạm toàn bộ lỗi điểm kém/không học bài để xén trần
+        
+        # [BẢN VÁ LỖI]: Dùng SET để lọc trùng lặp học sinh vắng trong cùng 1 ngày
         general_violations_set = set()
         current_day = "Ngày khác"
         
         cat_khb = "Không học bài"
         cat_dk = "Bị điểm kém"
-        violation_names = [] 
+        violation_names = [] # Khởi tạo danh sách tên lỗi an toàn
         try:
             from database.models import ViolationCategory, SchoolYear
             from database.database import session_scope
             with session_scope() as db_session:
                 active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
                 cats = db_session.query(ViolationCategory).filter_by(school_year_id=active_year.id).all() if active_year else []
+                
+                # Sắp xếp tên từ dài đến ngắn để AI không nhận diện nhầm lỗi con
                 violation_names = sorted([c.name for c in cats], key=len, reverse=True) 
+                
                 for c in cats:
                     nl = c.name.lower()
                     if "không học" in nl or "không thuộc" in nl: cat_khb = c.name
                     if "điểm kém" in nl or "điểm yếu" in nl or "điểm 0" in nl: cat_dk = c.name
         except:
             pass
-            
+        # ---------------------------------------------------------------------------------
+        # Bắt đầu quét từ start_row + 3 (bỏ qua dòng tiêu đề và hàng số thứ tự 1-10)
         for i in range(start_row + 3, len(df)):
             if i >= len(df): break
             
             cot0_text = str(df.iloc[i, 0])
+            if "Ý kiến nhận xét" in cot0_text or "Tổng số tiết" in cot0_text: break
+
+            # --- [THÊM TÍNH NĂNG]: Theo dõi ngày hiện tại để chống lặp ---
             cot0_clean = cot0_text.strip()
-            
-            # [CHỐT CHẶN AN TOÀN CA CHIỀU]: Dùng lệnh continue thay vì break để cho phép máy tính bỏ qua dòng chữ tổng kết mà không bị thoát hoàn toàn khỏi chức năng quét
-            if not cot0_clean or cot0_clean.lower() == 'nan' or "ý kiến nhận xét" in cot0_clean.lower() or "tổng số tiết" in cot0_clean.lower():
-                continue
-            if "ban giám hiệu" in cot0_clean.lower() or "duyệt của ban" in cot0_clean.lower():
-                break
+            if cot0_clean and cot0_clean.lower() != 'nan':
+                current_day = cot0_clean.split('\n')[0].strip()
 
-            if cot0_clean and "thứ" in cot0_clean.lower():
-                base_day = cot0_clean.split('\n')[0].strip()
-                # Cắm cờ "Chiều" vào tên Ngày để chống lặp lỗi
-                current_day = f"{base_day} (Chiều)" if is_afternoon else base_day
-
-            # Áp dụng bộ lọc Thứ 5 thông minh
-            if target_day_input != 'Tất cả' and target_day_input.lower() not in current_day.lower():
+            # =========================================================================
+            # [NÂNG CẤP LÕI 2]: BỘ LỌC CHỈ QUÉT THEO NGÀY CHỈ ĐỊNH
+            # =========================================================================
+            # Trực tiếp bỏ qua tất cả các dòng không khớp với ngày được chọn. 
+            if target_day_input != 'Tất cả' and current_day.lower() != target_day_input.lower():
                 continue 
-            
+            # =========================================================================
+
             # =============================================================================
             # --- [BỔ SUNG BƯỚC 2]: TỰ ĐỘNG BẮT LỖI VẮNG HỌC (CHỈ BẮT KHÔNG PHÉP) ---
             # =============================================================================
@@ -634,7 +648,6 @@ def parse_sodaubai():
                 
             # THUẬT TOÁN MỚI: Tách theo dấu phẩy/chấm phẩy, trích xuất điểm bất chấp có nhận xét kèm theo phía sau
             entries = re.split(r'[,;]+', diem_raw)
-            parsed_any = False
             
             for entry in entries:
                 entry = entry.strip()
