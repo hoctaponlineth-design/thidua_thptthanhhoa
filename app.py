@@ -634,6 +634,7 @@ def parse_sodaubai():
                 
             # THUẬT TOÁN MỚI: Tách theo dấu phẩy/chấm phẩy, trích xuất điểm bất chấp có nhận xét kèm theo phía sau
             entries = re.split(r'[,;]+', diem_raw)
+            parsed_any = False
             
             for entry in entries:
                 entry = entry.strip()
