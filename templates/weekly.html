@@ -864,13 +864,13 @@
             var myModal = new bootstrap.Modal(document.getElementById('aiReportModal'));
             myModal.show();
             
-            fetch('/api/ai_weekly_report/' + weekName)
+			fetch('/api/ai_weekly_report/' + weekName)
                 .then(response => response.json())
                 .then(data => {
                     loadingDiv.style.display = 'none';
                     contentDiv.style.display = 'block';
                     if (data.error) reportText.innerText = "❌ Lỗi: " + data.error;
-                    else reportText.innerText = data.report;
+                    else reportText.innerHTML = data.report; // <--- SỬA THÀNH innerHTML
                 })
                 .catch(error => {
                     loadingDiv.style.display = 'none';
@@ -1366,7 +1366,7 @@
                 noteMain.title = formatTooltipByError(noteVal); // Gom nhóm lỗi khi bấm Lưu
                 noteMain.dispatchEvent(new Event('input', { bubbles: true }));
             }
-
+			window.hasUnsavedChanges = false;
             const modalElement = document.getElementById('detailModal');
             const modalInstance = bootstrap.Modal.getInstance(modalElement);
             if (modalInstance) modalInstance.hide();
@@ -1627,6 +1627,7 @@
                 } catch (e) {
                     failCount++; failLogs.push(`- File "${file.name}": Lỗi kết nối.`);
                 }
+				await new Promise(resolve => setTimeout(resolve, 200));
             }
 
             document.body.removeChild(overlay);
