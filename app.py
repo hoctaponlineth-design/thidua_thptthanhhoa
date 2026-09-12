@@ -876,6 +876,10 @@ def parse_sodaubai():
         # ĐÓNG GÓI LỖI VÀO Ô GHI CHÚ (SỔ ĐEN)
         note_fragments = []
         for (err_type, key), count in final_bad_counts.items():
+            # ===> CHẶN TẠI ĐÂY: Nếu là lỗi "Vắng học có phép" thì BỎ QUA, không cho vào Ghi chú <===
+            if err_type == 'Vắng học có phép':
+                continue
+                
             if key:
                 note_fragments.append(f"{err_type} x{count} [{key}]")
             else:
