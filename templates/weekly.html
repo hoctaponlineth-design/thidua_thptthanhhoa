@@ -1646,12 +1646,36 @@
                                 c10Input.dispatchEvent(new Event('input', { bubbles: true })); 
                             }
                             
-                            // Xếp loại tuần (Ưu tiên tốt nhất)
-                            if (ratingSelect) {
-                                if (result.xep_loai === "Tuần Tốt") ratingSelect.value = result.xep_loai;
-                                else if (result.xep_loai === "Tuần Khá" && ratingSelect.value !== "Tuần Tốt") ratingSelect.value = result.xep_loai;
-                                updateRowStyle(ratingSelect);
+							// --- CỘNG DỒN SỐ TIẾT VÀ XẾP LOẠI CHUẨN QUY CHẾ CHO HÀNG LOẠT ---
+                            let targetRow = Array.from(document.querySelectorAll('.branch-row')).find(r => r.querySelector('.branch-name').textContent.trim().toUpperCase() === result.branch_name);
+                            
+                            if (targetRow) {
+                                let curTot = parseInt(targetRow.getAttribute('data-so-tot') || 0) + (result.so_tot || 0);
+                                let curKha = parseInt(targetRow.getAttribute('data-so-kha') || 0) + (result.so_kha || 0);
+                                let curTb  = parseInt(targetRow.getAttribute('data-so-tb') || 0) + (result.so_tb || 0);
+                                let curYeu = parseInt(targetRow.getAttribute('data-so-yeu') || 0) + (result.so_yeu || 0);
+
+                                targetRow.setAttribute('data-so-tot', curTot);
+                                targetRow.setAttribute('data-so-kha', curKha);
+                                targetRow.setAttribute('data-so-tb', curTb);
+                                targetRow.setAttribute('data-so-yeu', curYeu);
+
+                                let sumTiet = curTot + curKha + curTb + curYeu;
+                                let autoRating = "Bình thường";
+                                if (sumTiet > 0) {
+                                    if (curTot === sumTiet) {
+                                        autoRating = "Tuần Tốt";
+                                    } else if (curYeu === 0 && curTb === 0 && curKha > 0) {
+                                        autoRating = "Tuần Khá";
+                                    }
+                                }
+
+                                if (ratingSelect) {
+                                    ratingSelect.value = autoRating;
+                                    updateRowStyle(ratingSelect);
+                                }
                             }
+                            // -------------------------------------------------------------
 
                             // [BẢN NÂNG CẤP LÕI 4]: CỘNG DỒN GHI CHÚ
                             if (noteInput && result.note) {
