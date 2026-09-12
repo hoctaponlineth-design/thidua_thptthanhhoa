@@ -477,7 +477,7 @@ def gvcn_attendance_stats():
         flash(f"Lỗi tải thống kê: {e}", "error")
         return redirect(url_for('dashboard'))
     
-# API: BÓC TÁCH DỮ LIỆU TỪ FILE SỔ ĐẦU BÀI (TỐI ƯU CA CHIỀU & CỘNG DỒN TIẾT HỌC)
+# API: BÓC TÁCH DỮ LIỆU TỪ FILE SỔ ĐẦU BÀI (TỐI ƯU CHỐNG SÓT ĐIỂM VÀ LỌC THEO NGÀY)
 @app.route('/api/parse_sodaubai', methods=['POST'])
 @app.route('/weekly/api/parse_sodaubai', methods=['POST'])
 def parse_sodaubai():
@@ -488,11 +488,11 @@ def parse_sodaubai():
     if file.filename == '':
         return {"error": "Chưa chọn file nào!"}, 400
         
+    # Lấy tên lớp dự kiến từ giao diện để đối chiếu
     expected_branch = request.form.get('expected_branch_name', '').strip().upper()
     
-    # [NÂNG CẤP LÕI 1]: Tích hợp bộ lọc "Sổ Ca Chiều" (Khóa mục tiêu Thứ 5)
-    is_afternoon = request.form.get('is_afternoon', 'false').lower() == 'true'
-    target_day_input = 'Thứ 5' if is_afternoon else request.form.get('target_day', 'Tất cả').strip()
+    # [NÂNG CẤP LÕI 1]: Nhận tham số ngày cần quét từ giao diện (Mặc định "Tất cả")
+    target_day_input = request.form.get('target_day', 'Tất cả').strip()
         
     try:
         import pandas as pd
@@ -500,7 +500,11 @@ def parse_sodaubai():
         
         df = pd.read_excel(file, header=None)
         
+        # =================================================================
+        # THUẬT TOÁN KHIÊN BẢO VỆ & NHẬN DIỆN LỚP TỰ ĐỘNG
+        # =================================================================
         found_class_name = None
+        # Quét tối đa 50 dòng đầu và toàn bộ cột để tìm chữ "Lớp: ..."
         for i in range(min(50, len(df))):
             for j in range(len(df.columns)):
                 cell_val = str(df.iloc[i, j]).strip()
@@ -512,11 +516,16 @@ def parse_sodaubai():
             if found_class_name:
                 break
         
+        # Nếu đang quét đơn lẻ (có expected_branch) thì khóa nòng kiểm tra
         if expected_branch and found_class_name and found_class_name != expected_branch:
-            return {"error": f"⛔ CẢNH BÁO: FILE SỔ ĐẦU BÀI KHÔNG KHỚP!\nBạn đang ở form nhập điểm của lớp {expected_branch}, nhưng file tải lên là của lớp {found_class_name}."}, 400
+            return {
+                "error": f"⛔ CẢNH BÁO: FILE SỔ ĐẦU BÀI KHÔNG KHỚP!\nBạn đang ở form nhập điểm của lớp {expected_branch}, nhưng file Excel bạn vừa tải lên lại là Sổ đầu bài của lớp {found_class_name}. Vui lòng chọn lại đúng file!"
+            }, 400
         
+        # Nếu quét hàng loạt nhưng không tìm thấy tên lớp trong file
         if not expected_branch and not found_class_name:
-            return {"error": "Không nhận diện được Tên lớp trong file Excel này."}, 400
+            return {"error": "Không nhận diện được Tên lớp trong file Excel này (Thiếu ô 'Lớp: ...')."}, 400
+        # =================================================================
         
         try:
             start_row = df[df[0].astype(str).str.contains('Thứ \nngày tháng', na=False, case=False)].index[0]
@@ -524,101 +533,120 @@ def parse_sodaubai():
             return {"error": "Hệ thống không nhận diện được biểu mẫu Sổ Đầu Bài này!"}, 400
             
         c10 = c9 = c8 = 0
-        subject_scores = {}
-        bad_marks_list = []
+        
+        subject_scores = {}  # Phân loại điểm tốt (8, 9, 10) theo Tên Môn Học
+        bad_marks_list = []  # Lưu tạm toàn bộ lỗi điểm kém/không học bài để xén trần
+        
+        # [BẢN VÁ LỖI]: Dùng SET để lọc trùng lặp học sinh vắng trong cùng 1 ngày
         general_violations_set = set()
         current_day = "Ngày khác"
         
         cat_khb = "Không học bài"
         cat_dk = "Bị điểm kém"
-        violation_names = [] 
+        violation_names = [] # Khởi tạo danh sách tên lỗi an toàn
         try:
             from database.models import ViolationCategory, SchoolYear
             from database.database import session_scope
             with session_scope() as db_session:
                 active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
                 cats = db_session.query(ViolationCategory).filter_by(school_year_id=active_year.id).all() if active_year else []
+                
+                # Sắp xếp tên từ dài đến ngắn để AI không nhận diện nhầm lỗi con
                 violation_names = sorted([c.name for c in cats], key=len, reverse=True) 
+                
                 for c in cats:
                     nl = c.name.lower()
                     if "không học" in nl or "không thuộc" in nl: cat_khb = c.name
                     if "điểm kém" in nl or "điểm yếu" in nl or "điểm 0" in nl: cat_dk = c.name
         except:
             pass
-
-        # [NÂNG CẤP LÕI 2]: Khai báo biến đếm số tiết ngay từ đầu
-        so_tot = so_kha = so_tb = so_yeu = 0
-
+        # ---------------------------------------------------------------------------------
+        # Bắt đầu quét từ start_row + 3 (bỏ qua dòng tiêu đề và hàng số thứ tự 1-10)
         for i in range(start_row + 3, len(df)):
             if i >= len(df): break
             
             cot0_text = str(df.iloc[i, 0])
+            if "Ý kiến nhận xét" in cot0_text or "Tổng số tiết" in cot0_text: break
+
+            # --- [THÊM TÍNH NĂNG]: Theo dõi ngày hiện tại để chống lặp ---
             cot0_clean = cot0_text.strip()
-            
-            # [SỬA LỖI TỐI THƯỢNG]: Dùng continue thay vì break để không bỏ lỡ dữ liệu ca chiều
-            if not cot0_clean or cot0_clean.lower() == 'nan' or "tổng số tiết" in cot0_clean.lower() or "ý kiến nhận xét" in cot0_clean.lower():
-                continue
-            if "ban giám hiệu" in cot0_clean.lower() or "duyệt của ban" in cot0_clean.lower():
-                break
+            if cot0_clean and cot0_clean.lower() != 'nan':
+                current_day = cot0_clean.split('\n')[0].strip()
 
-            if cot0_clean and "thứ" in cot0_clean.lower():
-                base_day = cot0_clean.split('\n')[0].strip()
-                # Phân định Sáng/Chiều để chống lặp lỗi
-                current_day = f"{base_day} (Chiều)" if is_afternoon else base_day
-
-            # Bỏ qua nếu không phải ngày được chỉ định
-            if target_day_input != 'Tất cả' and target_day_input.lower() not in current_day.lower():
+            # =========================================================================
+            # [NÂNG CẤP LÕI 2]: BỘ LỌC CHỈ QUÉT THEO NGÀY CHỈ ĐỊNH
+            # =========================================================================
+            # Trực tiếp bỏ qua tất cả các dòng không khớp với ngày được chọn. 
+            if target_day_input != 'Tất cả' and current_day.lower() != target_day_input.lower():
                 continue 
+            # =========================================================================
 
+            # =============================================================================
+            # --- [BỔ SUNG BƯỚC 2]: TỰ ĐỘNG BẮT LỖI VẮNG HỌC (CHỈ BẮT KHÔNG PHÉP) ---
+            # =============================================================================
             try:
+                # Tự động dò tìm cột "Tên HS nghỉ tiết" hoặc "Vắng"
                 col_vang = 7 
                 for c in range(len(df.columns)):
                     col_title = str(df.iloc[start_row, c]).lower()
                     if "nghỉ tiết" in col_title or "vắng" in col_title:
-                        col_vang = c; break
+                        col_vang = c
+                        break
                         
                 val_vang = str(df.iloc[i, col_vang]).strip()
                 if val_vang and val_vang.lower() != 'nan':
+                    # Cắt chuỗi theo dấu phẩy/chấm phẩy để tách riêng từng em (nếu vắng nhiều em 1 tiết)
+                    import re
                     for p in re.split(r'[,;]+', val_vang):
                         p = p.strip()
                         if not p: continue
+                        
+                        # [QUY TẮC MỚI]: Chỉ bắt lỗi nếu giáo viên có ghi chữ "không" hoặc "kp"
                         if 'không' in p.lower() or 'kp' in p.lower():
+                            # Xóa phần ghi chú trong ngoặc () và các chữ thừa để lấy được mỗi Tên học sinh
                             stu_name = re.sub(r'\(.*?\)', '', p)
                             stu_name = re.sub(r'(?i)không phép|ko phép|kp', '', stu_name)
                             stu_name = stu_name.strip(' -:').title()
+                            
                             if stu_name:
+                                # Đưa vào SET vi phạm (Gắn kèm Tên + Ngày để chống lặp)
                                 general_violations_set.add(('Vắng học không phép', stu_name, current_day))
-            except Exception:
+            except Exception as e:
                 pass
+            # =============================================================================
                 
+            # Lấy tên môn học (Cột 3 theo biểu mẫu Sổ đầu bài)
             try: mon = str(df.iloc[i, 3]).strip()
             except: mon = "Khác"
             if not mon or mon.lower() == 'nan': mon = "Khác"
 
-            # [NÂNG CẤP LÕI 3]: ĐÁNH GIÁ TIẾT HỌC (BẮT TRỌN CÁC LOẠI: KHÁ, TB, YẾU)
+            # =========================================================================
+            # --- [BẢN VÁ LỖI]: TÁCH RIÊNG CỘT XẾP LOẠI (18) KHỎI LUỒNG QUÉT CHỮ ---
+            # =========================================================================
+            # 1. Quét riêng cột 18 để phạt tập thể "Tiết Yếu" (nếu có)
             try:
                 if 18 < len(df.columns):
                     xep_loai_tiet = str(df.iloc[i, 18]).strip().lower()
                     if xep_loai_tiet in ['yếu', 'kém']:
                         general_violations_set.add(('Tiết Yếu', '', current_day))
-                    elif xep_loai_tiet in ['trung bình', 'tb']:
-                        general_violations_set.add(('Tiết Trung bình', '', current_day))
-                    elif xep_loai_tiet == 'khá':
-                        general_violations_set.add(('Tiết Khá', '', current_day))
             except Exception:
                 pass
 
+            # 2. CHỈ gộp Cột 13, 14 (Điểm KT) và 15 (Nhận xét) để AI dò chữ và bắt lỗi cá nhân
             row_scores = []
             for col in [13, 14, 15]:
                 if col < len(df.columns):
                     val = str(df.iloc[i, col]).strip()
                     if val.lower() != 'nan': row_scores.append(val)
                     
+            # [BẢN VÁ LỖI TỐI THƯỢNG]: Dùng dấu CHẤM PHẨY để tạo vách ngăn giữa các cột
             diem_raw = " ; ".join(row_scores)
+            # =========================================================================
             
             if not diem_raw or 'Ý kiến' in diem_raw or 'BAN GIÁM' in diem_raw:
                 continue
                 
+            # THUẬT TOÁN MỚI: Tách theo dấu phẩy/chấm phẩy, trích xuất điểm bất chấp có nhận xét kèm theo phía sau
             entries = re.split(r'[,;]+', diem_raw)
             parsed_any = False
             
@@ -626,17 +654,24 @@ def parse_sodaubai():
                 entry = entry.strip()
                 if not entry: continue
                 
+                # =========================================================================
+                # --- [BẢN VÁ TỐI THƯỢNG]: DÒ TÌM LỖI BẰNG CHỮ THEO DANH SÁCH DATABASE ---
+                # =========================================================================
                 found_text_violation = False
                 for v_name in violation_names:
                     v_name_lower = v_name.lower()
+                    
+                    # Bỏ qua 2 lỗi này vì đã có thuật toán quét bằng "Số điểm" cực mạnh ở dưới
                     if v_name_lower in ['không học bài', 'bị điểm kém']: continue 
                     
                     if v_name_lower in entry.lower():
                         stu_name = ""
+                        # Ưu tiên 1: Tìm tên học sinh nằm trong ngoặc vuông hoặc tròn
                         match_bracket = re.search(r'\[(.*?)\]|\((.*?)\)', entry)
                         if match_bracket:
                             stu_name = match_bracket.group(1) or match_bracket.group(2)
                         else:
+                            # Ưu tiên 2: Tìm tên học sinh đứng trước/sau dấu phân cách hoặc lấy phần chữ còn lại
                             clean_name = re.sub(v_name, '', entry, flags=re.IGNORECASE)
                             clean_name = re.sub(r'[:\-x0-9]', '', clean_name).strip()
                             if len(clean_name) > 0 and len(clean_name) <= 25: 
@@ -644,58 +679,67 @@ def parse_sodaubai():
                         
                         stu_name = stu_name.strip()
                         
+                        # [BẢN VÁ LỖI NÒNG CỐT]: Chẻ nhỏ tên học sinh nếu bị dính chùm
                         if stu_name:
+                            import re
                             split_names = re.split(r'[,;]|\s+và\s+|\s+&\s+|\s{2,}', stu_name, flags=re.IGNORECASE)
+                            
                             for s_name in split_names:
                                 s_name = s_name.strip().title()
                                 if s_name:
                                     general_violations_set.add((v_name, s_name, current_day))
                         else:
+                            # Không ghi tên ai thì phạt chung tập thể lớp
                             general_violations_set.add((v_name, "", current_day))
                             
                         found_text_violation = True
-                        break 
+                        break # Đã chốt được lỗi cho cụm từ này thì dừng vòng lặp quét chữ
                         
-                if found_text_violation: continue 
+                if found_text_violation:
+                    continue # Đã là lỗi bằng chữ thì bỏ qua, không quét điểm số nữa để tránh nhầm lẫn
+                # =========================================================================
 
-                # =========================================================================
-                # BẢN VÁ LỖI QUÉT ĐIỂM SỐ: BẮT TOÀN BỘ ĐIỂM HỢP LỆ TRONG CHUỖI
-                # =========================================================================
-                # Quét mọi điểm số hợp lệ trong đoạn (Cho dù có kèm tên hay không)
-                nums = re.findall(r'\b(10|9|8|0|[1-2])\b', entry)
-                if nums:
-                    # Cố gắng dò xem có tên học sinh đứng trước điểm số không
-                    match_name = re.search(r'([A-ZÀ-Ỹa-zà-ỹ\s]+?)\s*[:\-]?\s*\b(?:10|9|8|0|[1-2])\b', entry)
-                    raw_name = match_name.group(1).strip() if match_name else ""
+                # Tìm cặp [Tên học sinh] và [Con số điểm 0-10] ở bất kỳ vị trí nào trong đoạn phân tách
+                match = re.search(r'([A-ZÀ-Ỹa-zà-ỹ\s]+?)\s*[:\-]?\s*\b(10|[0-9])\b', entry)
+                if match:
+                    parsed_any = True
+                    raw_name = match.group(1).strip()
+                    # Lấy từ cuối cùng hoặc 2 từ cuối làm tên học sinh nếu chuỗi tên quá dài do dính chữ
                     name_words = raw_name.split()
-                    name_part = name_words[-1].title() if name_words else ""
+                    name_part = name_words[-1].title() if name_words else "Học sinh"
+                    score_val = int(match.group(2))
                     
-                    for num_str in nums:
-                        score_val = int(num_str)
+                    tiet = str(df.iloc[i, 2]).strip()
+                    tiet_str = f"Tiết {tiet}" if tiet != 'nan' else "Tiết học"
+                    
+                    if score_val == 10:
+                        c10 += 1
+                        if mon not in subject_scores: subject_scores[mon] = {'c10': 0, 'c9': 0, 'c8': 0}
+                        subject_scores[mon]['c10'] += 1
+                    elif score_val == 9:
+                        c9 += 1
+                        if mon not in subject_scores: subject_scores[mon] = {'c10': 0, 'c9': 0, 'c8': 0}
+                        subject_scores[mon]['c9'] += 1
+                    elif score_val == 8:
+                        c8 += 1
+                        if mon not in subject_scores: subject_scores[mon] = {'c10': 0, 'c9': 0, 'c8': 0}
+                        subject_scores[mon]['c8'] += 1
                         
-                        if score_val == 10:
-                            c10 += 1
-                            if mon not in subject_scores: subject_scores[mon] = {'c10': 0, 'c9': 0, 'c8': 0}
-                            subject_scores[mon]['c10'] += 1
-                        elif score_val == 9:
-                            c9 += 1
-                            if mon not in subject_scores: subject_scores[mon] = {'c10': 0, 'c9': 0, 'c8': 0}
-                            subject_scores[mon]['c9'] += 1
-                        elif score_val == 8:
-                            c8 += 1
-                            if mon not in subject_scores: subject_scores[mon] = {'c10': 0, 'c9': 0, 'c8': 0}
-                            subject_scores[mon]['c8'] += 1
-                        elif score_val == 0:
-                            key = f"{name_part} (Môn {mon})" if name_part else f"Môn {mon}"
-                            bad_marks_list.append({'type': cat_khb, 'key': key, 'mon': mon}) 
-                        elif score_val in [1, 2]: 
-                            key = f"{name_part} (Môn {mon})" if name_part else f"Môn {mon}"
-                            bad_marks_list.append({'type': cat_dk, 'key': key, 'mon': mon}) 
+                    elif score_val == 0:
+                        key = f"{name_part} (Môn {mon})" if name_part else f"Môn {mon}"
+                        bad_marks_list.append({'type': cat_khb, 'key': key, 'mon': mon}) # Lỗi 0 điểm (Không học bài)
+                    elif score_val in [1, 2]: # <--- ĐÃ SỬA: Chỉ tính điểm 1 và điểm 2 là điểm kém
+                        key = f"{name_part} (Môn {mon})" if name_part else f"Môn {mon}"
+                        bad_marks_list.append({'type': cat_dk, 'key': key, 'mon': mon}) # Lỗi điểm kém
             
+            # THUẬT TOÁN DỰ PHÒNG: Nếu không tách được theo tên, quét toàn bộ số nguyên hợp lệ trong ô
             if not parsed_any:
                 numbers = re.findall(r'\b(10|9|8|0|[1-4])\b', diem_raw)
                 for num_str in numbers:
                     num = int(num_str)
+                    tiet = str(df.iloc[i, 2]).strip()
+                    tiet_str = f"Tiết {tiet}" if tiet != 'nan' else "Tiết học"
+                    
                     if num == 10:
                         c10 += 1
                         if mon not in subject_scores: subject_scores[mon] = {'c10': 0, 'c9': 0, 'c8': 0}
@@ -708,11 +752,13 @@ def parse_sodaubai():
                         c8 += 1
                         if mon not in subject_scores: subject_scores[mon] = {'c10': 0, 'c9': 0, 'c8': 0}
                         subject_scores[mon]['c8'] += 1
+                        
                     elif num == 0:
                         bad_marks_list.append({'type': 'Không học bài', 'key': f"Môn {mon}", 'mon': mon})
                     elif num in [1, 2]:
                         bad_marks_list.append({'type': 'Bị điểm kém', 'key': f"Môn {mon}", 'mon': mon})
 
+        # THUẬT TOÁN XẾP LOẠI TUẦN THEO QUY CHẾ CỦA TRƯỜNG
         xep_loai = "Bình thường"
         summary_row = df[df[0].astype(str).str.contains('Tổng số giờ xếp loại', na=False, case=False)]
         if not summary_row.empty:
@@ -728,10 +774,14 @@ def parse_sodaubai():
             so_yeu = int(match_yeu.group(1)) if match_yeu else 0
             
             tong_tiet = so_tot + so_kha + so_tb + so_yeu
+            
             if tong_tiet > 0:
-                if so_tot == tong_tiet: xep_loai = "Tuần Tốt"
-                elif so_yeu == 0 and so_tb == 0 and so_kha > 0: xep_loai = "Tuần Khá"
+                if so_tot == tong_tiet:
+                    xep_loai = "Tuần Tốt"
+                elif so_yeu == 0 and so_tb == 0 and so_kha > 0:
+                    xep_loai = "Tuần Khá"
 
+        # --- THUẬT TOÁN XÉN TRẦN LỖI ĐIỂM KÉM / KHÔNG HỌC BÀI THEO BAREM ---
         max_tot = 14
         max_mon = 4
         try:
@@ -745,30 +795,47 @@ def parse_sodaubai():
         except Exception:
             pass
 
+        # 1. Gom nhóm lỗi theo từng môn học
         bad_by_subj = {}
         for bm in bad_marks_list:
             m = bm['mon']
-            if m not in bad_by_subj: bad_by_subj[m] = []
+            if m not in bad_by_subj:
+                bad_by_subj[m] = []
             bad_by_subj[m].append(bm)
 
+        # 2. Xén bớt số lượng lỗi mỗi môn (Không vượt quá max_mon)
         surviving_bad_marks = []
-        for m, marks in bad_by_subj.items(): surviving_bad_marks.extend(marks[:max_mon])
+        for m, marks in bad_by_subj.items():
+            surviving_bad_marks.extend(marks[:max_mon])
+
+        # 3. Xén bớt tổng số lỗi toàn tuần (Không vượt quá max_tot)
         surviving_bad_marks = surviving_bad_marks[:max_tot]
 
+        # 4. Tái tạo lại từ điển đếm số lượng sau khi đã xén trần
         final_bad_counts = {}
         for bm in surviving_bad_marks:
-            dict_key = (bm['type'], bm['key'])
+            err_type = bm['type']
+            key = bm['key']
+            dict_key = (err_type, key)
             final_bad_counts[dict_key] = final_bad_counts.get(dict_key, 0) + 1
 
+        # =========================================================================
+        # --- [BẢN VÁ LỖI]: ĐẶT Ở ĐÂY ĐỂ ĐẢM BẢO QUÉT HẾT TUẦN MỚI BẮT ĐẦU ĐẾM ---
+        # =========================================================================
         for err_type, stu_name, day in general_violations_set:
             dict_key = (err_type, stu_name)
             final_bad_counts[dict_key] = final_bad_counts.get(dict_key, 0) + 1
 
+        # ĐÓNG GÓI LỖI VÀO Ô GHI CHÚ (SỔ ĐEN)
         note_fragments = []
         for (err_type, key), count in final_bad_counts.items():
-            if key: note_fragments.append(f"{err_type} x{count} [{key}]")
-            else: note_fragments.append(f"{err_type} x{count}")
+            if key:
+                note_fragments.append(f"{err_type} x{count} [{key}]")
+            else:
+                note_fragments.append(f"{err_type} x{count}")
+        # ------------------------------------------------------------------
 
+        # ĐÓNG GÓI MẢNG ĐIỂM MÔN HỌC CHI TIẾT
         raw_list = []
         for subj, pts in subject_scores.items():
             raw_list.append({"subj": subj, "c10": pts['c10'], "c9": pts['c9'], "c8": pts['c8']})
@@ -778,14 +845,13 @@ def parse_sodaubai():
             "branch_name": found_class_name,
             "c10": c10, "c9": c9, "c8": c8,
             "xep_loai": xep_loai,
-            "tiet_tot": so_tot, "tiet_kha": so_kha, "tiet_tb": so_tb, "tiet_yeu": so_yeu, # [CHÌA KHÓA TRẢ VỀ]
             "note": " ; ".join(note_fragments),
             "raw_list": raw_list
         }
     except Exception as e:
         import traceback; traceback.print_exc()
         return {"error": f"Lỗi xử lý file Sổ Đầu Bài: {str(e)}"}, 500
-        
+
 @app.route('/')
 @app.route('/login', methods=['GET', 'POST'])
 def login():
