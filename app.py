@@ -897,6 +897,10 @@ def parse_sodaubai():
             "branch_name": found_class_name,
             "c10": c10, "c9": c9, "c8": c8,
             "xep_loai": xep_loai,
+            "so_tot": so_tot,     # <--- Bổ sung số tiết Tốt
+            "so_kha": so_kha,     # <--- Bổ sung số tiết Khá
+            "so_tb": so_tb,       # <--- Bổ sung số tiết Trung bình
+            "so_yeu": so_yeu,     # <--- Bổ sung số tiết Yếu
             "note": " ; ".join(note_fragments),
             "raw_list": raw_list
         }
