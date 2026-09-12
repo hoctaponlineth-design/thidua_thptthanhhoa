@@ -658,32 +658,39 @@ def parse_sodaubai():
                         
                 if found_text_violation: continue 
 
-                match = re.search(r'([A-ZÀ-Ỹa-zà-ỹ\s]+?)\s*[:\-]?\s*\b(10|[0-9])\b', entry)
-                if match:
-                    parsed_any = True
-                    raw_name = match.group(1).strip()
+                # =========================================================================
+                # BẢN VÁ LỖI QUÉT ĐIỂM SỐ: BẮT TOÀN BỘ ĐIỂM HỢP LỆ TRONG CHUỖI
+                # =========================================================================
+                # Quét mọi điểm số hợp lệ trong đoạn (Cho dù có kèm tên hay không)
+                nums = re.findall(r'\b(10|9|8|0|[1-2])\b', entry)
+                if nums:
+                    # Cố gắng dò xem có tên học sinh đứng trước điểm số không
+                    match_name = re.search(r'([A-ZÀ-Ỹa-zà-ỹ\s]+?)\s*[:\-]?\s*\b(?:10|9|8|0|[1-2])\b', entry)
+                    raw_name = match_name.group(1).strip() if match_name else ""
                     name_words = raw_name.split()
-                    name_part = name_words[-1].title() if name_words else "Học sinh"
-                    score_val = int(match.group(2))
+                    name_part = name_words[-1].title() if name_words else ""
                     
-                    if score_val == 10:
-                        c10 += 1
-                        if mon not in subject_scores: subject_scores[mon] = {'c10': 0, 'c9': 0, 'c8': 0}
-                        subject_scores[mon]['c10'] += 1
-                    elif score_val == 9:
-                        c9 += 1
-                        if mon not in subject_scores: subject_scores[mon] = {'c10': 0, 'c9': 0, 'c8': 0}
-                        subject_scores[mon]['c9'] += 1
-                    elif score_val == 8:
-                        c8 += 1
-                        if mon not in subject_scores: subject_scores[mon] = {'c10': 0, 'c9': 0, 'c8': 0}
-                        subject_scores[mon]['c8'] += 1
-                    elif score_val == 0:
-                        key = f"{name_part} (Môn {mon})" if name_part else f"Môn {mon}"
-                        bad_marks_list.append({'type': cat_khb, 'key': key, 'mon': mon}) 
-                    elif score_val in [1, 2]: 
-                        key = f"{name_part} (Môn {mon})" if name_part else f"Môn {mon}"
-                        bad_marks_list.append({'type': cat_dk, 'key': key, 'mon': mon}) 
+                    for num_str in nums:
+                        score_val = int(num_str)
+                        
+                        if score_val == 10:
+                            c10 += 1
+                            if mon not in subject_scores: subject_scores[mon] = {'c10': 0, 'c9': 0, 'c8': 0}
+                            subject_scores[mon]['c10'] += 1
+                        elif score_val == 9:
+                            c9 += 1
+                            if mon not in subject_scores: subject_scores[mon] = {'c10': 0, 'c9': 0, 'c8': 0}
+                            subject_scores[mon]['c9'] += 1
+                        elif score_val == 8:
+                            c8 += 1
+                            if mon not in subject_scores: subject_scores[mon] = {'c10': 0, 'c9': 0, 'c8': 0}
+                            subject_scores[mon]['c8'] += 1
+                        elif score_val == 0:
+                            key = f"{name_part} (Môn {mon})" if name_part else f"Môn {mon}"
+                            bad_marks_list.append({'type': cat_khb, 'key': key, 'mon': mon}) 
+                        elif score_val in [1, 2]: 
+                            key = f"{name_part} (Môn {mon})" if name_part else f"Môn {mon}"
+                            bad_marks_list.append({'type': cat_dk, 'key': key, 'mon': mon}) 
             
             if not parsed_any:
                 numbers = re.findall(r'\b(10|9|8|0|[1-4])\b', diem_raw)
