@@ -2501,7 +2501,65 @@ def export_schedule(week):
         import traceback; traceback.print_exc()
         flash(f"Lỗi xuất excel lịch trực: {e}", "error")
         return redirect(url_for('assignments', week=week))
-
+    
+@app.route('/api/get_branch_duty_star')
+def api_get_branch_duty_star():
+    try:
+        week_name = request.args.get('week', '')
+        branch_name = request.args.get('branch_name', '').strip().upper()
+        
+        if not week_name or not branch_name:
+            return {"success": False, "error": "Thiếu tham số tuần hoặc tên lớp"}
+            
+        # 1. Trích xuất số tuần
+        week_num_match = re.search(r'\d+', week_name)
+        if not week_num_match:
+            return {"success": False, "error": "Tên tuần không hợp lệ"}
+        week_num = int(week_num_match.group())
+        
+        with session_scope() as db_session:
+            # 2. Đọc file sơ đồ phân cụm lớp class_zones.json
+            zones_map = {}
+            config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config", "class_zones.json")
+            if os.path.exists(config_path):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    try: zones_map = json.load(f)
+                    except: pass
+                    
+            # 3. Tìm xem lớp này thuộc cụm/khu vực trực nào
+            target_area_names = []
+            for area_name, classes in zones_map.items():
+                if isinstance(classes, list):
+                    clean_classes = [str(c).strip().upper() for c in classes]
+                    if branch_name in clean_classes:
+                        target_area_names.append(area_name)
+                        
+            if not target_area_names:
+                return {"success": True, "star_name": "Chưa phân cụm trực"}
+                
+            # 4. Truy vấn lịch phân công trong tuần ứng với khu vực đó
+            assignments = db_session.query(Assignment).join(DutyArea).filter(
+                Assignment.week_number == week_num,
+                DutyArea.name.in_(target_area_names)
+            ).all()
+            
+            if not assignments:
+                return {"success": True, "star_name": "Chưa phân công"}
+                
+            # 5. Gom tên Sao đỏ kèm ca trực
+            star_info_list = []
+            for asm in assignments:
+                if asm.red_star:
+                    s_name = asm.red_star.full_name.replace("SĐ: ", "")
+                    shift = asm.shift or ""
+                    star_info_list.append(f"{s_name} ({shift})")
+                    
+            result_str = " | ".join(star_info_list) if star_info_list else "Chưa phân công"
+            return {"success": True, "star_name": result_str}
+            
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    
 @app.route('/api/get_swap_candidates/<int:assign_id>')
 def api_get_swap_candidates(assign_id):
     try:
