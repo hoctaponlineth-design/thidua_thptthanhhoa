@@ -1790,6 +1790,20 @@
                 showNativeToast("❌ Lỗi kết nối máy chủ Push.", "error");
             }
         }
+		document.addEventListener("DOMContentLoaded", function() {
+            const tickerText = document.querySelector('.ticker-text');
+            if (tickerText) {
+                // Tính toán độ dài của nội dung thông báo
+                const textLength = tickerText.innerText.length;
+                
+                // Công thức tự động co giãn thời gian: Cứ khoảng 5-6 ký tự cho thêm 1 giây chạy
+                // Đảm bảo tốc độ hiển thị luôn đều nhau, bản tin dài sẽ chạy lâu hơn bản tin ngắn
+                let calculatedDuration = Math.max(15, textLength * 0.25); 
+                
+                // Gán ngược lại vào biến CSS của thẻ
+                tickerText.style.setProperty('--ticker-duration', calculatedDuration + 's');
+            }
+        });
     </script>
 </body>
 </html>
