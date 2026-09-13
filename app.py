@@ -1283,10 +1283,56 @@ def school_years():
     try:
         with session_scope() as db_session:
             years = db_session.query(SchoolYear).order_by(SchoolYear.id.desc()).all()
-            return render_template('school_years.html', years=years)
+            
+            # [BỔ SUNG]: Kéo cấu hình thời gian của năm học đang active ra giao diện
+            active_year = next((y for y in years if y.is_active), None)
+            settings = None
+            if active_year:
+                settings = db_session.query(ScoreSettings).filter_by(school_year_id=active_year.id).first()
+                
+            return render_template('school_years.html', years=years, score_settings=settings)
     except Exception as e:
         flash(f"Lỗi tải danh sách năm học: {e}", "error")
         return redirect(url_for('dashboard'))
+    
+@app.route('/save_time_settings', methods=['POST'])
+def save_time_settings():
+    if session.get('role') not in ['Quản trị viên', 'Admin', 'Bí thư Đoàn trường', 'Bí thư']:
+        flash("Chỉ Ban chấp hành mới có quyền thay đổi cấu hình!", "error")
+        return redirect(request.referrer or url_for('dashboard'))
+        
+    try:
+        with session_scope() as db_session:
+            active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
+            if not active_year:
+                flash("Chưa có năm học kích hoạt!", "error")
+                return redirect(url_for('school_years'))
+                
+            auto_lock_day = int(request.form.get('auto_lock_day', 6))
+            auto_lock_time = request.form.get('auto_lock_time', '23:59')
+            appeal_lock_day = int(request.form.get('appeal_lock_day', 5))
+            appeal_lock_time = request.form.get('appeal_lock_time', '11:30')
+            
+            settings = db_session.query(ScoreSettings).filter_by(school_year_id=active_year.id).first()
+            if settings:
+                settings.auto_lock_day = auto_lock_day
+                settings.auto_lock_time = auto_lock_time
+                settings.appeal_lock_day = appeal_lock_day
+                settings.appeal_lock_time = appeal_lock_time
+            else:
+                settings = ScoreSettings(
+                    school_year_id=active_year.id,
+                    auto_lock_day=auto_lock_day, auto_lock_time=auto_lock_time,
+                    appeal_lock_day=appeal_lock_day, appeal_lock_time=appeal_lock_time
+                )
+                db_session.add(settings)
+                
+            log_system_action("CẤU HÌNH", "Cập nhật thời gian hệ thống thành công.")
+            flash("✅ Đã cập nhật Cấu hình Thời gian Hệ thống thành công!", "success")
+    except Exception as e:
+        flash(f"Lỗi lưu cấu hình: {e}", "error")
+        
+    return redirect(url_for('school_years'))
 
 @app.route('/add_school_year', methods=['POST'])
 def add_school_year():
@@ -9187,6 +9233,52 @@ def reset_system_data():
         flash(f"❌ Lỗi ngoại lệ khi reset: {str(e)}", "error")
         
     return redirect(url_for('school_years'))
+
+import threading
+import time
+
+def background_auto_lock_bot():
+    """Robot chạy ngầm kiểm tra lịch tự động chốt sổ mỗi phút 1 lần"""
+    from datetime import datetime, timezone, timedelta
+    vn_tz = timezone(timedelta(hours=7)) # Ép cứng múi giờ Việt Nam
+    time.sleep(5) # Chờ 5s lúc khởi động app
+    
+    while True:
+        try:
+            from database.database import session_scope
+            from database.models import SchoolYear, ScoreSettings, WeeklyScore
+            with session_scope() as db_session:
+                active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
+                if active_year:
+                    settings = db_session.query(ScoreSettings).filter_by(school_year_id=active_year.id).first()
+                    
+                    if settings and settings.auto_lock_time:
+                        now_vn = datetime.now(vn_tz)
+                        current_day = now_vn.weekday() # 0 = T2, 6 = CN
+                        current_time_str = now_vn.strftime('%H:%M')
+                        
+                        # Đúng ngày, đúng giờ -> Khóa toàn bộ
+                        if current_day == settings.auto_lock_day and current_time_str == settings.auto_lock_time:
+                            unlocked_scores = db_session.query(WeeklyScore).filter(
+                                WeeklyScore.is_locked == False
+                            ).all()
+                            
+                            if unlocked_scores:
+                                count = 0
+                                for s in unlocked_scores:
+                                    s.is_locked = True
+                                    count += 1
+                                    
+                                log_system_action("HỆ THỐNG", f"BOT đã TỰ ĐỘNG CHỐT SỔ {count} bản ghi vào lúc {current_time_str}.")
+                                db_session.commit()
+                                
+        except Exception as e:
+            print(f"Lỗi Bot Auto-Lock: {e}")
+            
+        time.sleep(60) # Chờ 1 phút để quét lại
+
+# KÍCH HOẠT ROBOT CHẠY NGẦM
+threading.Thread(target=background_auto_lock_bot, daemon=True).start()
 
 if __name__ == "__main__":
     auto_init_accounts()
