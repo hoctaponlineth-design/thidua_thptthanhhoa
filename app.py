@@ -2421,7 +2421,8 @@ def export_schedule(week):
                 flash("Chưa có năm học kích hoạt!", "error")
                 return redirect(url_for('assignments', week=week))
                 
-            assignments = db_session.query(Assignment).join(RedStar).join(Branch).filter(
+            # [ĐÃ VÁ LỖI POSTGRESQL]: Thêm .join(DutyArea) để hệ thống nhận diện được bảng Khu vực
+            assignments = db_session.query(Assignment).join(RedStar).join(Branch).join(DutyArea).filter(
                 Assignment.week_number == week,
                 Branch.school_year_id == active_year.id
             ).order_by(Assignment.shift, DutyArea.name).all()
