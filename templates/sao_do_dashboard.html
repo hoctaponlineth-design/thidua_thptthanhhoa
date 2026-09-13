@@ -169,79 +169,123 @@
     {% endwith %}
 
     <div id="homeSection">
-		<div class="user-welcome">
-            <!-- ====================================================== -->
-            <!-- KHỐI 1: LỜI CHÀO VÀ CÁC NÚT TIỆN ÍCH (ĐÃ GỘP HÀNG) -->
-            <!-- ====================================================== -->
-            <div class="d-flex justify-content-between align-items-start mb-3">
-                <h6 class="fw-bold text-dark m-0" style="line-height: 1.5;">👤 Xin chào, SĐ:<br>{{ session.get('full_name') | replace('SĐ: ', '') }}!</h6>
-                
-                <div class="d-flex flex-column gap-2 align-items-end">
-                    <!-- Hàng trên: Nút Đổi mật khẩu -->
-                    <button class="btn btn-sm text-primary bg-primary bg-opacity-10 border-0 rounded-pill px-3 py-1 fw-bold shadow-sm" onclick="openChangePasswordModal()" style="font-size: 12px; transition: transform 0.1s;">
-                        <i class="fa-solid fa-key me-1"></i> Đổi MK
-                    </button>
-                    
-                    <!-- Hàng dưới: Gộp nút Vân tay và Nhận Thông báo -->
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-sm text-success bg-success bg-opacity-10 border-0 rounded-pill px-2 py-1 fw-bold shadow-sm" onclick="registerBiometric()" style="font-size: 11px;">
-                            <i class="fa-solid fa-fingerprint"></i> Vân tay
-                        </button>
-                        <button class="btn btn-sm text-info bg-info bg-opacity-10 border-0 rounded-pill px-2 py-1 fw-bold shadow-sm" id="btnPushNotify" onclick="enablePushNotifications()" style="font-size: 11px;">
-                            <i class="fa-solid fa-bell"></i> Nhận TB
-                        </button>
-                    </div>
+        <!-- ====================================================== -->
+        <!-- KHỐI 1: KHU VỰC CÁ NHÂN & CÀI ĐẶT (TỐI GIẢN, HIỆN ĐẠI)    -->
+        <!-- ====================================================== -->
+        <div class="px-3 pt-3 pb-2 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <!-- Avatar tự động lấy chữ cái đầu của tên Sao Đỏ -->
+                <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center shadow-sm" style="width: 45px; height: 45px; font-size: 20px; font-weight: bold; border: 2px solid white;">
+                    {{ session.get('full_name')[0] if session.get('full_name') else 'S' }}
+                </div>
+                <div style="line-height: 1.2;">
+                    <span class="text-muted fw-bold" style="font-size: 12px;">Xin chào Sao đỏ,</span><br>
+                    <span class="text-dark fw-bolder" style="font-size: 16px; letter-spacing: -0.5px;">{{ session.get('full_name') | replace('SĐ: ', '') }}</span>
                 </div>
             </div>
-
-            <!-- ====================================================== -->
-            <!-- KHỐI 2: BẢNG TIN CHỮ CHẠY CHIẾM VỊ TRÍ HÀNG DƯỚI CÙNG  -->
-            <!-- ====================================================== -->
-            <style>
-                .news-ticker-container {
-                    width: 100%; background: linear-gradient(90deg, #fffbeb, #fef3c7);
-                    border: 1px solid #fde68a; border-radius: 8px; overflow: hidden;
-                    display: flex; align-items: center; position: relative;
-                    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-                }
-                .ticker-icon {
-                    background: #f59e0b; color: white; padding: 6px 12px; font-size: 13px;
-                    z-index: 10; box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-                }
-                .ticker-text-wrapper { flex: 1; overflow: hidden; white-space: nowrap; position: relative; }
-                .ticker-text {
-                    display: inline-block; padding-left: 100%;
-                    animation: ticker 15s linear infinite; color: #b45309; font-weight: 700; font-size: 13px;
-                }
-                @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-            </style>
             
-            <div class="news-ticker-container mb-3">
+            <!-- Bộ 3 Nút Cài đặt (Đã chuyển thành Icon Tròn tinh tế) -->
+            <div class="d-flex gap-2">
+                <button class="btn btn-light rounded-circle shadow-sm d-flex justify-content-center align-items-center" onclick="openChangePasswordModal()" style="width: 36px; height: 36px; color: #475569;" title="Đổi mật khẩu">
+                    <i class="fa-solid fa-key"></i>
+                </button>
+                <button class="btn btn-light rounded-circle shadow-sm d-flex justify-content-center align-items-center" onclick="registerBiometric()" style="width: 36px; height: 36px; color: #10b981;" title="Cài Vân tay/FaceID">
+                    <i class="fa-solid fa-fingerprint"></i>
+                </button>
+                <button class="btn btn-light rounded-circle shadow-sm d-flex justify-content-center align-items-center" id="btnPushNotify" onclick="enablePushNotifications()" style="width: 36px; height: 36px; color: #3b82f6;" title="Bật thông báo">
+                    <i class="fa-solid fa-bell"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- ====================================================== -->
+        <!-- KHỐI 2: BẢNG TIN CHỮ CHẠY ĐIỀU HÀNH TỪ ĐOÀN TRƯỜNG     -->
+        <!-- ====================================================== -->
+        <style>
+            .news-ticker-container {
+                background: linear-gradient(90deg, #fffbeb, #fef3c7);
+                border: 1px solid #fde68a; border-radius: 10px; overflow: hidden;
+                display: flex; align-items: center; position: relative;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+            }
+            .ticker-icon {
+                background: #f59e0b; color: white; padding: 8px 12px; font-size: 13px;
+                z-index: 10; box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            }
+            .ticker-text-wrapper { flex: 1; overflow: hidden; white-space: nowrap; position: relative; }
+            .ticker-text {
+                display: inline-block; padding-left: 100%;
+                animation: ticker 15s linear infinite; color: #b45309; font-weight: 700; font-size: 13.5px;
+            }
+            @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+        </style>
+        
+        <div class="px-3 my-2">
+            <div class="news-ticker-container">
                 <div class="ticker-icon"><i class="fa-solid fa-bullhorn fa-shake"></i></div>
                 <div class="ticker-text-wrapper"><span class="ticker-text">{{ announcement_text }}</span></div>
             </div>
-            <!-- ====================================================== -->
-            
+        </div>
+
+        <!-- ====================================================== -->
+        <!-- KHỐI 3: THẺ NHIỆM VỤ (BỐ CỤC WIDGET THÔNG MINH - 2 CỘT) -->
+        <!-- ====================================================== -->
+        <div class="px-3 mb-2">
             {% if assignment %}
-                <div class="text-muted small mb-3"><i class="fa-regular fa-calendar-check me-1"></i> Đang mở: <strong class="text-primary">{{ current_week }}</strong></div>
+            <div class="card border-0 rounded-4 overflow-hidden mt-1" style="box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
                 
-                <div class="fw-bold text-dark mb-1" style="font-size: 13px;"><i class="fa-solid fa-location-dot text-danger me-1"></i> Nhiệm vụ của bạn:</div>
-                <div class="mb-1">
-                    <div class="text-danger fw-bold m-0" style="font-size: 22px;">{{ assignment.duty_area.name if assignment.duty_area else 'Chưa phân cụm' }}</div>
+                <!-- DÒNG 1: HEADER THỜI GIAN (Nằm ngang gọn gàng) -->
+                <div class="d-flex justify-content-between align-items-center p-2 px-3 border-bottom" style="background-color: #f8fafc;">
+                    <div class="fw-bold text-primary d-flex align-items-center gap-2" style="font-size: 13px;">
+                        <div class="bg-primary bg-opacity-10 rounded d-flex justify-content-center align-items-center" style="width: 24px; height: 24px;">
+                            <i class="fa-solid fa-calendar-week"></i>
+                        </div>
+                        {{ current_week }}
+                    </div>
+                    {% if start_date and end_date %}
+                    <div class="text-secondary fw-bold" style="font-size: 11.5px;">
+                        {{ start_date }} <i class="fa-solid fa-arrow-right mx-1 text-muted" style="font-size: 9px;"></i> {{ end_date }}
+                    </div>
+                    {% endif %}
                 </div>
-                <div class="text-muted small fw-bold"><i class="fa-regular fa-clock me-1"></i> Ca trực: {{ assignment.shift }}</div>
                 
-                {% if start_date and end_date %}
-                <div class="mt-2 text-muted" style="font-size: 13.5px;">
-                    <i class="fa-regular fa-calendar-days me-1 text-primary"></i> 
-                    Áp dụng: <span class="fw-bold text-dark">{{ start_date }}</span> <i class="fa-solid fa-arrow-right-long text-secondary mx-1" style="font-size: 10px;"></i> <span class="fw-bold text-dark">{{ end_date }}</span>
+                <!-- DÒNG 2: THÔNG TIN TRỰC CHIA 2 CỘT (TỐI ƯU KHÔNG GIAN) -->
+                <div class="row g-0">
+                    <!-- CỘT TRÁI: VỊ TRÍ CHẤM (Chiếm 65% diện tích) -->
+                    <div class="col-7 p-3 border-end position-relative bg-white">
+                        <i class="fa-solid fa-location-crosshairs position-absolute text-danger opacity-10" style="font-size: 50px; bottom: 5px; right: 10px;"></i>
+                        
+                        <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">VỊ TRÍ CHẤM ĐIỂM:</div>
+                        <div class="text-danger m-0" style="font-size: 24px; font-weight: 900; letter-spacing: -0.5px; line-height: 1.2;">
+                            {{ assignment.duty_area.name if assignment.duty_area else 'Chưa phân cụm' }}
+                        </div>
+                    </div>
+                    
+                    <!-- CỘT PHẢI: CA TRỰC (Chiếm 35% diện tích) -->
+                    <div class="col-5 p-3 d-flex flex-column justify-content-center align-items-center" style="background-color: #fffbeb;">
+                        <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">CA TRỰC:</div>
+                        <div class="text-warning m-0 d-flex align-items-center gap-1" style="font-size: 18px; font-weight: 800;">
+                            {% if assignment.shift == 'Sáng' %}
+                                <i class="fa-solid fa-sun fs-6"></i> Sáng
+                            {% elif assignment.shift == 'Chiều' %}
+                                <i class="fa-solid fa-cloud-sun fs-6"></i> Chiều
+                            {% else %}
+                                <i class="fa-regular fa-clock fs-6"></i> {{ assignment.shift }}
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-                {% endif %}
-                
+
+            </div>
             {% else %}
-                <div class="alert alert-secondary mt-3 mb-0 border-0 p-3 rounded-4" style="font-size: 14px; background: #e9ecef;">
-                    <i class="fa-solid fa-mug-hot me-1 text-secondary"></i> Tuần này bạn không có lịch phân công trực. Hãy nghỉ ngơi nhé!
+            <!-- Trạng thái không có lịch trực -->
+            <div class="card border-0 rounded-4 shadow-sm text-center p-3 mt-1" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                <div class="bg-secondary bg-opacity-10 text-secondary rounded-circle d-flex justify-content-center align-items-center mx-auto mb-2" style="width: 50px; height: 50px;">
+                    <i class="fa-solid fa-mug-hot fs-4"></i>
                 </div>
+                <h6 class="fw-bold text-dark mb-1">Bạn đang được nghỉ!</h6>
+                <p class="text-muted small m-0">Tuần này bạn không có lịch phân công trực.</p>
+            </div>
             {% endif %}
         </div>
 
