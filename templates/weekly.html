@@ -405,10 +405,10 @@
                                 {% endif %}
                             </td>
                             
-                            <td><input type="number" step="0.5" class="input-erp text-green" name="cong_{{ b.id }}" value="{{ sc.score_cong if sc else 0 }}"></td>
-                            <td><input type="number" step="0.5" class="input-erp text-red" name="tru_{{ b.id }}" value="{{ sc.score_tru if sc else 0 }}"></td>
+							<td><input type="number" step="0.5" class="input-erp text-green" name="cong_{{ b.id }}" value="{{ sc.score_cong | int if sc and sc.score_cong == sc.score_cong | int else sc.score_cong if sc else 0 }}"></td>
+                            <td><input type="number" step="0.5" class="input-erp text-red" name="tru_{{ b.id }}" value="{{ sc.score_tru | int if sc and sc.score_tru == sc.score_tru | int else sc.score_tru if sc else 0 }}"></td>
                             
-                            <td><input type="number" class="input-erp" name="truc_{{ b.id }}" value="{{ sc.score_truc if sc else 100 }}" readonly></td>
+                            <td><input type="number" class="input-erp" name="truc_{{ b.id }}" value="{{ sc.score_truc | int if sc and sc.score_truc == sc.score_truc | int else sc.score_tru if sc else 100 }}" readonly></td>
                             
                             <td class="col-total">
                                 <span id="total_{{ b.id }}">{{ sc.total_score if sc else 100.0 }}</span>
@@ -1448,6 +1448,13 @@
                 const truc = parseFloat(document.querySelector(`input[name="truc_${bId}"]`).value) || 0;
                 const cong = parseFloat(document.querySelector(`input[name="cong_${bId}"]`).value) || 0;
                 const tru = parseFloat(document.querySelector(`input[name="tru_${bId}"]`).value) || 0;
+				// [BỔ SUNG]: Tự động làm sạch hiển thị ô input nếu là số chẵn
+                if (e.target.name.startsWith('cong_') || e.target.name.startsWith('tru_')) {
+                    let valNum = parseFloat(e.target.value);
+                    if (!isNaN(valNum)) {
+                        e.target.value = Number.isInteger(valNum) ? valNum.toString() : valNum;
+                    }
+                }
                 
                 const branchRow = ratingSelect.closest('tr');
                 const groupText = branchRow.getAttribute('data-group');
