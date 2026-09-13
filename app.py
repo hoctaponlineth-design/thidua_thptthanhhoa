@@ -1327,6 +1327,9 @@ def save_time_settings():
                 )
                 db_session.add(settings)
                 
+            # [CHÌA KHÓA CỦA VẤN ĐỀ ĐÂY THẦY NHÉ]: Bắt buộc phải có dòng này để ép ghi xuống Database
+            db_session.commit()
+                
             log_system_action("CẤU HÌNH", "Cập nhật thời gian hệ thống thành công.")
             flash("✅ Đã cập nhật Cấu hình Thời gian Hệ thống thành công!", "success")
     except Exception as e:
