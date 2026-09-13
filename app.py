@@ -6640,11 +6640,44 @@ def export_saodo_accounts():
     except Exception as e:
         flash(f"Lỗi xuất Excel: {e}", "error")
         return redirect(url_for('users'))
-    
+# ==========================================
+# TRẠM PHÁT SÓNG THÔNG BÁO CHO APP SAO ĐỎ
+# ==========================================
+@app.route('/update_announcement', methods=['POST'])
+def update_announcement():
+    if session.get('role') not in ['Quản trị viên', 'Admin', 'Bí thư Đoàn trường', 'Bí thư']:
+        flash("Bạn không có quyền phát thông báo!", "error")
+        return redirect(request.referrer or url_for('dashboard'))
+        
+    new_text = request.form.get('announcement_text', '').strip()
+    if new_text:
+        import os, json
+        config_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config")
+        os.makedirs(config_dir, exist_ok=True)
+        config_path = os.path.join(config_dir, "announcement.json")
+        
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump({"text": new_text}, f, ensure_ascii=False)
+            
+        log_system_action("PHÁT THÔNG BÁO", f"Nội dung: {new_text[:30]}...")
+        flash("✅ Đã phát lệnh điều hành bằng chữ chạy tới toàn bộ App Sao Đỏ!", "success")
+        
+    return redirect(request.referrer or url_for('dashboard'))
+
 @app.route('/mobile-sao-do', methods=['GET'])
 def mobile_sao_do():
     if session.get('role') != 'Sao đỏ': return redirect(url_for('login'))
     
+    # [TÍNH NĂNG MỚI]: Bắt sóng Thông báo điều hành
+    announcement_text = "🔔 Chào mừng các bạn Đội cờ đỏ! Chúc các bạn một tuần làm việc công tâm và trách nhiệm."
+    import os, json
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config", "announcement.json")
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                announcement_text = data.get("text", announcement_text)
+        except: pass
     try:
         with session_scope() as db_session:
             active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
@@ -6765,7 +6798,8 @@ def mobile_sao_do():
                                    current_week=current_week,
                                    teammates=teammates,
                                    start_date=start_date_str,
-                                   end_date=end_date_str)
+                                   end_date=end_date_str),
+                                   announcement_text=announcement_text)
     except Exception as e:
         return f"Lỗi hệ thống Mobile: {e}"
 
