@@ -831,16 +831,24 @@
             }
         }
 
-        function autoUpdateRatingText(bId, total) {
+		function autoUpdateRatingText(bId, total) {
             const statusSpan = document.getElementById(`status_${bId}`);
+            const totalSpan = document.getElementById(`total_${bId}`);
+            
+			// THUẬT TOÁN THÔNG MINH: Nếu là số chẵn (.0) thì bỏ phần thập phân, nếu có lẻ thì giữ nguyên 1 chữ số
+            if (totalSpan) {
+                let formattedVal = Number.isInteger(total) ? total.toString() : total.toFixed(1).replace('.', ',');
+                totalSpan.innerText = formattedVal;
+            }
+
             if(!statusSpan) return;
-            if (total >= 140) {
+            if (total >= 150) {
                 statusSpan.innerText = "Xuất sắc";
                 statusSpan.style.color = "#10b981";
-            } else if (total >= 120) {
+            } else if (total >= 130) {
                 statusSpan.innerText = "Tốt";
                 statusSpan.style.color = "#2563eb";
-            } else if (total >= 110) {
+            } else if (total >= 120) {
                 statusSpan.innerText = "Khá";
                 statusSpan.style.color = "#f59e0b";
             } else {
@@ -849,12 +857,16 @@
             }
         }
 
-        document.addEventListener("DOMContentLoaded", function() {
+		document.addEventListener("DOMContentLoaded", function() {
             document.querySelectorAll('.select-rating').forEach(el => updateRowStyle(el));
             document.querySelectorAll('tr.branch-row').forEach(row => {
                 const bId = row.querySelector('.select-rating').name.split('_')[1];
                 const totalSpan = document.getElementById(`total_${bId}`);
-                if(totalSpan) autoUpdateRatingText(bId, parseFloat(totalSpan.innerText));
+                if(totalSpan) {
+                    let rawVal = parseFloat(totalSpan.innerText) || 100.0;
+                    totalSpan.innerText = Number.isInteger(rawVal) ? rawVal.toString() : rawVal.toFixed(1).replace('.', ',');
+                    autoUpdateRatingText(bId, rawVal);
+                }
             });
         });
 
