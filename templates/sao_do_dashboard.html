@@ -169,24 +169,58 @@
     {% endwith %}
 
     <div id="homeSection">
-        <div class="user-welcome">
-            <!-- NÚT ĐỔI MẬT KHẨU TÍCH HỢP TRỰC TIẾP -->
-			<div class="d-flex justify-content-between align-items-start mb-3">
+		<div class="user-welcome">
+            <!-- ====================================================== -->
+            <!-- KHỐI 1: LỜI CHÀO VÀ CÁC NÚT TIỆN ÍCH (ĐÃ GỘP HÀNG) -->
+            <!-- ====================================================== -->
+            <div class="d-flex justify-content-between align-items-start mb-3">
                 <h6 class="fw-bold text-dark m-0" style="line-height: 1.5;">👤 Xin chào, SĐ:<br>{{ session.get('full_name') | replace('SĐ: ', '') }}!</h6>
+                
                 <div class="d-flex flex-column gap-2 align-items-end">
+                    <!-- Hàng trên: Nút Đổi mật khẩu -->
                     <button class="btn btn-sm text-primary bg-primary bg-opacity-10 border-0 rounded-pill px-3 py-1 fw-bold shadow-sm" onclick="openChangePasswordModal()" style="font-size: 12px; transition: transform 0.1s;">
                         <i class="fa-solid fa-key me-1"></i> Đổi MK
                     </button>
-                    <!-- [NÂNG CẤP]: NÚT KÍCH HOẠT FACEID / VÂN TAY -->
-                    <button class="btn btn-sm text-success bg-success bg-opacity-10 border-0 rounded-pill px-3 py-1 fw-bold shadow-sm" onclick="registerBiometric()" style="font-size: 12px;">
-                        <i class="fa-solid fa-fingerprint me-1"></i> Vân tay / FaceID
-                    </button>
-                    <!-- [NÂNG CẤP]: NÚT BẬT THÔNG BÁO ĐẨY -->
-                    <button class="btn btn-sm text-info bg-info bg-opacity-10 border-0 rounded-pill px-3 py-1 fw-bold shadow-sm" id="btnPushNotify" onclick="enablePushNotifications()" style="font-size: 12px;">
-                        <i class="fa-solid fa-bell me-1"></i> Nhận Thông báo
-                    </button>
+                    
+                    <!-- Hàng dưới: Gộp nút Vân tay và Nhận Thông báo -->
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm text-success bg-success bg-opacity-10 border-0 rounded-pill px-2 py-1 fw-bold shadow-sm" onclick="registerBiometric()" style="font-size: 11px;">
+                            <i class="fa-solid fa-fingerprint"></i> Vân tay
+                        </button>
+                        <button class="btn btn-sm text-info bg-info bg-opacity-10 border-0 rounded-pill px-2 py-1 fw-bold shadow-sm" id="btnPushNotify" onclick="enablePushNotifications()" style="font-size: 11px;">
+                            <i class="fa-solid fa-bell"></i> Nhận TB
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            <!-- ====================================================== -->
+            <!-- KHỐI 2: BẢNG TIN CHỮ CHẠY CHIẾM VỊ TRÍ HÀNG DƯỚI CÙNG  -->
+            <!-- ====================================================== -->
+            <style>
+                .news-ticker-container {
+                    width: 100%; background: linear-gradient(90deg, #fffbeb, #fef3c7);
+                    border: 1px solid #fde68a; border-radius: 8px; overflow: hidden;
+                    display: flex; align-items: center; position: relative;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+                }
+                .ticker-icon {
+                    background: #f59e0b; color: white; padding: 6px 12px; font-size: 13px;
+                    z-index: 10; box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+                }
+                .ticker-text-wrapper { flex: 1; overflow: hidden; white-space: nowrap; position: relative; }
+                .ticker-text {
+                    display: inline-block; padding-left: 100%;
+                    animation: ticker 15s linear infinite; color: #b45309; font-weight: 700; font-size: 13px;
+                }
+                @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+            </style>
+            
+            <div class="news-ticker-container mb-3">
+                <div class="ticker-icon"><i class="fa-solid fa-bullhorn fa-shake"></i></div>
+                <div class="ticker-text-wrapper"><span class="ticker-text">{{ announcement_text }}</span></div>
+            </div>
+            <!-- ====================================================== -->
             
             {% if assignment %}
                 <div class="text-muted small mb-3"><i class="fa-regular fa-calendar-check me-1"></i> Đang mở: <strong class="text-primary">{{ current_week }}</strong></div>
