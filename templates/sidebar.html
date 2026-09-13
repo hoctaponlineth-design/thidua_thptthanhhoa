@@ -64,6 +64,11 @@
             </div>
         </li>
         <li><a href="/violation-categories" class="nav-link"><i class="fa-solid fa-scale-unbalanced me-2"></i> Thư viện Lỗi tự động</a></li>
+		<li>
+            <a href="#" class="nav-link text-warning" data-bs-toggle="modal" data-bs-target="#announcementModal">
+                <i class="fa-solid fa-satellite-dish fa-beat me-2"></i> Trạm Phát Lệnh
+            </a>
+        </li>
 
         <!-- NHÓM 2: THI ĐUA -->
         <div class="text-info small fw-bold mt-3 mb-1 px-3" style="font-size: 16px; letter-spacing: 1px;">___📝 THI ĐUA ___</div>
@@ -175,7 +180,43 @@
 </div>
 {% endif %}
 <!-- ============================================== -->
-
+<!-- ========================================== -->
+<!-- MODAL TRẠM PHÁT SÓNG ĐIỀU HÀNH (ADMIN)     -->
+<!-- ========================================== -->
+<div class="modal fade" id="announcementModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-danger text-white border-0" style="border-radius: 16px 16px 0 0; padding: 16px 24px;">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-satellite-dish fa-beat me-2"></i> Trạm Phát Lệnh Điều Hành
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <form action="/update_announcement" method="POST">
+                <div class="modal-body p-4 bg-light text-start">
+                    <label class="form-label fw-bold text-dark mb-2">Nội dung thông báo (Chữ chạy trên App Sao đỏ):</label>
+                    <textarea name="announcement_text" class="form-control border-danger border-opacity-50 shadow-none fw-bold text-primary" rows="4" placeholder="Nhập lệnh điều hành, nhắc nhở hoặc thông báo khẩn..." style="border-radius: 8px; font-size: 15px; line-height: 1.5;" required></textarea>
+                    
+                    <div class="d-flex align-items-start mt-3 text-muted">
+                        <i class="fa-solid fa-circle-info mt-1 me-2 text-danger"></i>
+                        <small style="font-size: 11.5px; text-align: justify;">
+                            Dòng chữ này sẽ chạy ngang liên tục trên màn hình điện thoại của toàn bộ Đội Sao Đỏ ngay khi các em mở App. Viết ngắn gọn, rõ ý.
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="modal-footer bg-white border-0 p-3 rounded-bottom-4 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger fw-bold px-4 shadow-sm">
+                        <i class="fa-regular fa-paper-plane me-1"></i> Phát lệnh ngay
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- ========================================== -->
 <!-- SCRIPT TỰ ĐỘNG BÔI ĐẬM MENU HIỆN TẠI -->
 <script>
     document.addEventListener("DOMContentLoaded", function() {
