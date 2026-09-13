@@ -11,9 +11,12 @@ DB_URL = os.environ.get("DATABASE_URL", "sqlite:///data/thi_dua.db")
 if DB_URL.startswith("postgres://"):
     DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
 
-# 2. KHỞI TẠO ĐỘNG CƠ (ENGINE)
-# Không cần check_same_thread hay PRAGMA WAL vì PostgreSQL hỗ trợ concurrency mặc định
-engine = create_engine(DB_URL, echo=False)
+engine = create_engine(
+    DB_URL, 
+    echo=False,
+    pool_pre_ping=True,      # Bắt hệ thống "gõ cửa" kiểm tra kết nối trước mỗi lần lấy dữ liệu
+    pool_recycle=1800        # Tự động làm mới đường truyền mỗi 30 phút để tránh bị Cloud đá văng
+)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
