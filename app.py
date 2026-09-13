@@ -6789,17 +6789,18 @@ def mobile_sao_do():
             scores_data_json = json.dumps(scores_data_for_js)
 
             return render_template('sao_do_dashboard.html', 
-                                   assignment=assignment, 
-                                   target_classes=target_classes,
-                                   all_branches=all_branches,
-                                   violations_bank=violations_bank,
-                                   existing_scores=existing_scores,
-                                   scores_data_json=scores_data_json, # Truyền gói JSON ra ngoài
-                                   current_week=current_week,
-                                   teammates=teammates,
-                                   start_date=start_date_str,
-                                   end_date=end_date_str),
-                                   announcement_text=announcement_text)
+                            assignment=assignment, 
+                            target_classes=target_classes,
+                            all_branches=all_branches,
+                            violations_bank=violations_bank,
+                            existing_scores=existing_scores,
+                            scores_data_json=scores_data_json,
+                            current_week=current_week,
+                            teammates=teammates,
+                            start_date=start_date_str,
+                            end_date=end_date_str,
+                            announcement_text=announcement_text
+                        )
     except Exception as e:
         return f"Lỗi hệ thống Mobile: {e}"
 
