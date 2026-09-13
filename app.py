@@ -3007,6 +3007,57 @@ def smart_split_note(note_str):
         parts.append(''.join(current_part))
     return [p.strip() for p in parts if p.strip()]
 # ==========================================
+# MODULE: Thêm hàm xử lý khử trùng lặp vào file
+# ==========================================
+import re
+
+def reconcile_same_day_absences(note_string):
+    """
+    Hàm đối chiếu và khử trùng lặp lỗi vắng có hỗ trợ khớp tên thông minh 
+    (Xử lý trường hợp Sổ Đầu Bài ghi 'Nguyễn Văn An' còn Sao Đỏ chỉ ghi 'An').
+    """
+    if not note_string:
+        return ""
+        
+    parts = [p.strip() for p in str(note_string).split(';') if p.strip()]
+    seen_absences = set() 
+    filtered_parts = []
+    
+    absence_keywords = ["vắng", "nghỉ", "không phép", "trốn tiết"]
+
+    for part in parts:
+        part_lower = part.lower()
+        is_absence = any(kw in part_lower for kw in absence_keywords)
+        
+        if is_absence:
+            # 1. Trích xuất tiền tố ngày (VD: [CN], [T2]...)
+            day_match = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', part, re.IGNORECASE)
+            day_pfx = day_match.group(0).upper() if day_match else ""
+            
+            # 2. Trích xuất tên học sinh trong ngoặc
+            all_brackets = re.findall(r'\[(.*?)\]', part)
+            raw_student_name = ""
+            for b_val in all_brackets:
+                if b_val.upper() not in ["T2", "T3", "T4", "T5", "T6", "T7", "CN", "T2 CHIỀU", "T3 CHIỀU", "T4 CHIỀU", "T5 CHIỀU", "T6 CHIỀU", "T7 CHIỀU"]:
+                    raw_student_name = b_val.strip()
+                    break
+            
+            if raw_student_name and day_pfx:
+                # [THUẬT TOÁN KHỚP TÊN MỜ]: Lấy từ cuối cùng (Tên chính) để so sánh bất chấp họ đệm dài ngắn
+                name_tokens = raw_student_name.split()
+                first_name_key = name_tokens[-1].lower() if name_tokens else raw_student_name.lower()
+                
+                absence_key = (first_name_key, day_pfx)
+                if absence_key in seen_absences:
+                    # Đã có bản ghi vắng trùng tên chính vào cùng ngày -> BỎ QUA để chống trừ 2 lần!
+                    continue
+                else:
+                    seen_absences.add(absence_key)
+        
+        filtered_parts.append(part)
+        
+    return " ; ".join(filtered_parts)
+# ==========================================
 # MODULE: NHẬP ĐIỂM TUẦN & TỰ ĐỘNG BÓC TÁCH LỖI VÀO SỔ ĐEN
 # ==========================================
 @app.route('/weekly', methods=['GET', 'POST'])
@@ -3052,6 +3103,7 @@ def weekly():
                     except: cong = 0.0
                     
                     note = request.form.get(f'note_{b_id}', '').strip()
+                    note = reconcile_same_day_absences(note)
                     
                     # --- [BẢN VÁ LỖI BAREM]: XÉN ĐIỂM TỐT KHI NHẬP TAY TRÊN WEB ---
                     max_tot_web = int(getattr(settings, 'max_diem_tot', 14)) if settings else 14
