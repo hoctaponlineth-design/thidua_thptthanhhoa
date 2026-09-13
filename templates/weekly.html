@@ -695,9 +695,20 @@
                 </div>
                 
                 <!-- FOOTER CỐ ĐỊNH -->
-                <div class="modal-footer bg-white p-3 rounded-bottom-4" style="border-top: 1px solid var(--border-color); z-index: 10;">
-                    <button type="button" class="btn btn-light text-secondary fw-bold px-4" data-bs-dismiss="modal">Hủy bỏ</button>
-                    <button type="button" class="btn btn-primary fw-bold px-4 shadow-sm" onclick="saveDetailModal()"><i class="fa-solid fa-floppy-disk me-2"></i> Lưu dữ liệu</button>
+                <div class="modal-footer bg-white p-3 rounded-bottom-4 d-flex justify-content-between align-items-center" style="border-top: 1px solid var(--border-color); z-index: 10;">
+                    
+                    <!-- [BỔ SUNG]: Hiển thị tên Sao đỏ trực nằm bên trái -->
+                    <div class="d-flex align-items-center gap-2 text-secondary" style="font-size: 13px;">
+                        <i class="fa-solid fa-user-shield text-danger"></i>
+                        <span class="fw-bold">Sao đỏ trực:</span>
+                        <span id="modalDutyStarName" class="fw-bold text-primary fst-italic">Đang tải...</span>
+                    </div>
+                    <!-- =============================================== -->
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-light text-secondary fw-bold px-4" data-bs-dismiss="modal">Hủy bỏ</button>
+                        <button type="button" class="btn btn-primary fw-bold px-4 shadow-sm" onclick="saveDetailModal()"><i class="fa-solid fa-floppy-disk me-2"></i> Lưu dữ liệu</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1259,13 +1270,28 @@
         let currentTargetBranchId = null;
         let currentTargetBranchGroup = ""; 
 
-        async function openDetailModal(branchId, branchName, branchGroup) {
+		async function openDetailModal(branchId, branchName, branchGroup) {
             currentTargetBranchId = branchId;
             currentTargetBranchGroup = branchGroup; 
             const weekName = document.getElementById('weekSelector').value;
             
             document.getElementById('detailModalTitle').innerText = `ĐANG THAO TÁC: CHI ĐOÀN ${branchName} (${branchGroup})`;
             
+            // --- [BỔ SUNG]: TỰ ĐỘNG TẢI TÊN SAO ĐỎ TRỰC CHO LỚP NÀY ---
+            document.getElementById('modalDutyStarName').innerText = "Đang cập nhật...";
+            fetch(`/api/get_branch_duty_star?week=${encodeURIComponent(weekName)}&branch_name=${encodeURIComponent(branchName)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if(data.success && data.star_name) {
+                        document.getElementById('modalDutyStarName').innerText = data.star_name;
+                    } else {
+                        document.getElementById('modalDutyStarName').innerText = "Chưa có phân công";
+                    }
+                }).catch(err => {
+                    document.getElementById('modalDutyStarName').innerText = "Không xác định";
+                });
+            // -----------------------------------------------------------
+
             document.getElementById('detailRating').value = document.querySelector(`select[name="rating_${branchId}"]`).value;
             document.getElementById('detailBase').value = document.querySelector(`input[name="truc_${branchId}"]`).value;
             document.getElementById('detailBonus').value = document.querySelector(`input[name="cong_${branchId}"]`).value;
