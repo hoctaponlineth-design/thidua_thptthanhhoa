@@ -331,10 +331,17 @@
             
             // -----------------------------------------------------------------
             // NẠP DỮ LIỆU PHẢN HỒI CŨ VÀO TEXTAREA (NẾU MỞ Ở CHẾ ĐỘ "XEM LẠI")
-            let oldResponse = btn.getAttribute('data-response') || '';
+			// -----------------------------------------------------------------
+            let rawResponse = btn.getAttribute('data-response') || '';
             let status = btn.getAttribute('data-status') || '';
             
-            // Xóa bỏ các tiền tố của hệ thống để chữ trong khung nhìn sạch sẽ
+            // Dò tìm thông tin Người xử lý và Thời gian bằng Regex
+            let handlerMatch = rawResponse.match(/\(Xử lý bởi: (.*?) lúc (.*?)\)/);
+            let handlerName = handlerMatch ? handlerMatch[1] : 'BCH Đoàn trường (Dữ liệu cũ)';
+            let handlerTime = handlerMatch ? handlerMatch[2] : 'Trước đây';
+            
+            // Lọc bỏ chuỗi thông tin và tiền tố để trả lại nội dung sạch cho ô Textarea
+            let oldResponse = rawResponse.replace(/\(Xử lý bởi: .*? lúc .*?\)/g, '');
             oldResponse = oldResponse.replace(/\[ĐÃ DUYỆT BỘ PHẬN\]/g, '')
                                      .replace(/\[TỪ CHỐI\]/g, '')
                                      .replace(/Phản hồi:/g, '').trim();
@@ -344,9 +351,10 @@
             
             if (responseBox) responseBox.value = oldResponse;
             
-            // Bật/tắt dải ruy băng màu xanh thông báo "Đã giải quyết"
+            // Bật/tắt dải ruy băng màu xanh thông báo "Đã giải quyết" kèm Thông tin người duyệt
             if (status !== 'Đang chờ xử lý' && oldResponse !== '') {
                 statusBanner.classList.remove('d-none');
+                statusBanner.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> Phúc khảo này đã được giải quyết bởi <b class="text-primary">${handlerName}</b> vào lúc <b class="text-primary">${handlerTime}</b>. Dưới đây là phán quyết trước đó:`;
             } else {
                 statusBanner.classList.add('d-none');
             }
