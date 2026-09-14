@@ -7397,10 +7397,13 @@ def sao_do_quick_submit_form():
                 
             old_note = score.note if score and score.note else ""
             
-            # --- [NÂNG CẤP]: TỰ ĐỘNG LẤY THỨ HIỆN TẠI VÀ GẮN TIỀN TỐ ---
-            from datetime import datetime
+            # --- [BẢN VÁ LỖI MÚI GIỜ]: TỰ ĐỘNG LẤY THỨ HIỆN TẠI (CHUẨN GIỜ VN) ---
+            from datetime import datetime, timezone, timedelta
+            vn_tz = timezone(timedelta(hours=7))
             days_vn = {0: '[T2]', 1: '[T3]', 2: '[T4]', 3: '[T5]', 4: '[T6]', 5: '[T7]', 6: '[CN]'}
-            today_pfx = days_vn[datetime.now().weekday()]
+            
+            # Ép lấy giờ Việt Nam thay vì giờ máy chủ
+            today_pfx = days_vn[datetime.now(vn_tz).weekday()]
             
             note_add = f"{today_pfx} {violation.name} x1 [{ ' '.join(student_name.split()).title() }]" if student_name else f"{today_pfx} {violation.name} x1"
             raw_combined_note = f"{old_note} ; {note_add}" if old_note else note_add
@@ -7618,9 +7621,11 @@ def submit_mobile_sao_do():
             all_categories = db_session.query(ViolationCategory).filter_by(school_year_id=active_year.id).all()
             sorted_cats = sorted(all_categories, key=lambda x: len(x.name), reverse=True)
             
-            from datetime import datetime
+            # [BẢN VÁ LỖI MÚI GIỜ SAO ĐỎ]
+            from datetime import datetime, timezone, timedelta
+            vn_tz = timezone(timedelta(hours=7))
             days_vn = {0: '[T2]', 1: '[T3]', 2: '[T4]', 3: '[T5]', 4: '[T6]', 5: '[T7]', 6: '[CN]'}
-            today_pfx = days_vn[datetime.now().weekday()]
+            today_pfx = days_vn[datetime.now(vn_tz).weekday()]
             
             old_note = score.note if score and score.note else ""
             
