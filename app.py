@@ -7124,7 +7124,6 @@ def blacklist():
 
             # 3. Lọc theo Thời gian (Tuần, Tháng, Học kỳ, Năm học)
             if time_mode == 'year':
-                # Mặc định lấy toàn bộ năm học hiện tại (không cần lọc thêm tuần)
                 pass
             elif time_mode == 'week' and time_value:
                 query = query.filter(WeeklyScore.week == time_value)
@@ -7143,22 +7142,25 @@ def blacklist():
             
             violation_data = []
             for v, sc, b, c in results:
+                # [THUẬT TOÁN ĐỒNG BỘ]: Bóc tách và chia đều lỗi học sinh dính chùm
                 raw_names = str(v.student_name).replace(';', ',').split(',')
-                for raw_n in raw_names:
-                    n_clean = raw_n.strip().title()
-                    if n_clean:
-                        # 4. Lọc theo Tên học sinh
-                        if search_name and search_name.lower() not in n_clean.lower():
-                            continue
-                            
-                        violation_data.append({
-                            'week': sc.week,
-                            'branch_name': b.name,
-                            'student_name': n_clean,
-                            'violation_name': c.name,
-                            'quantity': v.quantity,
-                            'penalty': float(c.penalty_points * v.quantity) if getattr(c, 'point_type', 'Điểm trừ') != 'Điểm cộng' else 0
-                        })
+                valid_names = [n.strip().title() for n in raw_names if n.strip()]
+                num_names = len(valid_names)
+                qty_per_student = max(1, v.quantity // num_names) if num_names > 0 else v.quantity
+                
+                for n_clean in valid_names:
+                    # 4. Lọc theo Tên học sinh (nếu có nhập)
+                    if search_name and search_name.lower() not in n_clean.lower():
+                        continue
+                        
+                    violation_data.append({
+                        'week': sc.week,
+                        'branch_name': b.name,
+                        'student_name': n_clean,
+                        'violation_name': c.name,
+                        'quantity': qty_per_student, # <--- Đã sửa: Dùng số lượng đã chia đều
+                        'penalty': float(c.penalty_points * qty_per_student) if getattr(c, 'point_type', 'Điểm trừ') != 'Điểm cộng' else 0
+                    })
                 
             return render_template('blacklist.html', 
                                    branches=branches, 
@@ -7233,6 +7235,7 @@ def export_global_blacklist():
             filter_info = []
             
             for v, sc, b, c in results:
+                # [THUẬT TOÁN ĐỒNG BỘ]: Bóc tách và chia đều lỗi học sinh dính chùm
                 raw_names = str(v.student_name).replace(';', ',').split(',')
                 valid_names = [n.strip().title() for n in raw_names if n.strip()]
                 num_names = len(valid_names)
@@ -7245,7 +7248,7 @@ def export_global_blacklist():
                         'branch_name': b.name,
                         'student_name': n_clean,
                         'violation_name': c.name,
-                        'quantity': qty_per_student
+                        'quantity': qty_per_student # <--- Đã sửa: Dùng số lượng đã chia đều
                     })
                         
             if search_branch and search_branch.isdigit():
@@ -7326,7 +7329,7 @@ def export_global_blacklist():
         import traceback; traceback.print_exc()
         flash(f"Lỗi xuất Excel: {e}", "error")
         return redirect(url_for('blacklist'))
-    
+        
 from flask import send_file
 
 @app.route('/manifest.json')
