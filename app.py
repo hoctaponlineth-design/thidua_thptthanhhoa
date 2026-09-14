@@ -350,9 +350,13 @@ def gvcn_checkin():
         return {"success": False, "error": "Thiếu thông tin lớp hoặc tuần!"}, 400
 
     try:
-        from datetime import date
+        # [BẢN VÁ LỖI MÚI GIỜ]: Ép cứng giờ Việt Nam (UTC+7) cho chức năng điểm danh
+        from datetime import datetime, timezone, timedelta
+        vn_tz = timezone(timedelta(hours=7))
+        
         with session_scope() as db_session:
-            today_date = date.today()
+            # Lấy ngày hiện tại chuẩn 100% theo giờ Việt Nam
+            today_date = datetime.now(vn_tz).date()
             
             # Kiểm tra xem hôm nay thầy cô đã bấm chưa
             exist = db_session.query(GVCNAttendance).filter_by(branch_id=branch_id, date=today_date).first()
