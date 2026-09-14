@@ -971,15 +971,18 @@ def resolve_appeal():
                 branch_name = score.branch.name.strip().upper() # Tên lớp dùng làm username nhận thông báo
                 week_num = score.week
 
-                # =======================================================
                 # TRƯỜNG HỢP 1: ĐỒNG Ý PHÚC KHẢO & TỰ ĐỘNG TÍNH TOÁN THEO TỪNG PHẦN
                 # =======================================================
                 if action == 'approve':
                     auto_refund_points = 0.0
-                    # Hứng danh sách các lỗi mà BCH đã tích "Đồng ý" duyệt trên giao diện
-                    approved_errors = request.form.getlist('approved_errors[]')
                     
-                    if score.appeal_reason and "Phúc khảo các lỗi: [" in score.appeal_reason:
+                    # [BẢN VÁ LỖI 1]: Bắt mảng lỗi an toàn hơn
+                    approved_errors = request.form.getlist('approved_errors[]')
+                    if not approved_errors:
+                        approved_errors = request.form.getlist('approved_errors')
+                    
+                    # Bỏ kiểm tra chuỗi cứng nhắc, chỉ cần có lỗi được tích chọn là xử lý
+                    if approved_errors:
                         try:
                             import re
                             current_notes = [n.strip() for n in (score.note or "").split(";") if n.strip()]
@@ -991,15 +994,21 @@ def resolve_appeal():
                             # Quét từng lỗi đang có trong Sổ đen của lớp
                             for n in current_notes:
                                 is_approved = False
+                                # [BẢN VÁ LỖI 2]: Là phẳng mọi khoảng trắng và đưa về chữ thường để so khớp chính xác tuyệt đối
+                                n_clean_lower = n.lower().replace(" ", "")
+                                
                                 for app_err in approved_errors:
-                                        # [TÍNH NĂNG MỚI]: Loại bỏ đuôi (Phạt Xđ) để Server so khớp an toàn tuyệt đối
+                                    # Loại bỏ phần đuôi "(Phạt Xđ)"
                                     app_err_clean = re.sub(r'\(Phạt .*?đ\)', '', app_err).strip()
-                                    if app_err_clean in n or n in app_err_clean:
+                                    app_err_clean_lower = app_err_clean.lower().replace(" ", "")
+                                    
+                                    # So khớp an toàn tuyệt đối
+                                    if app_err_clean_lower in n_clean_lower or n_clean_lower in app_err_clean_lower:
                                         is_approved = True
                                         break
                                         
                                 if is_approved:
-                                    # LỖI ĐƯỢC DUYỆT GỠ: Không đưa vào remaining_notes nữa & Cộng điểm hoàn trả
+                                    # LỖI ĐƯỢC DUYỆT GỠ: Trích xuất cộng điểm hoàn trả
                                     day_pfx_match = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', n, re.IGNORECASE)
                                     day_pfx = day_pfx_match.group(0) if day_pfx_match else ""
                                     text_to_parse = n.replace(day_pfx, "").strip() if day_pfx else n
@@ -1011,7 +1020,7 @@ def resolve_appeal():
                                             auto_refund_points += float(cat.penalty_points * qty)
                                             break
                                 else:
-                                    # LỖI BỊ TỪ CHỐI GỠ HOẶC LỖI KHÔNG BỊ KHIẾU NẠI -> Giữ lại trong Sổ đen
+                                    # LỖI BỊ TỪ CHỐI HOẶC KHÔNG KHIẾU NẠI -> Giữ lại trong Sổ đen
                                     remaining_notes.append(n)
                                     
                             # Ghi đè lại ghi chú sau khi đã GỌT BỎ những lỗi được gỡ
@@ -1052,7 +1061,7 @@ def resolve_appeal():
                     # [NÂNG CẤP]: BẮN THÔNG BÁO ĐẨY CHO GVCN KHI ĐƯỢC DUYỆT PHÚC KHẢO
                     try:
                         push_title = f"🎉 Phúc khảo {week_num} đã được DUYỆT!"
-                        push_body = f"Được hoàn {refund_points}đ. Phản hồi: {response_text[:40]}..."
+                        push_body = f"Được hoàn {final_refund}đ. Phản hồi: {response_text[:40]}..."
                         send_web_push(branch_name, push_title, push_body)
                     except Exception as err:
                         print(f"Lỗi gửi Push thông báo duyệt phúc khảo: {err}")
@@ -2265,8 +2274,12 @@ def delete_assignment(id):
 def auto_assign():
     week_number = int(request.form.get('auto_week_number', 1))
     date_str = request.form.get('auto_date')
-    try: start_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else datetime.now().date()
-    except: start_date = datetime.now().date()
+    # [BẢN VÁ MÚI GIỜ]: Ép giờ VN khi xếp lịch
+    from datetime import datetime, timezone, timedelta
+    vn_tz = timezone(timedelta(hours=7))
+
+    try: start_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else datetime.now(vn_tz).date()
+    except: start_date = datetime.now(vn_tz).date()
     
     shifts = request.form.getlist('shifts')
     if not shifts:
@@ -4340,8 +4353,10 @@ def class_dashboard():
                                 warning_students = sorted(current_warnings, key=lambda x: x['count'], reverse=True)
                                 break
                     
-                    from datetime import datetime, timedelta
-                    today_str = datetime.now().strftime("%d/%m/%Y")
+                    # [BẢN VÁ MÚI GIỜ]: Ép giờ VN để khóa số lượt gửi phúc khảo trong ngày
+                    from datetime import datetime, timezone, timedelta
+                    vn_tz = timezone(timedelta(hours=7))
+                    today_str = datetime.now(vn_tz).strftime("%d/%m/%Y")
                     
                     for sc in weekly_scores_db:
                         all_in_week = db_session.query(WeeklyScore).join(Branch).filter(
@@ -6316,11 +6331,15 @@ def export_templates_excel():
 # ==========================================
 def perform_backup_internal(actor="Hệ thống"):
     import glob, shutil
-    from datetime import datetime
+    # [BẢN VÁ LỖI MÚI GIỜ]: Khai báo múi giờ Việt Nam
+    from datetime import datetime, timezone, timedelta
+    vn_tz = timezone(timedelta(hours=7))
+    
     backup_dir = "backups"
     os.makedirs(backup_dir, exist_ok=True)
     
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    # Ép lấy giờ Việt Nam để đặt tên file backup cho chuẩn xác
+    timestamp = datetime.now(vn_tz).strftime('%Y%m%d_%H%M%S')
     backup_filename = f"Data_ThiDua_Backup_{timestamp}"
     backup_path = os.path.join(backup_dir, backup_filename)
     temp_dir = os.path.join(backup_dir, f"temp_{timestamp}")
@@ -6343,17 +6362,23 @@ def perform_backup_internal(actor="Hệ thống"):
             try: os.remove(old_file)
             except: pass
             
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] {actor} đã tạo bản sao lưu: {backup_filename}.zip")
+    # Ép lấy giờ Việt Nam để in ra log hệ thống
+    print(f"[{datetime.now(vn_tz).strftime('%H:%M:%S')}] {actor} đã tạo bản sao lưu: {backup_filename}.zip")
     return f"{backup_filename}.zip"
 
 # THUẬT TOÁN 3: Lập lịch sao lưu ngầm (Chạy nền)
 def background_auto_backup():
     import time
-    from datetime import datetime
+    # [BẢN VÁ LỖI MÚI GIỜ]: Khai báo thư viện và múi giờ Việt Nam
+    from datetime import datetime, timezone, timedelta
+    vn_tz = timezone(timedelta(hours=7))
+    
     while True:
-        now = datetime.now()
-        # Nếu là Chủ nhật (weekday == 6) và thời gian rơi vào 23h55' đêm
-        if now.weekday() == 6 and now.hour == 23 and now.minute == 55:
+        # Ép Robot lấy đồng hồ theo giờ Việt Nam
+        now_vn = datetime.now(vn_tz) 
+        
+        # Nếu là Chủ nhật (weekday == 6) và thời gian rơi vào 23h55' đêm (Giờ VN)
+        if now_vn.weekday() == 6 and now_vn.hour == 23 and now_vn.minute == 55:
             try:
                 perform_backup_internal(actor="BOT Lịch ngầm Tự động")
             except Exception as e:
