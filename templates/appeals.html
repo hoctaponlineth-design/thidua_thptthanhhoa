@@ -139,6 +139,7 @@
                                     {% endif %}
                                 </td>
                                 <td>
+                                    <!-- [NÂNG CẤP]: Nạp thêm thuộc tính data-status và data-response để JS bắt được -->
                                     <button class="btn btn-sm fw-bold px-3 py-1 shadow-sm" 
                                             style="background: {% if record.status == 'Đang chờ xử lý' %}#f59e0b{% else %}#f1f5f9{% endif %}; 
                                                    color: {% if record.status == 'Đang chờ xử lý' %}#fff{% else %}#475569{% endif %}; border-radius: 8px;"
@@ -146,7 +147,9 @@
                                             data-score-id="{{ record.score_id }}"
                                             data-branch-name="{{ record.branch_name }}"
                                             data-week="{{ record.week }}"
-                                            data-reason="{{ record.raw_reason }}">
+                                            data-reason="{{ record.raw_reason }}"
+                                            data-status="{{ record.status }}"
+                                            data-response="{{ record.response }}">
                                         {% if record.status == 'Đang chờ xử lý' %}<i class="fa-solid fa-reply me-1"></i> Xử lý ngay{% else %}<i class="fa-solid fa-eye me-1"></i> Xem lại{% endif %}
                                     </button>
                                 </td>
@@ -178,6 +181,11 @@
                     <div class="modal-body px-4 pb-4 mt-3">
                         <input type="hidden" name="score_id" id="resolveScoreId">
                         
+                        <!-- THANH THÔNG BÁO CHẾ ĐỘ XEM LẠI -->
+                        <div id="resolveStatusBanner" class="alert alert-info d-none mb-3 py-2 fw-bold" style="border-radius: 10px; font-size: 14px;">
+                            <i class="fa-solid fa-circle-check me-1"></i> Phúc khảo này đã được giải quyết. Dưới đây là phán quyết trước đó:
+                        </div>
+
                         <div class="mb-4">
                             <label class="fw-bold text-muted small mb-2">Lớp khiếu nại:</label>
                             <input type="text" class="form-control fw-bold text-primary bg-light border-0" id="resolveBranch" readonly style="padding: 12px 16px; border-radius: 12px;">
@@ -197,7 +205,8 @@
                         
                         <div class="mb-2">
                             <label class="fw-bold text-muted small mb-2">Phán quyết & Phản hồi từ Đoàn trường:</label>
-                            <textarea class="form-control border-secondary" name="response_text" rows="3" placeholder="Ghi rõ lý do tại sao duyệt hoặc từ chối để GVCN nắm rõ..." required style="border-radius: 12px; resize: none; padding: 16px; font-size: 14px; background: #f8fafc; border: 1px solid #cbd5e1;"></textarea>
+                            <!-- BỔ SUNG id="resolveResponse" VÀO DÒNG DƯỚI ĐÂY -->
+                            <textarea class="form-control border-secondary" id="resolveResponse" name="response_text" rows="3" placeholder="Ghi rõ lý do tại sao duyệt hoặc từ chối để GVCN nắm rõ..." required style="border-radius: 12px; resize: none; padding: 16px; font-size: 14px; background: #f8fafc; border: 1px solid #cbd5e1;"></textarea>
                         </div>
                     </div>
                     <div class="modal-footer border-0 px-4 pb-4 pt-0 d-flex gap-2">
@@ -320,6 +329,29 @@
                 refundInput.value = totalRefund > 0 ? totalRefund.toFixed(1) : "0.0";
             }
             
+            // -----------------------------------------------------------------
+            // NẠP DỮ LIỆU PHẢN HỒI CŨ VÀO TEXTAREA (NẾU MỞ Ở CHẾ ĐỘ "XEM LẠI")
+            let oldResponse = btn.getAttribute('data-response') || '';
+            let status = btn.getAttribute('data-status') || '';
+            
+            // Xóa bỏ các tiền tố của hệ thống để chữ trong khung nhìn sạch sẽ
+            oldResponse = oldResponse.replace(/\[ĐÃ DUYỆT BỘ PHẬN\]/g, '')
+                                     .replace(/\[TỪ CHỐI\]/g, '')
+                                     .replace(/Phản hồi:/g, '').trim();
+            
+            let responseBox = document.getElementById('resolveResponse');
+            let statusBanner = document.getElementById('resolveStatusBanner');
+            
+            if (responseBox) responseBox.value = oldResponse;
+            
+            // Bật/tắt dải ruy băng màu xanh thông báo "Đã giải quyết"
+            if (status !== 'Đang chờ xử lý' && oldResponse !== '') {
+                statusBanner.classList.remove('d-none');
+            } else {
+                statusBanner.classList.add('d-none');
+            }
+            // -----------------------------------------------------------------
+
             var myModal = new bootstrap.Modal(document.getElementById('resolveModal'));
             myModal.show();
         }
