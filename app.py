@@ -948,7 +948,7 @@ def logout():
     session.clear() 
     return redirect(url_for('login'))
 
-# [NÂNG CẤP LÕI]: API XỬ LÝ PHÚC KHẢO TÍCH HỢP AUTO-CORRECTION, AUTO-CLEAN & PUSH NOTIFICATION
+# [NÂNG CẤP LÕI]: API XỬ LÝ PHÚC KHẢO TÍCH HỢP AUTO-CORRECTION, AUTO-CLEAN, PUSH NOTIFICATION & LƯU VẾT NGƯỜI DUYỆT
 @app.route('/resolve_appeal', methods=['POST'])
 def resolve_appeal():
     # Chống GVCN can thiệp
@@ -970,6 +970,14 @@ def resolve_appeal():
             if score:
                 branch_name = score.branch.name.strip().upper() # Tên lớp dùng làm username nhận thông báo
                 week_num = score.week
+
+                # =======================================================
+                # [BỔ SUNG MỚI]: Bắt thời gian VN và Người xử lý hiện tại
+                # =======================================================
+                from datetime import datetime, timezone, timedelta
+                vn_tz = timezone(timedelta(hours=7))
+                now_str = datetime.now(vn_tz).strftime("%H:%M %d/%m/%Y")
+                responder = session.get('full_name', 'BCH Đoàn trường')
 
                 # TRƯỜNG HỢP 1: ĐỒNG Ý PHÚC KHẢO & TỰ ĐỘNG TÍNH TOÁN THEO TỪNG PHẦN
                 # =======================================================
@@ -1054,7 +1062,11 @@ def resolve_appeal():
                     score.total_score = float(score.total_score or 0) + final_refund
                     score.score_tru = max(0.0, float(score.score_tru or 0) - final_refund)
                     
-                    score.appeal_response = f"[ĐÃ DUYỆT BỘ PHẬN] Đã gỡ lỗi được chọn và hoàn {final_refund}đ. Phản hồi: {response_text}"
+                    # ====================================================================
+                    # [NÂNG CẤP LÕI]: Đóng dấu "Người xử lý" và "Thời gian" vào chuỗi
+                    # ====================================================================
+                    score.appeal_response = f"[ĐÃ DUYỆT BỘ PHẬN] Đã gỡ lỗi được chọn và hoàn {final_refund}đ. Phản hồi: {response_text}\n(Xử lý bởi: {responder} lúc {now_str})"
+                    
                     log_system_action("XỬ LÝ PHÚC KHẢO", f"Đã DUYỆT 1 PHẦN khiếu nại lớp {score.branch.name} Tuần {score.week}. Tự động hoàn {final_refund}đ.")
                     flash(f"✅ Đã duyệt khiếu nại, hệ thống hoàn {final_refund}đ và xử lý Sổ đen chuẩn xác!", "success")
                     
@@ -1070,7 +1082,11 @@ def resolve_appeal():
                 # TRƯỜNG HỢP 2: TỪ CHỐI PHÚC KHẢO
                 # =======================================================
                 elif action == 'reject':
-                    score.appeal_response = f"[TỪ CHỐI] Phản hồi: {response_text}"
+                    # ====================================================================
+                    # [NÂNG CẤP LÕI]: Đóng dấu "Người xử lý" và "Thời gian" vào chuỗi
+                    # ====================================================================
+                    score.appeal_response = f"[TỪ CHỐI] Phản hồi: {response_text}\n(Xử lý bởi: {responder} lúc {now_str})"
+                    
                     log_system_action("XỬ LÝ PHÚC KHẢO", f"TỪ CHỐI khiếu nại lớp {score.branch.name} Tuần {score.week}: {response_text}")
                     flash(f"Đã đóng Ticket và từ chối khiếu nại của lớp {score.branch.name}.", "warning")
                     
