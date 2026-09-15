@@ -3376,6 +3376,11 @@ def weekly():
 
             if active_year:
                 branches = db_session.query(Branch).filter(Branch.school_year_id == active_year.id).all()
+                
+                # [THUẬT TOÁN ĐỒNG BỘ]: Sắp xếp tự nhiên (Natural Sort) tên Chi đoàn từ A-Z chuẩn xác (10A2 sẽ đứng trước 10A10)
+                import re
+                branches.sort(key=lambda b: [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', str(b.name))])
+                
                 for b in branches:
                     sc = db_session.query(WeeklyScore).filter_by(branch_id=b.id, week=current_week).first()
                     branches_data.append({'branch': b, 'score': sc})
@@ -6242,21 +6247,21 @@ def export_templates_excel():
             ws.views.sheetView[0].view = "pageBreakPreview"
 
             # Thiết lập Header văn bản hành chính
-            ws['B1'] = "ĐOÀN TNCS HỒ CHÍ MINH"
+            ws['B1'] = "BCH ĐOÀN XÃ THIỆN HƯNG"
             ws['B1'].font = Font(name='Times New Roman', bold=True, size=11)
             ws['B1'].alignment = Alignment(horizontal='center')
 
-            ws['G1'] = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM"
+            ws['G1'] = "ĐOÀN TNCS HỒ CHÍ MINH"
             ws['G1'].font = Font(name='Times New Roman', bold=True, size=11)
             ws['G1'].alignment = Alignment(horizontal='center')
 
             ws.merge_cells('B2:C2')
-            ws['B2'] = "BCH TRƯỜNG THPT THANH HÒA"
+            ws['B2'] = "ĐOÀN TRƯỜNG THPT THANH HÒA"
             ws['B2'].font = Font(name='Times New Roman', bold=True, size=11)
             ws['B2'].alignment = Alignment(horizontal='center')
 
             ws.merge_cells('F2:H2')
-            ws['F2'] = "Độc lập - Tự do - Hạnh phúc"
+            ws['F2'] = "-----***-----"
             ws['F2'].font = Font(name='Times New Roman', bold=True, size=11)
             ws['F2'].alignment = Alignment(horizontal='center')
 
