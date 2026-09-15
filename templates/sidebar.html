@@ -1,12 +1,12 @@
 <!-- ========================================== -->
-<!-- BỘ MÃ CSS PHỤC HỒI GIAO DIỆN KHUNG         -->
+<!-- BỘ MÃ CSS PHỤC HỒI GIAO DIỆN KHUNG & MOBILE -->
 <!-- ========================================== -->
 <style>
-    .sidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; background-color: #004080; color: white; padding-top: 20px; z-index: 1000; overflow-y: auto; overflow-x: hidden; }
-    .sidebar h4 { font-size: 18px; font-weight: bold; text-align: center; padding-bottom: 15px; border-bottom: 1px solid #0054a6; }
+    .sidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; background-color: #004080; color: white; padding-top: 20px; z-index: 1051; overflow-y: auto; overflow-x: hidden; transition: transform 0.3s ease-in-out; }
+    .sidebar h4 { font-size: 18px; font-weight: bold; text-align: center; padding-bottom: 15px; border-bottom: 1px solid #0054a6; margin-bottom: 0; }
     .sidebar .nav-link { color: #cce6ff; font-weight: 600; padding: 12px 20px; font-size: 14px; }
     .sidebar .nav-link:hover, .sidebar .nav-link.active { background-color: #002244; color: white; border-left: 4px solid #4da6ff; }
-    .main-content { margin-left: 260px; padding: 20px 25px; }
+    .main-content { margin-left: 260px; padding: 20px 25px; transition: margin-left 0.3s ease-in-out; }
 
     /* [NÂNG CẤP MỚI]: TỐI ƯU THANH ĐIỀU HƯỚNG TỐI GIẢN CHO APP BAN GIÁM HIỆU */
     {% if session.get('role') == 'Ban Giám hiệu' %}
@@ -30,11 +30,35 @@
         border-left: none !important;
     }
     {% endif %}
+
+    /* ========================================================== */
+    /* [NÂNG CẤP LÕI]: MÃ CSS RESPONSIVE CHO ĐIỆN THOẠI           */
+    /* ========================================================== */
+    .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 1050; display: none; opacity: 0; transition: opacity 0.3s ease; }
+    .sidebar-overlay.active { display: block; opacity: 1; }
+
+    @media (max-width: 768px) {
+        .sidebar { transform: translateX(-100%); box-shadow: 4px 0 15px rgba(0,0,0,0.3); } /* Ẩn menu sang trái */
+        .sidebar.mobile-open { transform: translateX(0); } /* Bật menu vuốt ra */
+        .main-content { margin-left: 0 !important; padding: 15px 10px !important; } /* Trả lại 100% không gian cho Báo cáo */
+    }
 </style>
+
+<!-- NÚT GỌI MENU TRÊN MOBILE (Nổi góc dưới cùng bên trái) -->
+<button id="mobileMenuBtn" class="btn btn-primary d-md-none position-fixed shadow-lg d-flex align-items-center justify-content-center" style="bottom: 25px; left: 20px; z-index: 1049; border-radius: 50%; width: 55px; height: 55px;">
+    <i class="fa-solid fa-bars fs-4"></i>
+</button>
+
+<!-- LỚP PHỦ MỜ (Nhấn vào vùng tối để đóng Menu) -->
+<div id="mobileOverlay" class="sidebar-overlay d-md-none"></div>
 
 <!-- SIDEBAR -->
 <div class="sidebar d-flex flex-column">
-    <h4>QUẢN LÝ THI ĐUA</h4>
+    <h4 class="d-flex justify-content-between align-items-center px-3 pb-3">
+        <span class="mx-auto">QUẢN LÝ THI ĐUA</span>
+        <!-- Nút X tắt menu chỉ hiện trên mobile -->
+        <i class="fa-solid fa-xmark d-md-none fs-4 text-light" id="closeMenuBtn" style="cursor: pointer;"></i>
+    </h4>
     
     <ul class="nav nav-pills flex-column mb-auto mt-2 w-100" id="mainSidebar">
         
@@ -217,9 +241,10 @@
     </div>
 </div>
 <!-- ========================================== -->
-<!-- SCRIPT TỰ ĐỘNG BÔI ĐẬM MENU HIỆN TẠI -->
+<!-- SCRIPT ĐIỀU KHIỂN HOẠT ẢNH VÀ MENU MOBILE -->
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+        // 1. Logic bôi đậm menu hiện tại (Gốc của thầy)
         var currentPath = window.location.pathname;
         var navLinks = document.querySelectorAll('.sidebar .nav-link');
         navLinks.forEach(function(link) {
@@ -235,5 +260,21 @@
                 if (collapseParent) collapseParent.classList.add('show');
             }
         });
+
+        // 2. [NÂNG CẤP]: Logic đóng/mở Menu dạng ngăn kéo trên điện thoại
+        var mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        var closeMenuBtn = document.getElementById('closeMenuBtn');
+        var sidebar = document.querySelector('.sidebar');
+        var overlay = document.getElementById('mobileOverlay');
+
+        function toggleMobileMenu() {
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+
+        // Gắn sự kiện click
+        if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+        if (closeMenuBtn) closeMenuBtn.addEventListener('click', toggleMobileMenu);
+        if (overlay) overlay.addEventListener('click', toggleMobileMenu); // Bấm ra vùng tối tự động đóng
     });
 </script>
