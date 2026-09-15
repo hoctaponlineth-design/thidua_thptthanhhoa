@@ -464,9 +464,13 @@ def gvcn_attendance_stats():
                     date_str = f"{day_str} ({a.date.strftime('%d/%m')})" 
                     stats[a.branch_id]['dates'].append(date_str)                    
             
-            # Chuyển thành danh sách và xếp hạng (Xếp theo Lớp A-Z để dễ theo dõi)
+            # =========================================================================
+            # [THUẬT TOÁN ĐỒNG BỘ]: Sắp xếp tự nhiên (Natural Sort) tên lớp 10A2 đứng trước 10A10
+            # =========================================================================
+            import re
             stats_list = list(stats.values())
-            stats_list.sort(key=lambda x: x['branch_name'])
+            stats_list.sort(key=lambda x: [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', str(x['branch_name']))])
+            # =========================================================================
             
             return render_template('gvcn_attendance.html', 
                                    stats_list=stats_list,
@@ -8592,30 +8596,40 @@ def bgh_dashboard():
                 "total_score": score
             })
 
-        # Sắp xếp và xếp hạng độc lập cho từng nhóm
         total_school_score = 0
         total_classes_count = 0
         total_violations = 0
         top_classes = []
         warning_classes = []
 
+        # =========================================================================
+        # [NÂNG CẤP LÕI]: Sắp xếp tự nhiên (Natural Sort) và Xếp hạng đồng cấp
+        # =========================================================================
+        import re
         for group_name in groups_dict:
-            # Sắp xếp điểm giảm dần trong từng nhóm riêng biệt
-            groups_dict[group_name].sort(key=lambda x: x["total_score"], reverse=True)
+            # 1. Sắp xếp: Ưu tiên 1 là Điểm (giảm dần) -> Ưu tiên 2 là Tên lớp (Tự nhiên A-Z: 10A2 trước 10A10)
+            groups_dict[group_name].sort(key=lambda x: (
+                -x["total_score"], 
+                [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', str(x['branch_name']))]
+            ))
             
-            # Gán hạng (Rank) riêng cho từng lớp trong nhóm
-            for idx, c in enumerate(groups_dict[group_name], start=1):
-                c["rank"] = idx
+            # 2. Gán hạng (Rank): Trùng điểm thì được xếp cùng Hạng
+            current_rank = 1
+            for idx, c in enumerate(groups_dict[group_name]):
+                if idx > 0 and c["total_score"] < groups_dict[group_name][idx-1]["total_score"]:
+                    current_rank = idx + 1
+                c["rank"] = current_rank
+                
                 total_school_score += c["total_score"]
                 total_violations += c["score_tru"]
                 total_classes_count += 1
 
-            # Lấy top đầu và cảnh báo của nhóm
-            if groups_dict[group_name]:
-                top_classes.append({"group": group_name, "class": groups_dict[group_name][0]})
-                valid_low = [c for c in groups_dict[group_name] if c['total_score'] > 0]
-                if valid_low:
-                    warning_classes.append({"group": group_name, "class": valid_low[-1]})
+            # 3. Chỉ đưa vào danh sách Lớp dẫn đầu / Cảnh báo nếu các lớp THỰC SỰ đã có điểm (> 0)
+            valid_classes = [c for c in groups_dict[group_name] if c['total_score'] > 0]
+            if valid_classes:
+                top_classes.append({"group": group_name, "class": valid_classes[0]})
+                warning_classes.append({"group": group_name, "class": valid_classes[-1]})
+        # =========================================================================
 
         avg_school_score = round(total_school_score / total_classes_count, 1) if total_classes_count > 0 else 0
 
@@ -8630,7 +8644,7 @@ def bgh_dashboard():
         all_flattened_classes.sort(key=lambda x: x["score_tru"], reverse=True)
         top_violated_classes = [c for c in all_flattened_classes if c["score_tru"] > 0]
 
-        if total_classes_count == 0:
+        if total_classes_count == 0 or avg_school_score == 0:
             ai_summary = f"Trong {selected_week}, chưa có dữ liệu điểm số được ghi nhận trên hệ thống để phân tích."
         else:
             insights_sentences = []
