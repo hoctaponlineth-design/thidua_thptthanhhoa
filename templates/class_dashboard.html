@@ -234,8 +234,12 @@
             
             .glass-card, .widget-grid, .empty-state-container { margin-left: 15px !important; margin-right: 15px !important; width: calc(100% - 30px) !important; }
             .widget-grid { grid-template-columns: 1fr 1fr; gap: 12px;}
+			/* [BẢN VÁ LỖI KHOẢNG TRẮNG]: Ép toàn bộ cấu trúc bảng thành khối (Block) để trình duyệt không sinh ra khoảng trống ảo */
+            .table-modern, .table-modern tbody, .table-modern tr, .table-modern td { display: block !important; width: 100% !important; box-sizing: border-box !important; }
             .table-modern thead { display: none !important; }
-            .table-modern tbody, .table-modern tr, .table-modern td { display: block !important; width: 100% !important; box-sizing: border-box !important; }
+            
+            /* Cưỡng chế ẩn hoàn toàn chiều cao của các Tab đang không mở */
+            .tab-content > .tab-pane:not(.active) { display: none !important; height: 0 !important; overflow: hidden !important; }
 			/* [NÂNG CẤP XẾP HẠNG]: Xóa khung nền xám, bỏ viền cứng, dùng bóng đổ mềm mại */
             .table-responsive-custom { padding: 0 !important; background: transparent !important; border: none !important;}
             .table-modern tr { background: var(--surface); border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 16px; border: none !important; overflow: hidden;}
@@ -994,8 +998,31 @@
                         
                     </div>
 
+					<!-- [NÂNG CẤP XẾP HẠNG]: Giảm padding mobile (px-2) và xóa khung viền ngoài cùng -->
+                    <div class="tab-content px-2 px-md-4 pb-4" id="groupTabsContent">
+                        
+                        <div class="tab-pane fade show active" id="group1Pane" role="tabpanel">
+                            <!-- ĐÃ XÓA CLASS: border rounded-3 bg-white -->
+                            <div class="table-responsive-custom">
+                                <table class="table-modern">
+                                    <thead>
+                                        <tr>
+                                            <th>Hạng</th>
+                                            <th>Chi đoàn (Nhóm 1)</th>
+                                            <th>Đánh giá / Xếp loại</th>
+                                            <th class="text-end pe-4">Tổng điểm</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="leaderboardGroup1Body">
+                                        <tr><td colspan="4" class="text-center py-4 text-muted"><i class="fa-solid fa-spinner fa-spin me-2"></i> Đang tải dữ liệu...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                         <div class="tab-pane fade" id="group2Pane" role="tabpanel">
-                            <div class="table-responsive-custom border rounded-3 bg-white">
+                            <!-- ĐÃ XÓA CLASS: border rounded-3 bg-white -->
+                            <div class="table-responsive-custom">
                                 <table class="table-modern">
                                     <thead>
                                         <tr>
@@ -1011,9 +1038,11 @@
                                 </table>
                             </div>
                         </div>
+                        
                     </div>
                 </div>
 
+                <!-- TAB 2: SAO ĐỎ CHẤM ĐIỂM -->
                 <!-- TAB 2: SAO ĐỎ CHẤM ĐIỂM -->
                 <div class="tab-pane fade" id="monitor-pane" role="tabpanel">
                     <div class="p-4 pb-0">
