@@ -31,7 +31,6 @@ def process_and_save_evidence(base64_string, branch_id, week_name):
     try:
         import json
         import unicodedata
-        import re
         import os
         import hashlib
         import cloudinary
@@ -467,7 +466,7 @@ def gvcn_attendance_stats():
             # =========================================================================
             # [THUẬT TOÁN ĐỒNG BỘ]: Sắp xếp tự nhiên (Natural Sort) tên lớp 10A2 đứng trước 10A10
             # =========================================================================
-            import re
+            
             stats_list = list(stats.values())
             stats_list.sort(key=lambda x: [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', str(x['branch_name']))])
             # =========================================================================
@@ -504,7 +503,7 @@ def parse_sodaubai():
         
     try:
         import pandas as pd
-        import re
+        
         
         df = pd.read_excel(file, header=None)
         
@@ -631,7 +630,7 @@ def parse_sodaubai():
                         
                 val_vang = str(df.iloc[i, col_vang]).strip()
                 if val_vang and val_vang.lower() != 'nan':
-                    import re
+                    
                     # Cắt chuỗi theo dấu phẩy/chấm phẩy để xử lý từng học sinh
                     for p in re.split(r'[,;]+', val_vang):
                         p = p.strip()
@@ -733,7 +732,7 @@ def parse_sodaubai():
                         
                         # [BẢN VÁ LỖI NÒNG CỐT]: Chẻ nhỏ tên học sinh nếu bị dính chùm
                         if stu_name:
-                            import re
+                            
                             split_names = re.split(r'[,;]|\s+và\s+|\s+&\s+|\s{2,}', stu_name, flags=re.IGNORECASE)
                             
                             for s_name in split_names:
@@ -996,7 +995,7 @@ def resolve_appeal():
                     # Bỏ kiểm tra chuỗi cứng nhắc, chỉ cần có lỗi được tích chọn là xử lý
                     if approved_errors:
                         try:
-                            import re
+                            
                             current_notes = [n.strip() for n in (score.note or "").split(";") if n.strip()]
                             remaining_notes = []
                             
@@ -2311,7 +2310,7 @@ def auto_assign():
             import random
             import json
             import os
-            import re
+            
             
             # 1. Xóa toàn bộ lịch cũ của tuần này để xếp lại từ đầu
             db_session.query(Assignment).filter(Assignment.week_number == week_number).delete()
@@ -2812,7 +2811,7 @@ def star_evaluations():
                 latest_eval = db_session.query(StarEvaluation).order_by(StarEvaluation.id.desc()).first()
                 if latest_eval:
                     # Lấy số từ chuỗi (Ví dụ "Tuần 5" -> 5)
-                    import re
+                    
                     match = re.search(r'\d+', latest_eval.week_name)
                     current_week = int(match.group()) if match else 1
                 else:
@@ -2870,7 +2869,7 @@ def star_ranking(report_type):
             if active_year:
                 # Tìm các tuần đã có dữ liệu đánh giá
                 weeks_db = db_session.query(StarEvaluation.week_name).distinct().all()
-                import re
+                
                 week_nums = []
                 for w in weeks_db:
                     match = re.search(r'\d+', w[0])
@@ -2976,7 +2975,7 @@ def api_toggle_week_lock():
             for s in scores:
                 if new_status == True and not s.is_locked: # Chỉ kích hoạt gộp lỗi khi Khóa sổ
                     if s.note:
-                        import re
+                       
                         all_categories = db_session.query(ViolationCategory).filter_by(school_year_id=s.branch.school_year_id).all()
                         sorted_cats = sorted(all_categories, key=lambda x: len(x.name), reverse=True)
                         parsed_errors = {}
@@ -3105,7 +3104,7 @@ def smart_split_note(note_str):
 # ==========================================
 # MODULE: Thêm hàm xử lý khử trùng lặp vào file
 # ==========================================
-import re
+
 
 def reconcile_same_day_absences(note_string):
     """
@@ -3382,7 +3381,7 @@ def weekly():
                 branches = db_session.query(Branch).filter(Branch.school_year_id == active_year.id).all()
                 
                 # [THUẬT TOÁN ĐỒNG BỘ]: Sắp xếp tự nhiên (Natural Sort) tên Chi đoàn từ A-Z chuẩn xác (10A2 sẽ đứng trước 10A10)
-                import re
+                
                 branches.sort(key=lambda b: [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', str(b.name))])
                 
                 for b in branches:
@@ -4323,7 +4322,7 @@ def class_dashboard():
                     branches = db_session.query(Branch).filter(Branch.school_year_id == active_year.id).all()
                     
                     # [THUẬT TOÁN SẮP XẾP TỰ NHIÊN - NATURAL SORT]
-                    import re
+                    
                     branches.sort(key=lambda b: [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', str(b.name))])
                     
             selected_branch_id = request.args.get('branch_id', type=int)
@@ -4425,7 +4424,7 @@ def class_dashboard():
                                 has_appealed_today = True
                                 
                             # --- [BỔ SUNG]: BÓC TÁCH DỮ LIỆU CHO TAB HỒ SƠ PHÚC KHẢO ---
-                            import re
+                            
                             pattern = r'\[\d{2}/\d{2}/\d{4} \d{2}:\d{2}\]'
                             timestamps = re.findall(pattern, sc.appeal_reason)
                             segments = re.split(pattern, sc.appeal_reason)[1:] 
@@ -6638,7 +6637,7 @@ def submit_appeal():
                 return redirect(url_for('class_dashboard'))
 
             # --- LUẬT KHÓA LỖI QUÁ NGÀY ---
-            import re
+            
             days_vn = {0: '[T2]', 1: '[T3]', 2: '[T4]', 3: '[T5]', 4: '[T6]', 5: '[T7]', 6: '[CN]'}
             # ĐÃ SỬA TẠI ĐÂY: Lấy thứ theo lịch Việt Nam thay vì giờ của Server Mỹ
             today_pfx = days_vn[now_vn.weekday()] 
@@ -6855,7 +6854,7 @@ def mobile_sao_do():
 
             assignment = db_session.query(Assignment).filter_by(red_star_id=star_id).order_by(Assignment.week_number.desc()).first()
             all_branches = db_session.query(Branch).filter_by(school_year_id=active_year.id).all()
-            import re
+            
             all_branches.sort(key=lambda b: [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', str(b.name))])
             
             if not assignment:
@@ -7061,7 +7060,7 @@ def api_ai_weekly_report(week_name):
                 ai_text = res_json['choices'][0]['message']['content']
                 
                 # [THUẬT TOÁN LỌC VÀ XÓA DẤU SAO]: 
-                import re
+                
                 # 1. Chuyển đổi định dạng **chữ đậm** thành thẻ <strong> của HTML
                 ai_text = re.sub(r'\*\*(.*?)\*\*', r'<strong style="color: #0f172a;">\1</strong>', ai_text)
                 # 2. Xóa bỏ hoàn toàn bất kỳ dấu sao đơn lẻ nào còn sót lại
@@ -8605,7 +8604,7 @@ def bgh_dashboard():
         # =========================================================================
         # [NÂNG CẤP LÕI]: Sắp xếp tự nhiên (Natural Sort) và Xếp hạng đồng cấp
         # =========================================================================
-        import re
+        
         for group_name in groups_dict:
             # 1. Sắp xếp: Ưu tiên 1 là Điểm (giảm dần) -> Ưu tiên 2 là Tên lớp (Tự nhiên A-Z: 10A2 trước 10A10)
             groups_dict[group_name].sort(key=lambda x: (
@@ -9076,7 +9075,7 @@ def manage_appeals():
 
             # Lấy dữ liệu cho bộ lọc
             branches = db_session.query(Branch).filter_by(school_year_id=active_year.id).all()
-            import re
+            
             weeks_db = db_session.query(WeeklyScore.week).join(Branch).filter(Branch.school_year_id == active_year.id).distinct().all()
             available_weeks = sorted([w[0] for w in weeks_db], key=lambda x: int(re.search(r'\d+', x).group()) if re.search(r'\d+', x) else 0)
 
