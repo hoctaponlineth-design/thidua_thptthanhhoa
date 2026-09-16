@@ -137,7 +137,7 @@
                         <!-- JS sẽ đổ danh sách vào đây -->
                     </div>
                     <button class="btn btn-primary w-100 fw-bold rounded-3 py-3 shadow-sm" onclick="forceSyncAllNow()">
-                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> BỎ QUA ÂN HẠN - NỘP TẤT CẢ NGAY
+                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> BỎ QUA GIA HẠN - NỘP NGAY
                     </button>
                 </div>
             </div>
@@ -1486,16 +1486,18 @@
                         detailsHtml += `<div class="small mt-2 text-muted fst-italic">Không thể hiển thị trước chi tiết.</div>`;
                     }
                     // ========================================================
-
-                    // Giao diện thẻ chờ được thiết kế lại để bao bọc cả phần Chi tiết
+					// Giao diện thẻ chờ được thiết kế lại để bao bọc cả phần Chi tiết
                     container.innerHTML += `
                         <div class="bg-white border p-3 rounded-4 mb-2 position-relative shadow-sm">
                             <div class="d-flex justify-content-between align-items-start mb-2 pb-2 border-bottom">
                                 <div>
                                     <div class="fw-bold text-dark" style="font-size: 14.5px;">${item.description}</div>
-                                    <div class="small text-danger fw-bold mt-1"><i class="fa-regular fa-clock fa-spin me-1"></i> Tự nộp sau ${timeStr}</div>
+                                    <!-- [BẢN VÁ LỖI]: Bọc thời gian vào thẻ span.live-countdown -->
+                                    <div class="small text-danger fw-bold mt-1 live-countdown-wrapper">
+                                        <i class="fa-regular fa-clock fa-spin me-1"></i> Tự nộp sau <span class="live-countdown" data-endtime="${item.graceEnd}">${timeStr}</span>
+                                    </div>
                                 </div>
-                                <button class="btn btn-sm btn-outline-danger fw-bold shadow-sm" onclick="undoTask('${item.id}')" style="border-radius: 8px;">
+                                <button class="btn btn-sm btn-outline-danger fw-bold shadow-sm btn-undo-task" onclick="undoTask('${item.id}')" style="border-radius: 8px;">
                                     <i class="fa-solid fa-rotate-left me-1"></i> Hủy & Sửa
                                 </button>
                             </div>
@@ -1864,6 +1866,40 @@
                 tickerText.style.setProperty('--ticker-duration', calculatedDuration + 's');
             }
         });
+		// ========================================================
+        // ĐỒNG HỒ ĐẾM NGƯỢC THỜI GIAN THỰC TRONG GIỎ CHỜ
+        // ========================================================
+        setInterval(function() {
+            // Tìm tất cả các đồng hồ đếm ngược đang hiển thị
+            const countdowns = document.querySelectorAll('.live-countdown');
+            if (countdowns.length === 0) return; // Nếu modal đang đóng thì bỏ qua
+            
+            let now = new Date().getTime();
+            
+            countdowns.forEach(el => {
+                let endTime = parseInt(el.getAttribute('data-endtime'));
+                let timeLeft = Math.max(0, Math.floor((endTime - now) / 1000));
+                
+                let wrapper = el.closest('.live-countdown-wrapper');
+                let btnUndo = el.closest('.bg-white').querySelector('.btn-undo-task');
+                
+                if (timeLeft <= 0) {
+                    // KHI HẾT GIỜ (Đang chờ hệ thống tự thu bài)
+                    el.innerText = "Đang thu bài...";
+                    if (wrapper) {
+                        wrapper.classList.replace('text-danger', 'text-success');
+                        wrapper.querySelector('i').className = "fa-solid fa-cloud-arrow-up fa-bounce me-1";
+                    }
+                    // Ẩn nút "Hủy & Sửa" để tránh bấm nhầm lúc hệ thống đang nộp
+                    if (btnUndo) btnUndo.style.display = 'none';
+                } else {
+                    // KHI CÒN THỜI GIAN: Tính phút/giây và in ra
+                    let min = Math.floor(timeLeft / 60);
+                    let sec = timeLeft % 60;
+                    el.innerText = `${min}:${sec < 10 ? '0' : ''}${sec}`;
+                }
+            });
+        }, 1000);
     </script>
 </body>
 </html>
