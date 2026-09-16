@@ -2065,8 +2065,18 @@ def duty_areas():
                     zones_map = json.load(f)
                     for classes_in_zone in zones_map.values():
                         assigned_classes.update(classes_in_zone)
-                    
-            return render_template('duty_areas.html', areas=areas, zones_map=zones_map, branches=branches, assigned_classes=assigned_classes)
+            
+            # ========================================================
+            # [BẢN NÂNG CẤP]: Lọc danh sách các lớp chưa được phân cụm
+            # ========================================================
+            unassigned_branches = [b for b in branches if b.name not in assigned_classes]
+            
+            return render_template('duty_areas.html', 
+                                   areas=areas, 
+                                   zones_map=zones_map, 
+                                   branches=branches, 
+                                   assigned_classes=assigned_classes,
+                                   unassigned_branches=unassigned_branches) # Biến mới được truyền ra giao diện
     except Exception as e:
         flash(f"Lỗi phân hệ khu vực trực: {e}", "error")
         return redirect(url_for('dashboard'))
@@ -2100,6 +2110,57 @@ def delete_duty_area(id):
                 flash("Đã xóa khu vực trực và các lịch trực liên quan thành công!", "success")
     except Exception as e:
         flash(f"Lỗi xóa khu vực: {e}", "error")
+    return redirect(url_for('duty_areas'))
+@app.route('/delete_multiple_duty_areas', methods=['POST'])
+def delete_multiple_duty_areas():
+    try:
+        area_ids = request.form.getlist('area_ids')
+        if not area_ids:
+            flash("Vui lòng chọn ít nhất một cụm để xóa!", "warning")
+            return redirect(url_for('duty_areas'))
+        
+        with session_scope() as db_session:
+            # 1. Đọc file JSON 1 lần duy nhất trước khi vòng lặp chạy
+            import os, json
+            config_path = "config/class_zones.json"
+            zones_map = {}
+            if os.path.exists(config_path):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    try: zones_map = json.load(f)
+                    except: pass
+
+            deleted_names = []
+            
+            # 2. Xóa từng cụm trong danh sách được chọn
+            for a_id in area_ids:
+                area = db_session.query(DutyArea).filter(DutyArea.id == int(a_id)).first()
+                if area:
+                    zone_name = area.name
+                    deleted_names.append(zone_name)
+                    
+                    # Giải phóng lịch trực
+                    all_assignments = db_session.query(Assignment).all()
+                    for assign in all_assignments:
+                        if assign.duty_area and assign.duty_area.id == area.id:
+                            db_session.delete(assign)
+                            
+                    # Xóa cụm khỏi DB
+                    db_session.delete(area)
+                    
+                    # Xóa cụm khỏi biến JSON
+                    if zone_name in zones_map:
+                        del zones_map[zone_name]
+            
+            # 3. Ghi lại file JSON 1 lần duy nhất để giải phóng các lớp
+            os.makedirs("config", exist_ok=True)
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(zones_map, f, ensure_ascii=False, indent=4)
+                
+            log_system_action("CỤM TRỰC", f"Đã xóa nhiều cụm trực: {', '.join(deleted_names)}")
+            flash(f"Đã xóa {len(deleted_names)} khu vực trực và giải phóng các lớp thành công!", "success")
+    except Exception as e:
+        flash(f"Lỗi xóa nhiều khu vực: {e}", "error")
+        
     return redirect(url_for('duty_areas'))
 @app.route('/edit_duty_area/<int:id>', methods=['POST'])
 def edit_duty_area(id):
