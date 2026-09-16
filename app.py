@@ -2056,7 +2056,8 @@ def duty_areas():
             areas = db_session.query(DutyArea).all()
             branches = []
             if active_year:
-                branches = db_session.query(Branch).filter(Branch.school_year_id == active_year.id).all()
+                # [BẢN VÁ LỖI]: Ép cơ sở dữ liệu phải sắp xếp tên lớp theo thứ tự từ nhỏ đến lớn (10A1, 10A2...)
+                branches = db_session.query(Branch).filter(Branch.school_year_id == active_year.id).order_by(Branch.name).all()
             
             zones_map = {}
             assigned_classes = set() 
