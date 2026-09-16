@@ -878,6 +878,7 @@
                     let p = part.toLowerCase();
                     violationBank.forEach(cat => {
                         let catName = cat.name.toLowerCase();
+						if (catName.includes('ẢNH MINH CHỨNG')) return;
                         if (p.includes(catName) && cat.type !== 'Điểm cộng') {
                             let regex = new RegExp(catName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "\\s*(?::|-|x|,)?\\s*(\\d+)", "i");
                             let match = p.match(regex);
@@ -1062,6 +1063,7 @@
                         let matched = false;
                         violationBank.forEach(cat => {
                             let catName = cat.name.toLowerCase();
+							if (catName.includes('ẢNH MINH CHỨNG')) return;
                             if (p.toLowerCase().includes(catName) && cat.type !== 'Điểm cộng') {
                                 matched = true;
                                 let qtyMatch = p.match(/(?::|-|x|\s)\s*(\d+)/i);
@@ -1074,6 +1076,7 @@
                                 if (sName) studentNames[cat.id].push(sName);
                             }
                         });
+						
                         if (!matched) manualNotes.push(p);
                     });
                 }
