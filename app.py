@@ -4487,7 +4487,7 @@ def class_dashboard():
                             'total_score': sc.total_score or 0,
                             'note': sc.note or "",
                             'rank': rk,
-                            'is_appeal_expired': getattr(sc, 'is_appeal_expired', False),
+                            'is_appeal_expired': False, # [BẢN VÁ]: Tắt vĩnh viễn khóa 3 ngày của CSDL
                             'evidence_image': getattr(sc, 'evidence_image', None)
                         })
                     
@@ -6632,7 +6632,7 @@ def submit_appeal():
                 except Exception as e:
                     pass
             
-            if score.is_appeal_expired or is_expired_dynamic:
+            if is_expired_dynamic:
                 flash("⛔ Đã hết thời hạn! Hệ thống tự động khóa quyền khiếu nại vào ngày Chủ nhật của tuần thi đua.", "error")
                 return redirect(url_for('class_dashboard'))
 
