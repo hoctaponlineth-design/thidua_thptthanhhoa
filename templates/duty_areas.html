@@ -82,31 +82,39 @@
                             
                             <!-- HỘP CHECKBOX CHỌN LỚP: Đã được nâng cấp tự động hiện lớp chưa có cụm -->
                             <div class="mb-3">
-                                <label class="fw-bold form-label text-secondary small">Chọn lớp giám sát (ẩn lớp đã có Cụm)</label>
+                                <label class="fw-bold form-label text-secondary small">Chọn lớp giám sát</label>
                                 
-                                {% if unassigned_branches %}
-                                <div class="border rounded p-2 shadow-sm bg-light mb-1" style="max-height: 150px; overflow-y: auto;">
+                                <div class="border rounded p-2 shadow-sm bg-light mb-1" style="max-height: 180px; overflow-y: auto;">
                                     <div class="row g-2">
-                                        {% for b in unassigned_branches %}
+                                        <!-- Quét toàn bộ danh sách lớp trong hệ thống -->
+                                        {% for b in branches %}
                                         <div class="col-6">
                                             <div class="form-check">
-                                                <input class="form-check-input border-secondary" type="checkbox" name="branch_names" value="{{ b.name }}" id="branch_{{ b.id }}">
-                                                <label class="form-check-label fw-semibold" style="font-size: 13px;" for="branch_{{ b.id }}">
-                                                    Lớp {{ b.name }}
-                                                </label>
+                                                {% if b.name in assigned_classes %}
+                                                    <!-- Lớp ĐÃ CÓ CỤM: Làm mờ, gạch ngang, khóa tick chọn -->
+                                                    <input class="form-check-input border-secondary" type="checkbox" disabled id="branch_{{ b.id }}">
+                                                    <label class="form-check-label small text-muted text-decoration-line-through" for="branch_{{ b.id }}" title="Lớp này đã nằm trong cụm khác">
+                                                        {{ b.name }} <i class="fa-solid fa-lock ms-1" style="font-size: 10px;"></i>
+                                                    </label>
+                                                {% else %}
+                                                    <!-- Lớp CHƯA CÓ CỤM: Sáng màu, cho phép tick chọn -->
+                                                    <input class="form-check-input border-primary shadow-sm" type="checkbox" name="branch_names" value="{{ b.name }}" id="branch_{{ b.id }}">
+                                                    <label class="form-check-label fw-bold text-dark small" for="branch_{{ b.id }}">
+                                                        {{ b.name }}
+                                                    </label>
+                                                {% endif %}
                                             </div>
                                         </div>
                                         {% endfor %}
+                                        
+                                        {% if branches|length == 0 %}
+                                            <div class="text-center text-muted small fst-italic w-100 py-2">
+                                                Chưa có dữ liệu lớp. Vui lòng thêm lớp ở Quản lý Chi đoàn.
+                                            </div>
+                                        {% endif %}
                                     </div>
                                 </div>
-                                <small class="text-muted" style="font-size: 11px;">Bỏ trống nếu đây là khu vực tự do (Cổng, Hành lang...)</small>
-                                
-                                {% else %}
-                                <div class="alert alert-success p-2 mb-1 d-flex align-items-center gap-2" style="font-size: 13px;">
-                                    <i class="fa-solid fa-circle-check"></i> Tất cả các lớp đều đã được phân vào Cụm.
-                                </div>
-                                <small class="text-muted" style="font-size: 11px;">Bỏ trống nếu đây là khu vực tự do (Cổng, Hành lang...)</small>
-                                {% endif %}
+                                <small class="text-muted" style="font-size: 11.5px;"><i class="fa-solid fa-circle-info text-primary me-1"></i> Các lớp bị mờ (ổ khóa) là do đã được phân vào Cụm ở bảng bên phải. Bỏ trống nếu đây là khu vực tự do.</small>
                             </div>
 
                             <div class="mb-4">
