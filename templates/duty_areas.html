@@ -80,28 +80,33 @@
                                 <input type="text" class="form-control" name="name" placeholder="VD: Cụm 10_01 hoặc Cổng chính" required>
                             </div>
                             
-                            <!-- HỘP CHECKBOX CHỌN LỚP -->
+							<!-- HỘP CHECKBOX CHỌN LỚP ĐƯỢC CẬP NHẬT -->
                             <div class="mb-3">
                                 <label class="fw-bold form-label text-secondary small">Chọn lớp giám sát (ẩn lớp đã có Cụm)</label>
-                                <div class="border rounded p-2 shadow-sm" style="max-height: 150px; overflow-y: auto; background-color: #f8f9fa;">
-                                    {% set count = namespace(value=0) %}
-                                    {% for b in branches %}
-                                        {% if b.name not in assigned_classes %}
-                                        <div class="form-check">
-                                            <input class="form-check-input border-secondary" type="checkbox" name="branch_names" value="{{ b.name }}" id="branch_{{ b.id }}">
-                                            <label class="form-check-label fw-semibold" style="font-size: 13px;" for="branch_{{ b.id }}">{{ b.name }}</label>
+                                
+                                {% if unassigned_branches %}
+                                <div class="border rounded p-2 shadow-sm bg-light" style="max-height: 150px; overflow-y: auto;">
+                                    <div class="row g-2">
+                                        {% for b in unassigned_branches %}
+                                        <div class="col-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input border-secondary" type="checkbox" name="branch_names" value="{{ b.name }}" id="branch_{{ b.id }}">
+                                                <label class="form-check-label fw-semibold" style="font-size: 13px;" for="branch_{{ b.id }}">
+                                                    {{ b.name }}
+                                                </label>
+                                            </div>
                                         </div>
-                                        {% set count.value = count.value + 1 %}
-                                        {% endif %}
-                                    {% endfor %}
-                                    
-                                    {% if branches|length == 0 %}
-                                        <div class="text-muted small fst-italic">Chưa có Chi đoàn nào trong hệ thống.</div>
-                                    {% elif count.value == 0 %}
-                                        <div class="text-success small fw-bold"><i class="fa-solid fa-check-circle"></i> Tất cả các lớp đều đã được phân vào Cụm.</div>
-                                    {% endif %}
+                                        {% endfor %}
+                                    </div>
                                 </div>
                                 <small class="text-muted" style="font-size: 11px;">Bỏ trống nếu đây là khu vực tự do (Cổng, Hành lang...)</small>
+                                
+                                {% else %}
+                                <div class="alert alert-success p-2 mb-1 d-flex align-items-center gap-2" style="font-size: 13px;">
+                                    <i class="fa-solid fa-circle-check"></i> Tất cả các lớp đều đã được phân vào Cụm.
+                                </div>
+                                <small class="text-muted" style="font-size: 11px;">Bỏ trống nếu đây là khu vực tự do (Cổng, Hành lang...)</small>
+                                {% endif %}
                             </div>
 
                             <div class="mb-4">
@@ -117,11 +122,17 @@
             <!-- BẢNG DANH SÁCH (CÓ THANH CUỘN ĐỘC LẬP BÊN TRONG) -->
             <div class="col-md-8 h-100 d-flex flex-column">
                 <div class="card custom-card flex-grow-1 d-flex flex-column mb-0">
-                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-shrink-0">
+					<div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-shrink-0">
                         <span class="fw-bold text-primary"><i class="fa-solid fa-list"></i> Danh sách Khu vực trực hiện tại</span>
-                        <button type="button" class="btn btn-sm btn-warning fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#importZoneModal">
-                            <i class="fa-solid fa-file-import"></i> Nạp Sơ đồ Cụm (Excel)
-                        </button>
+                        <div>
+                            <!-- NÚT XÓA NHIỀU: Mặc định ẩn, chỉ hiện khi tick chọn -->
+                            <button type="button" class="btn btn-sm btn-danger fw-bold me-2 shadow-sm" id="btnBulkDelete" style="display: none;" onclick="submitBulkDelete()">
+                                <i class="fa-solid fa-trash-can me-1"></i> Xóa đã chọn (<span id="bulkDeleteCount">0</span>)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-warning fw-bold text-dark shadow-sm" data-bs-toggle="modal" data-bs-target="#importZoneModal">
+                                <i class="fa-solid fa-file-import"></i> Nạp Sơ đồ Cụm (Excel)
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="table-container-scroll flex-grow-1">
