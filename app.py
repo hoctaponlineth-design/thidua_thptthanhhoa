@@ -997,13 +997,18 @@ def resolve_appeal():
                         try:
                             
                             current_notes = [n.strip() for n in (score.note or "").split(";") if n.strip()]
-                            remaining_notes = []
+                            updated_notes = [] # Danh sách mới chứa các lỗi (đã gắn tag bảo tồn)
                             
                             all_categories = db_session.query(ViolationCategory).filter_by(school_year_id=score.branch.school_year_id).all()
                             sorted_cats = sorted(all_categories, key=lambda x: len(x.name), reverse=True)
                             
                             # Quét từng lỗi đang có trong Sổ đen của lớp
                             for n in current_notes:
+                                # Nếu lỗi này ĐÃ TỪNG được duyệt gỡ trước đó rồi -> Bỏ qua, giữ nguyên mộc (ĐÃ GỠ)
+                                if "(ĐÃ GỠ)" in n:
+                                    updated_notes.append(n)
+                                    continue
+                                    
                                 is_approved = False
                                 # [BẢN VÁ LỖI 2]: Là phẳng mọi khoảng trắng và đưa về chữ thường để so khớp chính xác tuyệt đối
                                 n_clean_lower = n.lower().replace(" ", "")
@@ -1019,6 +1024,9 @@ def resolve_appeal():
                                         break
                                         
                                 if is_approved:
+                                    # [TÍNH NĂNG MỚI]: KHÔNG XÓA LỖI ĐI MÀ ĐÓNG DẤU "(ĐÃ GỠ)" ĐỂ LƯU LỊCH SỬ
+                                    updated_notes.append(f"{n} (ĐÃ GỠ)")
+                                    
                                     # LỖI ĐƯỢC DUYỆT GỠ: Trích xuất cộng điểm hoàn trả
                                     day_pfx_match = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', n, re.IGNORECASE)
                                     day_pfx = day_pfx_match.group(0) if day_pfx_match else ""
@@ -1032,15 +1040,19 @@ def resolve_appeal():
                                             break
                                 else:
                                     # LỖI BỊ TỪ CHỐI HOẶC KHÔNG KHIẾU NẠI -> Giữ lại trong Sổ đen
-                                    remaining_notes.append(n)
+                                    updated_notes.append(n)
                                     
-                            # Ghi đè lại ghi chú sau khi đã GỌT BỎ những lỗi được gỡ
-                            score.note = " ; ".join(remaining_notes)
+                            # Ghi đè lại ghi chú (Đã bảo toàn 100% dữ liệu gốc, chỉ thêm chữ ĐÃ GỠ)
+                            score.note = " ; ".join(updated_notes)
                             
                             # ĐỒNG BỘ LÀM SẠCH "SỔ ĐEN TOÀN TRƯỜNG" DỰA TRÊN PHẦN CÒN LẠI
                             db_session.query(WeeklyViolation).filter_by(weekly_score_id=score.id).delete()
                             
-                            for part in remaining_notes:
+                            for part in updated_notes:
+                                # [QUAN TRỌNG]: Lỗi nào có mộc (ĐÃ GỠ) thì loại thẳng tay khỏi Sổ đen!
+                                if "(ĐÃ GỠ)" in part: 
+                                    continue 
+                                    
                                 match_day = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', part, re.IGNORECASE)
                                 day_pfx = match_day.group(0) if match_day else ""
                                 text_to_parse = part.replace(day_pfx, "").strip() if day_pfx else part
@@ -1112,6 +1124,7 @@ def dashboard():
     try:
         with session_scope() as db_session:
             from sqlalchemy import func
+            import re
             active_year = db_session.query(SchoolYear).filter(SchoolYear.is_active == True).first()
             
             total_branches = 0
@@ -1192,8 +1205,11 @@ def dashboard():
                     ).all()
                     for p in appeals:
                         pending_appeals_data.append({
-                            'score_id': p.id, 'branch_name': p.branch.name,
-                            'week': p.week, 'reason': p.appeal_reason
+                            'score_id': p.id, 
+                            'branch_name': p.branch.name,
+                            'week': p.week, 
+                            'reason': p.appeal_reason,
+                            'note': p.note  # <--- BỔ SUNG DÒNG NÀY ĐỂ KÉO DỮ LIỆU RA CHECKBOX BGH
                         })
 
             return render_template(
