@@ -105,29 +105,37 @@
             display: none; /* Ẩn thanh cuộn Chrome/Safari */
         }
 		.modern-tab { 
-            background: #f1f5f9; 
-            border: 1.5px solid transparent; 
+            background: #ffffff; /* Nền trắng tinh dứt khoát */
+            border: 1px solid #cbd5e1; /* Viền xám nhạt để tạo khung khối rõ ràng */
             border-radius: 20px; 
-            padding: 8px 16px; 
-            font-size: 13px; 
+            padding: 9px 18px; /* Tăng nhẹ độ rộng để nút thoáng hơn */
+            font-size: 13.5px; 
             font-weight: 600; 
-            color: #475569; 
+            color: #64748b; 
             white-space: nowrap; 
             transition: all 0.3s ease; 
             cursor: pointer; 
             display: flex; 
             align-items: center; 
             gap: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
         .modern-tab:hover { 
-            background: #e2e8f0; 
-            color: var(--text-main);
+            background: #f8fafc; 
+            color: var(--primary);
+            border-color: #94a3b8;
         }
+        /* [LỘT XÁC TAB ACTIVE]: Biến thành khối đặc nổi bật */
         .modern-tab.active { 
-            background: #eff6ff; 
-            color: var(--primary); 
-            border: 1.5px solid var(--primary); 
-            box-shadow: 0 4px 12px rgba(37,99,235,0.2); 
+            background: linear-gradient(135deg, var(--primary), #1e40af); /* Gradient xanh đậm */
+            color: #ffffff !important; /* Đổi chữ thành màu trắng */
+            border: 1px solid #1e40af; 
+            box-shadow: 0 4px 10px rgba(37,99,235,0.35); /* Bóng đổ sâu hơn */
+            transform: translateY(-2px); /* Hiệu ứng nhô lên khỏi mặt phẳng */
+        }
+        /* Ép icon bên trong Tab Active thành màu trắng */
+        .modern-tab.active i {
+            color: #ffffff !important;
         }
 
         /* BẢNG DỮ LIỆU DESKTOP */
@@ -243,7 +251,7 @@
 			/* [NÂNG CẤP XẾP HẠNG]: Xóa khung nền xám, bỏ viền cứng, dùng bóng đổ mềm mại */
             .table-responsive-custom { padding: 0 !important; background: transparent !important; border: none !important;}
             .table-modern tr { background: var(--surface); border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 16px; border: none !important; overflow: hidden;}
-            .table-modern td { padding: 14px 16px !important; display: flex !important; justify-content: space-between !important; align-items: center !important; border-bottom: 1px solid #f8fafc !important; text-align: right !important;}
+            .table-modern td { padding: 8px 16px !important; display: flex !important; justify-content: space-between !important; align-items: center !important; border-bottom: 1px solid #f8fafc !important; text-align: right !important;}
             .table-modern td:last-child { border-bottom: none !important; }
             .table-modern td::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-right: 15px; flex-shrink: 0;}
             .table-modern td.mobile-header-row { background: #f8fafc !important; border-bottom: 2px solid var(--border) !important;}
