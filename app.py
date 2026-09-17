@@ -2620,52 +2620,64 @@ def export_schedule(week):
 def api_get_branch_duty_star():
     try:
         week_name = request.args.get('week', '')
-        branch_name = request.args.get('branch_name', '').strip().upper()
+        branch_param = request.args.get('branch_name', '').strip()
         
-        # [BẢN VÁ TỐI THƯỢNG]: Dọn dẹp cả cái đuôi "(Nhóm 1)" và chữ "Chi đoàn"
-        import re
-        branch_name_clean = re.sub(r'\(.*?\)', '', branch_name) # Cạo bỏ mọi thứ trong dấu ngoặc (...)
-        branch_name_clean = re.sub(r'(CHI ĐOÀN|CHI DOAN|LỚP|LOP)', '', branch_name_clean, flags=re.IGNORECASE).strip()
-        
-        if not week_name or not branch_name_clean:
-            return {"success": False, "error": "Thiếu tham số tuần hoặc tên lớp"}
+        if not week_name or not branch_param:
+            return {"success": False, "error": "Thiếu tham số tuần hoặc lớp"}
             
         # 1. Trích xuất số tuần
+        import re
         week_num_match = re.search(r'\d+', week_name)
         if not week_num_match:
             return {"success": False, "error": "Tên tuần không hợp lệ"}
         week_num = int(week_num_match.group())
         
         from database.database import session_scope
-        from database.models import Assignment, DutyArea
+        from database.models import Assignment, DutyArea, Branch
         import os, json
         
         with session_scope() as db_session:
-            # 2. Đọc file sơ đồ phân cụm lớp class_zones.json
+            # 2. XỬ LÝ TRIỆT ĐỂ TÊN LỚP: Hỗ trợ cả trường hợp Web gửi ID (số) thay vì Tên (chữ)
+            real_branch_name = branch_param
+            if branch_param.isdigit():
+                branch_obj = db_session.query(Branch).filter_by(id=int(branch_param)).first()
+                if branch_obj:
+                    real_branch_name = branch_obj.name
+                    
+            # Ép dính liền mọi ký tự, cạo sạch chữ dư thừa (Chi đoàn, Lớp, Nhóm) để khớp 100% với cấu hình
+            branch_name_clean = re.sub(r'\(.*?\)', '', real_branch_name)
+            branch_name_clean = re.sub(r'(CHI ĐOÀN|CHI DOAN|LỚP|LOP)', '', branch_name_clean, flags=re.IGNORECASE)
+            branch_name_clean = re.sub(r'[^A-Za-z0-9]', '', branch_name_clean).upper()
+            
+            # 3. Đọc file sơ đồ phân cụm (Bảo vệ đường dẫn kép chống lỗi File Not Found)
             zones_map = {}
-            config_path = "config/class_zones.json"
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            config_path = os.path.join(base_dir, "config", "class_zones.json")
             if not os.path.exists(config_path):
-                config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config", "class_zones.json")
+                config_path = "config/class_zones.json"
                 
             if os.path.exists(config_path):
                 with open(config_path, "r", encoding="utf-8") as f:
                     try: zones_map = json.load(f)
                     except: pass
                     
-            # 3. Tìm xem lớp này thuộc cụm/khu vực trực nào
+            # 4. Tìm xem lớp này thuộc cụm/khu vực trực nào
             target_area_names = []
             for area_name, classes in zones_map.items():
                 if isinstance(classes, list):
-                    # Làm sạch cả danh sách trong file JSON để 2 bên ôm khớp vào nhau 100%
-                    clean_classes = [re.sub(r'\(.*?\)', '', str(c)) for c in classes]
-                    clean_classes = [re.sub(r'(CHI ĐOÀN|CHI DOAN|LỚP|LOP)', '', c, flags=re.IGNORECASE).strip().upper() for c in clean_classes]
-                    if branch_name_clean in clean_classes:
-                        target_area_names.append(area_name)
+                    for c in classes:
+                        c_clean = re.sub(r'\(.*?\)', '', str(c))
+                        c_clean = re.sub(r'(CHI ĐOÀN|CHI DOAN|LỚP|LOP)', '', c_clean, flags=re.IGNORECASE)
+                        c_clean = re.sub(r'[^A-Za-z0-9]', '', c_clean).upper()
                         
+                        if branch_name_clean == c_clean:
+                            target_area_names.append(area_name)
+                            break
+                            
             if not target_area_names:
                 return {"success": True, "star_name": "Chưa phân cụm trực"}
                 
-            # 4. Truy vấn lịch phân công trong tuần ứng với khu vực đó
+            # 5. Truy vấn lịch phân công trong tuần ứng với khu vực đó
             assignments = db_session.query(Assignment).join(DutyArea).filter(
                 Assignment.week_number == week_num,
                 DutyArea.name.in_(target_area_names)
@@ -2674,11 +2686,11 @@ def api_get_branch_duty_star():
             if not assignments:
                 return {"success": True, "star_name": "Chưa phân công"}
                 
-            # 5. Gom tên Sao đỏ kèm ca trực
+            # 6. Gom tên Sao đỏ kèm ca trực
             star_info_list = []
             for asm in assignments:
                 if asm.red_star:
-                    s_name = asm.red_star.full_name.replace("SĐ: ", "")
+                    s_name = asm.red_star.full_name.replace("SĐ: ", "").strip()
                     shift = asm.shift or ""
                     star_info_list.append(f"{s_name} ({shift})")
                     
