@@ -2623,45 +2623,43 @@ def api_get_branch_duty_star():
         branch_param = request.args.get('branch_name', '').strip()
         
         if not week_name or not branch_param:
-            return {"success": False, "error": "Thiếu tham số tuần hoặc lớp"}
+            return {"success": False, "error": "Thiếu tham số"}
             
-        # 1. Trích xuất số tuần
         import re
         week_num_match = re.search(r'\d+', week_name)
-        if not week_num_match:
-            return {"success": False, "error": "Tên tuần không hợp lệ"}
-        week_num = int(week_num_match.group())
+        week_num = int(week_num_match.group()) if week_num_match else 0
         
         from database.database import session_scope
         from database.models import Assignment, DutyArea, Branch
         import os, json
         
         with session_scope() as db_session:
-            # 2. XỬ LÝ TRIỆT ĐỂ TÊN LỚP: Hỗ trợ cả trường hợp Web gửi ID (số) thay vì Tên (chữ)
+            # 1. Xử lý tên lớp an toàn tuyệt đối
             real_branch_name = branch_param
             if branch_param.isdigit():
-                branch_obj = db_session.query(Branch).filter_by(id=int(branch_param)).first()
-                if branch_obj:
-                    real_branch_name = branch_obj.name
+                b_obj = db_session.query(Branch).filter_by(id=int(branch_param)).first()
+                if b_obj: real_branch_name = b_obj.name
                     
-            # Ép dính liền mọi ký tự, cạo sạch chữ dư thừa (Chi đoàn, Lớp, Nhóm) để khớp 100% với cấu hình
-            branch_name_clean = re.sub(r'\(.*?\)', '', real_branch_name)
-            branch_name_clean = re.sub(r'(CHI ĐOÀN|CHI DOAN|LỚP|LOP)', '', branch_name_clean, flags=re.IGNORECASE)
-            branch_name_clean = re.sub(r'[^A-Za-z0-9]', '', branch_name_clean).upper()
+            search_name = re.sub(r'\(.*?\)', '', real_branch_name)
+            search_name = re.sub(r'(CHI ĐOÀN|CHI DOAN|LỚP|LOP)', '', search_name, flags=re.IGNORECASE)
+            search_name = re.sub(r'[^A-Za-z0-9]', '', search_name).upper()
             
-            # 3. Đọc file sơ đồ phân cụm (Bảo vệ đường dẫn kép chống lỗi File Not Found)
+            # 2. Đọc file JSON với đường dẫn tuyệt đối (Chống lỗi File Not Found)
             zones_map = {}
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            config_path = os.path.join(base_dir, "config", "class_zones.json")
+            # Dùng app.root_path để trỏ chính xác tuyệt đối vào thư mục gốc của Flask
+            config_path = os.path.join(app.root_path, "config", "class_zones.json")
             if not os.path.exists(config_path):
-                config_path = "config/class_zones.json"
+                config_path = "config/class_zones.json" # Dự phòng
                 
+            json_loaded_ok = False
             if os.path.exists(config_path):
                 with open(config_path, "r", encoding="utf-8") as f:
-                    try: zones_map = json.load(f)
+                    try: 
+                        zones_map = json.load(f)
+                        json_loaded_ok = True
                     except: pass
                     
-            # 4. Tìm xem lớp này thuộc cụm/khu vực trực nào
+            # 3. Quét tìm cụm trực
             target_area_names = []
             for area_name, classes in zones_map.items():
                 if isinstance(classes, list):
@@ -2670,23 +2668,26 @@ def api_get_branch_duty_star():
                         c_clean = re.sub(r'(CHI ĐOÀN|CHI DOAN|LỚP|LOP)', '', c_clean, flags=re.IGNORECASE)
                         c_clean = re.sub(r'[^A-Za-z0-9]', '', c_clean).upper()
                         
-                        if branch_name_clean == c_clean:
+                        if search_name == c_clean:
                             target_area_names.append(area_name)
                             break
                             
             if not target_area_names:
-                return {"success": True, "star_name": "Chưa phân cụm trực"}
+                # [MÁY QUÉT 1]: Nếu lỗi ở File cấu hình hoặc quên lưu lớp vào cụm
+                status_file = "OK" if json_loaded_ok else "LỖI ĐỌC FILE"
+                return {"success": True, "star_name": f"Chưa phân cụm (Tìm: {search_name} - File: {status_file})"}
                 
-            # 5. Truy vấn lịch phân công trong tuần ứng với khu vực đó
+            # 4. Tìm lịch trực
             assignments = db_session.query(Assignment).join(DutyArea).filter(
                 Assignment.week_number == week_num,
                 DutyArea.name.in_(target_area_names)
             ).all()
             
             if not assignments:
-                return {"success": True, "star_name": "Chưa phân công"}
+                # [MÁY QUÉT 2]: Nếu lớp đã có Cụm, nhưng tuần hiện tại thầy chưa bấm nút Phân công
+                return {"success": True, "star_name": f"Trống lịch trực (Tuần {week_num})"}
                 
-            # 6. Gom tên Sao đỏ kèm ca trực
+            # 5. Đóng gói kết quả
             star_info_list = []
             for asm in assignments:
                 if asm.red_star:
@@ -2694,11 +2695,10 @@ def api_get_branch_duty_star():
                     shift = asm.shift or ""
                     star_info_list.append(f"{s_name} ({shift})")
                     
-            result_str = " | ".join(star_info_list) if star_info_list else "Chưa phân công"
+            result_str = " | ".join(star_info_list) if star_info_list else "Đã phân cụm nhưng khuyết người trực"
             return {"success": True, "star_name": result_str}
             
     except Exception as e:
-        import traceback; traceback.print_exc()
         return {"success": False, "error": str(e)}
     
 @app.route('/api/get_swap_candidates/<int:assign_id>')
