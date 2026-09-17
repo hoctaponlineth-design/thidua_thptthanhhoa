@@ -547,9 +547,13 @@ def parse_sodaubai():
         # Quét ngang các cột ở dòng tiêu đề (start_row) để tìm đúng vị trí
         for c in range(len(df.columns)):
             col_title = str(df.iloc[start_row, c]).lower()
-            if "điểm" in col_title or "nhận xét" in col_title:
+            
+            # [ĐÃ VÁ LỖI]: Không lấy cột nếu tiêu đề có chứa chữ "xếp loại"
+            if ("điểm" in col_title or "nhận xét" in col_title) and "xếp loại" not in col_title:
                 col_diem_list.append(c)
-            if "xếp loại" in col_title and "tiết" in col_title:
+            
+            # Dò tìm cột Xếp loại độc lập
+            if "xếp loại" in col_title:
                 col_xep_loai_tiet = c
                 
         # Nếu biểu mẫu quá lạ không dò ra chữ, quay về giá trị mặc định
@@ -632,7 +636,7 @@ def parse_sodaubai():
                 if val_vang and val_vang.lower() != 'nan':
                     
                     # Cắt chuỗi theo dấu phẩy/chấm phẩy để xử lý từng học sinh
-                    for p in re.split(r'[,;]+', val_vang):
+                    for p in re.split(r'[,;\n]+', val_vang):
                         p = p.strip()
                         if not p: continue
                         p_lower = p.lower()
@@ -749,8 +753,8 @@ def parse_sodaubai():
                 if found_text_violation:
                     continue # Đã là lỗi bằng chữ thì bỏ qua, không quét điểm số nữa để tránh nhầm lẫn
                 # =========================================================================
-                # Tìm cặp [Tên học sinh] và [Con số điểm 0-10] ở bất kỳ vị trí nào trong đoạn phân tách
-                match = re.search(r'([A-ZÀ-Ỹa-zà-ỹ\s]+?)\s*[:\-]?\s*(10|[0-9])\s*(?:đ|Đ|điểm|Điểm)?(?!\d)', entry)
+                # [ĐÃ NÂNG CẤP]: Cho phép thêm [0-9] vào phần tên học sinh
+                match = re.search(r'([A-ZÀ-Ỹa-zà-ỹ0-9\s]+?)\s*[:\-]?\s*(10|[0-9])\s*(?:đ|Đ|điểm|Điểm)?(?!\d)', entry)
                 if match:
                     parsed_any = True
                     raw_name = match.group(1).strip()                
