@@ -1126,10 +1126,15 @@ def dashboard():
 
             if active_year:
                 total_branches = db_session.query(Branch).filter(Branch.school_year_id == active_year.id).count()
-                latest_score = db_session.query(WeeklyScore).join(Branch).filter(Branch.school_year_id == active_year.id).order_by(WeeklyScore.id.desc()).first()
                 
-                if latest_score:
-                    current_week = latest_score.week
+                # =====================================================================
+                # [BẢN VÁ LỖI]: Tìm chính xác số tuần lớn nhất (Toán học) thay vì thứ tự nhập
+                # =====================================================================
+                all_weeks = db_session.query(WeeklyScore.week).join(Branch).filter(Branch.school_year_id == active_year.id).distinct().all()
+                
+                if all_weeks:
+                    current_week = max([w[0] for w in all_weeks], key=lambda x: int(re.search(r'\d+', str(x)).group()) if re.search(r'\d+', str(x)) else 0)
+                    
                     avg_val = db_session.query(func.avg(WeeklyScore.total_score)).join(Branch).filter(
                         Branch.school_year_id == active_year.id,
                         WeeklyScore.week == current_week
@@ -2056,20 +2061,30 @@ def duty_areas():
             areas = db_session.query(DutyArea).all()
             branches = []
             if active_year:
-                # [BẢN VÁ LỖI]: Ép cơ sở dữ liệu phải sắp xếp tên lớp theo thứ tự từ nhỏ đến lớn (10A1, 10A2...)
                 branches = db_session.query(Branch).filter(Branch.school_year_id == active_year.id).order_by(Branch.name).all()
             
             zones_map = {}
             assigned_classes = set() 
             if os.path.exists("config/class_zones.json"):
                 with open("config/class_zones.json", "r", encoding="utf-8") as f:
-                    zones_map = json.load(f)
-                    for classes_in_zone in zones_map.values():
-                        assigned_classes.update(classes_in_zone)
+                    try:
+                        raw_map = json.load(f)
+                    except:
+                        raw_map = {}
+                
+                # [BẢN VÁ LỖI]: Tự động dọn rác - Chỉ giữ lại các cụm CÒN TỒN TẠI trong Database
+                valid_area_names = [a.name for a in areas]
+                zones_map = {k: v for k, v in raw_map.items() if k in valid_area_names}
+                
+                # Ghi đè lại file JSON cho sạch sẽ
+                with open("config/class_zones.json", "w", encoding="utf-8") as f:
+                    json.dump(zones_map, f, ensure_ascii=False, indent=4)
+                    
+                # Nạp lại danh sách lớp đã khóa
+                for classes_in_zone in zones_map.values():
+                    assigned_classes.update(classes_in_zone)
             
-            # ========================================================
-            # [BẢN NÂNG CẤP]: Lọc danh sách các lớp chưa được phân cụm
-            # ========================================================
+            # Lọc danh sách các lớp chưa được phân cụm
             unassigned_branches = [b for b in branches if b.name not in assigned_classes]
             
             return render_template('duty_areas.html', 
@@ -3398,18 +3413,18 @@ def weekly():
                 flash(f"Đã lưu và cập nhật chính xác bảng điểm {week_name}!", "success")
                 return redirect(url_for('weekly', week=week_name))
 
-            # --- [BẢN VÁ LỖI]: TỰ ĐỘNG HIỂN THỊ TUẦN MỚI NHẤT THAY VÌ TUẦN 1 ---
+            # --- [BẢN VÁ LỖI TỐI THƯỢNG]: TỰ ĐỘNG HIỂN THỊ TUẦN MỚI NHẤT DỰA TRÊN SỐ TUẦN LỚN NHẤT ---
             week_param = request.args.get('week')
             if week_param:
                 current_week = week_param
             else:
-                # Ưu tiên 1: Tự động tìm tuần mới nhất đã có dữ liệu điểm trong CSDL
-                latest_score = db_session.query(WeeklyScore).join(Branch).filter(
+                # Ưu tiên 1: Lấy tất cả các tuần và tìm Số tuần lớn nhất bằng Toán học
+                all_weeks = db_session.query(WeeklyScore.week).join(Branch).filter(
                     Branch.school_year_id == active_year.id if active_year else True
-                ).order_by(WeeklyScore.id.desc()).first()
+                ).distinct().all()
                 
-                if latest_score:
-                    current_week = latest_score.week
+                if all_weeks:
+                    current_week = max([w[0] for w in all_weeks], key=lambda x: int(re.search(r'\d+', str(x)).group()) if re.search(r'\d+', str(x)) else 0)
                 else:
                     # Ưu tiên 2: Nếu chưa có điểm, lấy tuần mới nhất vừa được phân công lịch trực
                     latest_assign = db_session.query(Assignment).order_by(Assignment.week_number.desc()).first()
