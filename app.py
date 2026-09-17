@@ -2622,25 +2622,27 @@ def api_get_branch_duty_star():
         week_name = request.args.get('week', '')
         branch_name = request.args.get('branch_name', '').strip().upper()
         
-        # [BẢN VÁ LỖI 1]: Dọn dẹp tiền tố "LỚP" từ giao diện gửi lên để khớp với định dạng trong file JSON
-        branch_name_clean = branch_name.replace('LỚP', '').replace('LOP', '').strip()
+        # [BẢN VÁ TỐI THƯỢNG]: Dọn dẹp cả cái đuôi "(Nhóm 1)" và chữ "Chi đoàn"
+        import re
+        branch_name_clean = re.sub(r'\(.*?\)', '', branch_name) # Cạo bỏ mọi thứ trong dấu ngoặc (...)
+        branch_name_clean = re.sub(r'(CHI ĐOÀN|CHI DOAN|LỚP|LOP)', '', branch_name_clean, flags=re.IGNORECASE).strip()
         
         if not week_name or not branch_name_clean:
             return {"success": False, "error": "Thiếu tham số tuần hoặc tên lớp"}
             
         # 1. Trích xuất số tuần
-        import re
         week_num_match = re.search(r'\d+', week_name)
         if not week_num_match:
             return {"success": False, "error": "Tên tuần không hợp lệ"}
         week_num = int(week_num_match.group())
         
+        from database.database import session_scope
+        from database.models import Assignment, DutyArea
+        import os, json
+        
         with session_scope() as db_session:
             # 2. Đọc file sơ đồ phân cụm lớp class_zones.json
-            import os, json
             zones_map = {}
-            
-            # [BẢN VÁ LỖI 2]: Ưu tiên dùng đường dẫn tương đối giống hệt hàm "Thêm Cụm Trực" để đảm bảo luôn đọc trúng 1 file
             config_path = "config/class_zones.json"
             if not os.path.exists(config_path):
                 config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config", "class_zones.json")
@@ -2654,8 +2656,9 @@ def api_get_branch_duty_star():
             target_area_names = []
             for area_name, classes in zones_map.items():
                 if isinstance(classes, list):
-                    # [BẢN VÁ LỖI 3]: Dọn dẹp luôn tiền tố "LỚP" trong file JSON (nếu có) để chuẩn hóa 2 bên 100%
-                    clean_classes = [str(c).upper().replace('LỚP', '').replace('LOP', '').strip() for c in classes]
+                    # Làm sạch cả danh sách trong file JSON để 2 bên ôm khớp vào nhau 100%
+                    clean_classes = [re.sub(r'\(.*?\)', '', str(c)) for c in classes]
+                    clean_classes = [re.sub(r'(CHI ĐOÀN|CHI DOAN|LỚP|LOP)', '', c, flags=re.IGNORECASE).strip().upper() for c in clean_classes]
                     if branch_name_clean in clean_classes:
                         target_area_names.append(area_name)
                         
