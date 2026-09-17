@@ -754,10 +754,17 @@ def parse_sodaubai():
                     continue # Đã là lỗi bằng chữ thì bỏ qua, không quét điểm số nữa để tránh nhầm lẫn
                 # =========================================================================
                 # [ĐÃ NÂNG CẤP]: Cho phép thêm [0-9] vào phần tên học sinh
-                match = re.search(r'([A-ZÀ-Ỹa-zà-ỹ0-9\s]+?)\s*[:\-]?\s*(10|[0-9])\s*(?:đ|Đ|điểm|Điểm)?(?!\d)', entry)
+                match = re.search(r'([A-ZÀ-Ỹa-zà-ỹ0-9\s]+?)\s*[:\-]?\s*(\+)?\s*(10|[0-9])\s*(?:đ|Đ|điểm|Điểm)?(?!\d)', entry)
                 if match:
                     parsed_any = True
-                    raw_name = match.group(1).strip()                
+                    raw_name = match.group(1).strip()
+                    has_plus = match.group(2) # Hứng dấu cộng
+                    score_val = int(match.group(3))
+                    
+                    # [CHỐNG TRỪ ĐIỂM OAN]: Nếu phát hiện dấu + trước số 1, 2 thì BỎ QUA hoàn toàn
+                    if has_plus == '+' and score_val in [1, 2]:
+                        continue
+                        
                     # Tách các từ ra để lọc
                     name_words = raw_name.split()             
                     # [BẢN VÁ LỖI]: Danh sách các từ vô nghĩa cần loại bỏ khi giáo viên ghi nhận xét
@@ -766,8 +773,7 @@ def parse_sodaubai():
                     filtered_words = [w for w in name_words if w.lower() not in stop_words]              
                     # Lấy từ cuối cùng trong danh sách ĐÃ LỌC SẠCH làm tên học sinh
                     name_part = filtered_words[-1].title() if filtered_words else "Học sinh"           
-                    score_val = int(match.group(2))
-                
+                    
                     tiet = str(df.iloc[i, 2]).strip()
                     tiet_str = f"Tiết {tiet}" if tiet != 'nan' else "Tiết học"
                     
@@ -789,13 +795,18 @@ def parse_sodaubai():
                         bad_marks_list.append({'type': cat_khb, 'key': key, 'mon': mon}) # Lỗi 0 điểm (Không học bài)
                     elif score_val in [1, 2]: # <--- ĐÃ SỬA: Chỉ tính điểm 1 và điểm 2 là điểm kém
                         key = f"{name_part} (Môn {mon})" if name_part else f"Môn {mon}"
-                        bad_marks_list.append({'type': cat_dk, 'key': key, 'mon': mon}) # Lỗi điểm kém
-            
+                        bad_marks_list.append({'type': cat_dk, 'key': key, 'mon': mon}) # Lỗi điểm kém            
             # THUẬT TOÁN DỰ PHÒNG: Nếu không tách được theo tên, quét toàn bộ số nguyên hợp lệ trong ô
             if not parsed_any:
-                numbers = re.findall(r'(?<!\d)(10|9|8|0|[1-2])\s*(?:đ|Đ|điểm|Điểm)?(?!\d)', diem_raw)
-                for num_str in numbers:
+                # [NÂNG CẤP]: Bắt thêm dấu + ở thuật toán dự phòng
+                numbers = re.findall(r'(?<!\d)(\+)?\s*(10|9|8|0|[1-2])\s*(?:đ|Đ|điểm|Điểm)?(?!\d)', diem_raw)
+                for has_plus, num_str in numbers:
                     num = int(num_str)
+                    
+                    # [CHỐNG TRỪ ĐIỂM OAN]: Nếu phát hiện dấu + trước số 1, 2 thì BỎ QUA hoàn toàn
+                    if has_plus == '+' and num in [1, 2]:
+                        continue
+                        
                     tiet = str(df.iloc[i, 2]).strip()
                     tiet_str = f"Tiết {tiet}" if tiet != 'nan' else "Tiết học"
                     
@@ -4051,16 +4062,19 @@ def reports():
                 school_order = ["Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12", "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5"]
                 available_months = sorted([m[0] for m in months_db if m[0]], key=lambda x: school_order.index(x) if x in school_order else 99)
 
+                # [BẢN VÁ LỖI TRÀN RAM]: Xác định rõ bảng gốc (select_from) để chặn đứng CROSS JOIN
                 scores_raw = db_session.query(
                     Branch.name.label('Lớp'), Branch.group.label('Nhóm'),
                     WeeklyScore.week.label('Tuần'), WeeklyScore.total_score.label('Điểm'),
                     WeeklyScore.count_8.label('C8'), WeeklyScore.count_9.label('C9'), WeeklyScore.count_10.label('C10')
-                ).join(Branch).filter(Branch.school_year_id == selected_year_id)
+                ).select_from(WeeklyScore).join(Branch, WeeklyScore.branch_id == Branch.id)\
+                 .filter(Branch.school_year_id == selected_year_id)
                 
                 vios_raw = db_session.query(
                     Branch.name.label('Lớp'), ViolationCategory.name.label('Lỗi'), 
                     WeeklyViolation.quantity.label('SL'), WeeklyScore.week.label('Tuần')
-                ).join(WeeklyViolation, ViolationCategory.id == WeeklyViolation.violation_id)\
+                ).select_from(WeeklyViolation)\
+                 .join(ViolationCategory, ViolationCategory.id == WeeklyViolation.violation_id)\
                  .join(WeeklyScore, WeeklyScore.id == WeeklyViolation.weekly_score_id)\
                  .join(Branch, Branch.id == WeeklyScore.branch_id)\
                  .filter(Branch.school_year_id == selected_year_id)
@@ -5925,7 +5939,7 @@ def export_yearly_excel():
 def calculate_trimmed_good_points_web(session, week_name, branch_name, branch_group, max_mon, max_tot):
     """Tính lại số điểm tốt dựa trên dữ liệu thô từ CSDL và barem động hiện hành"""
     try:
-        from database.models import SchoolYear
+        from database.models import SchoolYear, RawScore, WeeklyScore, Branch
         active_year = session.query(SchoolYear).filter_by(is_active=True).first()
         year_id = active_year.id if active_year else 0
         safe_week_key = f"{week_name}_Y{year_id}"
@@ -5935,7 +5949,18 @@ def calculate_trimmed_good_points_web(session, week_name, branch_name, branch_gr
     except Exception:
         raw_scores = []
         
-    if not raw_scores: return 0
+    # [BẢN VÁ LỖI CỐT LÕI]: Nếu không quét file Excel, lấy điểm nhập tay từ Web làm dự phòng
+    if not raw_scores: 
+        branch = session.query(Branch).filter_by(name=branch_name, school_year_id=year_id).first()
+        if branch:
+            sc = session.query(WeeklyScore).filter_by(branch_id=branch.id, week=week_name).first()
+            if sc:
+                total_good = int(sc.count_10 or 0) + int(sc.count_9 or 0)
+                if "2" in str(branch_group):
+                    total_good += int(sc.count_8 or 0)
+                return total_good 
+        return 0
+        
     f10, f9, f8 = 0, 0, 0
     for r in raw_scores:
         try:
@@ -6014,7 +6039,7 @@ def templates_report():
                                 "Nhóm": branch.group or "Nhóm 1",
                                 "Sĩ số": branch.si_so,
                                 "Xếp loại": getattr(sc, 'week_rating', '-') if sc else '-',
-                                "Điểm Trừ VP": getattr(sc, 'score_kem', 0) if sc else 0,
+                                "Điểm Trừ VP": getattr(sc, 'score_tru', 0) if sc else 0,
                                 "Số Điểm Tốt": so_diem_tot,
                                 "Tổng Điểm": getattr(sc, 'total_score', 0) if sc else 0,
                                 "Ghi chú VP": getattr(sc, 'note', '') if sc else 'Chưa nhập điểm',
@@ -6036,7 +6061,7 @@ def templates_report():
                                     weeks = [w.strip() for w in m_sc.weeks_used.split(",")]
                                     branch_weeks = [w for w in weekly_scores_all if w.branch_id == branch.id and w.week in weeks]
                                     for bw in branch_weeks:
-                                        tong_diem_tru += (bw.score_kem or 0)
+                                        tong_diem_tru += (bw.score_tru or 0)
                                         if bw.note and bw.note.strip():
                                             ghi_chu_gop.append(f"[{bw.week.replace('Tuần ', 'T')}] {bw.note.strip()}")
                                     for w in weeks:
@@ -6067,7 +6092,7 @@ def templates_report():
                             gvcn_val = branch.gvcn if branch.gvcn else ""
                             if branch_scores:
                                 tong_diem = sum((sc.total_score or 0) for sc in branch_scores)
-                                tong_diem_tru_vp = sum((sc.score_kem or 0) for sc in branch_scores)
+                                tong_diem_tru_vp = sum((sc.score_tru or 0) for sc in branch_scores)
                                 ghi_chu_gop = [f"[{sc.week.replace('Tuần ', 'T')}] {sc.note.strip()}" for sc in branch_scores if sc.note and sc.note.strip()]
                                 tong_diem_tot = sum(calculate_trimmed_good_points_web(db_session, w, branch.name, branch.group, max_mon, max_tot) for w in target_weeks)
                                 
@@ -6165,7 +6190,7 @@ def preview_templates_report():
                     so_diem_tot = calculate_trimmed_good_points_web(db_session, time_val, branch.name, branch.group, max_mon, max_tot) if sc else 0
                     data_list.append({
                         "Chi đoàn": branch.name, "Nhóm": branch.group or "Nhóm 1", "Sĩ số": branch.si_so,
-                        "Điểm Trừ VP": getattr(sc, 'score_kem', 0) if sc else 0, "Số Điểm Tốt": so_diem_tot,
+                        "Điểm Trừ VP": getattr(sc, 'score_tru', 0) if sc else 0, "Số Điểm Tốt": so_diem_tot,
                         "Tổng Điểm": getattr(sc, 'total_score', 0) if sc else 0,
                         "Giáo viên chủ nhiệm": gvcn_val
                     })
@@ -6181,7 +6206,7 @@ def preview_templates_report():
                             weeks = [w.strip() for w in m_sc.weeks_used.split(",")]
                             branch_weeks = [w for w in weekly_scores_all if w.branch_id == branch.id and w.week in weeks]
                             for bw in branch_weeks:
-                                tong_diem_tru += (bw.score_kem or 0)
+                                tong_diem_tru += (bw.score_tru or 0)
                             for w in weeks:
                                 tong_diem_tot += calculate_trimmed_good_points_web(db_session, w, branch.name, branch.group, max_mon, max_tot)
                         data_list.append({
@@ -6207,7 +6232,7 @@ def preview_templates_report():
                     gvcn_val = branch.gvcn if branch.gvcn else ""
                     if branch_scores:
                         tong_diem = sum((sc.total_score or 0) for sc in branch_scores)
-                        tong_diem_tru_vp = sum((sc.score_kem or 0) for sc in branch_scores)
+                        tong_diem_tru_vp = sum((sc.score_tru or 0) for sc in branch_scores)
                         tong_diem_tot = sum(calculate_trimmed_good_points_web(db_session, w, branch.name, branch.group, max_mon, max_tot) for w in target_weeks)
                         data_list.append({
                             "Chi đoàn": branch.name, "Nhóm": branch.group or "Nhóm 1", "Sĩ số": branch.si_so,
@@ -6295,7 +6320,7 @@ def export_templates_excel():
                     so_diem_tot = calculate_trimmed_good_points_web(db_session, time_val, branch.name, branch.group, max_mon, max_tot) if sc else 0
                     data_list.append({
                         "Chi đoàn": branch.name, "Nhóm": branch.group or "Nhóm 1", "Sĩ số": branch.si_so,
-                        "Điểm Trừ VP": getattr(sc, 'score_kem', 0) if sc else 0, "Số Điểm Tốt": so_diem_tot,
+                        "Điểm Trừ VP": getattr(sc, 'score_tru', 0) if sc else 0, "Số Điểm Tốt": so_diem_tot,
                         "Tổng Điểm": getattr(sc, 'total_score', 0) if sc else 0,
                         "Ghi chú VP": getattr(sc, 'note', '') if sc else 'Chưa nhập điểm',
                         "Giáo viên chủ nhiệm": gvcn_val
@@ -6312,7 +6337,7 @@ def export_templates_excel():
                             weeks = [w.strip() for w in m_sc.weeks_used.split(",")]
                             branch_weeks = [w for w in weekly_scores_all if w.branch_id == branch.id and w.week in weeks]
                             for bw in branch_weeks:
-                                tong_diem_tru += (bw.score_kem or 0)
+                                tong_diem_tru += (bw.score_tru or 0)
                                 if bw.note and bw.note.strip():
                                     ghi_chu_gop.append(f"[{bw.week.replace('Tuần ', 'T')}] {bw.note.strip()}")
                             for w in weeks:
@@ -6340,7 +6365,7 @@ def export_templates_excel():
                     gvcn_val = branch.gvcn if branch.gvcn else ""
                     if branch_scores:
                         tong_diem = sum((sc.total_score or 0) for sc in branch_scores)
-                        tong_diem_tru_vp = sum((sc.score_kem or 0) for sc in branch_scores)
+                        tong_diem_tru_vp = sum((sc.score_tru or 0) for sc in branch_scores)
                         ghi_chu_gop = [f"[{sc.week.replace('Tuần ', 'T')}] {sc.note.strip()}" for sc in branch_scores if sc.note and sc.note.strip()]
                         tong_diem_tot = sum(calculate_trimmed_good_points_web(db_session, w, branch.name, branch.group, max_mon, max_tot) for w in target_weeks)
                         data_list.append({
