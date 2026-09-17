@@ -110,12 +110,13 @@
                             <td class="fst-italic text-secondary px-3">"{{ p.reason }}"</td>
                             <td class="text-center">
                                 <!-- Nút trả lời sử dụng Data Attributes (An toàn tuyệt đối với mọi ký tự) -->
-                                <button class="btn btn-sm btn-danger fw-bold shadow-sm" 
+									<button class="btn btn-sm btn-danger fw-bold shadow-sm" 
                                         onclick="openResolveModal(this)"
                                         data-score-id="{{ p.score_id }}"
                                         data-branch-name="{{ p.branch_name }}"
                                         data-week="{{ p.week }}"
-                                        data-reason="{{ p.reason }}">
+                                        data-reason="{{ p.reason }}"
+                                        data-note="{{ p.note }}">
                                     <i class="fa-solid fa-reply"></i> Trả lời
                                 </button>
                             </td>
@@ -194,7 +195,7 @@
         </div>
     </div>
 
-	<!-- MODAL BCH TRẢ LỜI PHÚC KHẢO (ĐÃ NÂNG CẤP LUỒNG TICKETING) -->
+	<!-- MODAL BCH TRẢ LỜI PHÚC KHẢO (ĐÃ NÂNG CẤP LUỒNG TICKETING BẢO TOÀN DỮ LIỆU) -->
     {% if pending_appeals and pending_appeals|length > 0 %}
     <div class="modal fade" id="resolveModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -220,11 +221,20 @@
                             </div>
                         </div>
 
-                        <!-- Ô NHẬP ĐIỂM HOÀN LẠI (TỰ ĐỘNG) -->
-                        <div class="mb-4 p-3 bg-primary bg-opacity-10 border border-primary border-opacity-50 rounded-3">
-                            <label class="form-label fw-bold text-primary"><i class="fa-solid fa-rotate-left me-1"></i> Số điểm hoàn lại (Chỉ nhập nếu Duyệt):</label>
-                            <input type="number" step="0.5" min="0" class="form-control border-primary fw-bold fs-5 text-primary" name="refund_points" value="0" placeholder="VD: 2.0">
-                            <small class="text-muted mt-2 d-block"><i class="fa-solid fa-circle-info me-1"></i> Hệ thống sẽ tự động cộng số điểm này vào tổng điểm của lớp và làm mới bảng xếp hạng toàn trường ngay lập tức.</small>
+                        <!-- [TÍNH NĂNG MỚI]: BẢNG CHỌN CHECKBOX THÔNG MINH BẢO TOÀN DỮ LIỆU -->
+                        <div class="mb-4">
+                            <label class="fw-bold text-primary mb-2"><i class="fa-solid fa-list-check me-1"></i> Chọn các lỗi để Gỡ & Hoàn điểm tự động:</label>
+                            <div class="border p-3 rounded bg-white shadow-sm" id="resolveNoteContainer" style="max-height: 220px; overflow-y: auto;">
+                                <!-- Checkbox sẽ được JS chẻ nhỏ và nạp tự động vào đây -->
+                            </div>
+                            <small class="text-muted mt-2 d-block"><i class="fa-solid fa-circle-info me-1"></i> Các lỗi được chọn sẽ tự động hoàn điểm và bị đẩy ra khỏi Sổ Đen, đồng thời được đóng mộc <b>(ĐÃ GỠ)</b> để lưu trữ lịch sử, không bị mất dữ liệu Sổ Đầu Bài.</small>
+                        </div>
+                        
+                        <!-- Ô NHẬP ĐIỂM DỰ PHÒNG -->
+                        <div class="mb-4 p-3 bg-warning bg-opacity-10 border border-warning border-opacity-50 rounded-3">
+                            <label class="form-label fw-bold text-warning-emphasis"><i class="fa-solid fa-calculator me-1"></i> Số điểm hoàn thủ công (Nếu cần):</label>
+                            <input type="number" step="0.5" min="0" class="form-control border-warning fw-bold fs-5 text-dark" name="refund_points" value="0" placeholder="VD: 2.0">
+                            <small class="text-muted mt-2 d-block fst-italic">Chỉ dùng ô này nếu thầy/cô muốn cộng thêm một số điểm đền bù nằm ngoài các lỗi vi phạm, hoặc khi phần Checkbox không nhận diện được lỗi.</small>
                         </div>
 
                         <div class="mb-2">
@@ -239,7 +249,7 @@
                         </button>
                         <!-- NÚT ĐỒNG Ý -->
                         <button type="submit" name="action" value="approve" class="btn btn-success fw-bold px-4 shadow-sm flex-grow-1 py-2">
-                            <i class="fa-solid fa-check-double me-1"></i> Duyệt & Hoàn Điểm
+                            <i class="fa-solid fa-check-double me-1"></i> Duyệt Gỡ Lỗi & Hoàn Điểm
                         </button>
                     </div>
                 </form>
@@ -248,11 +258,54 @@
     </div>
     
     <script>
-        // JS MỚI: Nhận dữ liệu thông minh qua Data Attributes để chống lỗi ký tự nháy
+        // JS MỚI: Tự động chẻ nhỏ chuỗi `note` từ Sổ Đầu Bài thành các Checkbox
         function openResolveModal(btn) {
             document.getElementById('resolveScoreId').value = btn.getAttribute('data-score-id');
             document.getElementById('resolveBranch').value = "Lớp " + btn.getAttribute('data-branch-name') + " (" + btn.getAttribute('data-week') + ")";
-            document.getElementById('resolveReason').innerText = '"' + btn.getAttribute('data-reason') + '"';
+            
+            // Xử lý làm đẹp hiển thị lý do
+            let rawReason = btn.getAttribute('data-reason');
+            let formattedReason = rawReason.replace(/\] & \[/g, '<br>• ').replace(/\[/g, '').replace(/\]/g, '');
+            document.getElementById('resolveReason').innerHTML = '<b>' + formattedReason + '</b>';
+            
+            // Thuật toán bóc tách dữ liệu Sổ Đầu Bài và dựng Checkbox bảo toàn mộc (ĐÃ GỠ)
+            let rawNote = btn.getAttribute('data-note') || "";
+            let container = document.getElementById('resolveNoteContainer');
+            container.innerHTML = ""; // Xóa dữ liệu cũ
+            
+            if (!rawNote.trim()) {
+                container.innerHTML = '<div class="text-center text-muted fst-italic py-3">Không có lỗi vi phạm cụ thể nào được ghi nhận trong Sổ Đầu Bài tuần này. Vui lòng nhập tay "Số điểm hoàn thủ công" bên dưới nếu cần hoàn điểm.</div>';
+            } else {
+                let noteParts = rawNote.split(';');
+                noteParts.forEach((part, index) => {
+                    let cleanPart = part.trim();
+                    if (cleanPart) {
+                        let html = '';
+                        // Nếu lỗi này đã từng bị Ban Giám hiệu Gỡ và đóng mộc rồi
+                        if (cleanPart.includes('(ĐÃ GỠ)')) {
+                            html = `
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input border-secondary" type="checkbox" disabled checked>
+                                    <label class="form-check-label text-muted text-decoration-line-through fst-italic" style="font-size: 15px;">
+                                        ${cleanPart}
+                                    </label>
+                                </div>
+                            `;
+                        } else {
+                            // Lỗi "còn sống", cho phép chọn để Gỡ
+                            html = `
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input border-danger shadow-sm" type="checkbox" name="approved_errors[]" value="${cleanPart}" id="err_${index}" style="transform: scale(1.2); margin-right: 10px;">
+                                    <label class="form-check-label fw-bold text-dark" for="err_${index}" style="font-size: 15px;">
+                                        ${cleanPart}
+                                    </label>
+                                </div>
+                            `;
+                        }
+                        container.innerHTML += html;
+                    }
+                });
+            }
             
             var myModal = new bootstrap.Modal(document.getElementById('resolveModal'));
             myModal.show();
