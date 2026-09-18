@@ -8705,12 +8705,21 @@ def bgh_dashboard():
         active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
         school_year_id = active_year.id if active_year else None
 
-        # --- [BẢN VÁ LỖI]: TỰ ĐỘNG TÌM TUẦN MỚI NHẤT CHO BGH NẾU KHÔNG TRUYỀN THAM SỐ ---
+        # --- [BẢN VÁ LỖI LÕI]: TÌM CHÍNH XÁC TUẦN MỚI NHẤT BẰNG TOÁN HỌC ---
         if not selected_week:
-            latest_score = db_session.query(WeeklyScore).join(Branch).filter(
+            import re
+            # Lấy tất cả các tuần đang có điểm trong hệ thống
+            all_weeks = db_session.query(WeeklyScore.week).join(Branch).filter(
                 Branch.school_year_id == school_year_id if school_year_id else True
-            ).order_by(WeeklyScore.id.desc()).first()
-            selected_week = latest_score.week if latest_score else "Tuần 1"
+            ).distinct().all()
+            
+            if all_weeks:
+                # Thuật toán Max: Lọc số và lấy tuần lớn nhất (VD: Tuần 12 sẽ lớn hơn Tuần 2)
+                selected_week = max([w[0] for w in all_weeks], key=lambda x: int(re.search(r'\d+', str(x)).group()) if re.search(r'\d+', str(x)) else 0)
+            else:
+                # Nếu chưa có điểm, lấy theo lịch phân công Sao đỏ
+                latest_assign = db_session.query(Assignment).order_by(Assignment.week_number.desc()).first()
+                selected_week = f"Tuần {latest_assign.week_number}" if latest_assign else "Tuần 1"
         # ---------------------------------------------------------------------------------
 
         if not school_year_id:
@@ -8755,6 +8764,7 @@ def bgh_dashboard():
         # =========================================================================
         
         for group_name in groups_dict:
+            import re
             # 1. Sắp xếp: Ưu tiên 1 là Điểm (giảm dần) -> Ưu tiên 2 là Tên lớp (Tự nhiên A-Z: 10A2 trước 10A10)
             groups_dict[group_name].sort(key=lambda x: (
                 -x["total_score"], 
