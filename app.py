@@ -8395,6 +8395,7 @@ def school_monthly_analysis():
                 # 1. Lấy toàn bộ danh sách Chi đoàn của năm học hiện tại làm bản đồ tra cứu chuẩn tuyệt đối
                 all_branches = db_session.query(Branch).filter_by(school_year_id=active_year.id).all()
                 branch_map = {b.id: b for b in all_branches}
+                branch_group_map = {b.name: b.group for b in all_branches}
 
                 # 2. Lấy tất cả các bản ghi điểm tháng đã chốt
                 records = db_session.query(MonthlyRecord).filter(
@@ -8428,11 +8429,12 @@ def school_monthly_analysis():
                     bottom_classes = processed_records[-5:] if len(processed_records) > 5 else [] 
                     bottom_classes.reverse() 
 
+                    # QUÉT LỖI VI PHẠM
                     violations = db_session.query(WeeklyViolation, ViolationCategory).join(
                         ViolationCategory, WeeklyViolation.violation_id == ViolationCategory.id
                     ).join(
                         WeeklyScore, WeeklyViolation.weekly_score_id == WeeklyScore.id
-                    ).filter(WeeklyScore.week.in_(valid_weeks)).all()
+                    ).filter(WeeklyScore.week.in_(valid_weeks), WeeklyScore.branch_id.in_(branch_map.keys())).all()
 
                     viol_summary = {}
                     total_violations = 0
@@ -8444,14 +8446,35 @@ def school_monthly_analysis():
 
                     top_violations_school = sorted(viol_summary.items(), key=lambda x: x[1], reverse=True)[:5] 
 
-                    branch_group_map = {b.name: b.group for b in all_branches}
-
-                    raw_scores = db_session.query(RawScore).filter(RawScore.week.in_(valid_weeks)).all()
-                    subject_scores = {}
+                    # =========================================================================
+                    # [BẢN VÁ LỖI]: ĐẾM ĐIỂM TỐT TOÀN TRƯỜNG VÀ TOP 5 MÔN HỌC
+                    # =========================================================================
                     total_good_points = 0
+                    subject_scores = {}
+
+                    # A. Tính Tổng Điểm Tốt Toàn Trường (Từ bảng WeeklyScore để lấy cả điểm nhập tay)
+                    weekly_scores = db_session.query(WeeklyScore).filter(
+                        WeeklyScore.week.in_(valid_weeks),
+                        WeeklyScore.branch_id.in_(branch_map.keys())
+                    ).all()
+
+                    for sc in weekly_scores:
+                        b_rec = branch_map.get(sc.branch_id)
+                        grp = b_rec.group if b_rec else "Nhóm 1"
+                        
+                        sl_tot = int(sc.count_10 or 0) + int(sc.count_9 or 0)
+                        if "2" in str(grp):
+                            sl_tot += int(sc.count_8 or 0)
+                        total_good_points += sl_tot
+
+                    # B. Tính Top 5 Môn Học (Gắn khóa Y(id) để khớp tuyệt đối với RawScore)
+                    safe_valid_weeks = [f"{w}_Y{active_year.id}" for w in valid_weeks]
+                    raw_scores = db_session.query(RawScore).filter(RawScore.week.in_(safe_valid_weeks)).all()
                     
                     for rs in raw_scores:
-                        subj = rs.subject.strip()
+                        subj = rs.subject.strip().title()
+                        if not subj or subj.lower() in ["khác", "điểm đã nhập"]: continue
+                        
                         b_name = rs.branch_name.strip()
                         c10, c9, c8 = int(rs.c10 or 0), int(rs.c9 or 0), int(rs.c8 or 0)
                         
@@ -8459,10 +8482,11 @@ def school_monthly_analysis():
                         if "1" in str(grp): c8 = 0 
                         
                         points = c10 + c9 + c8
-                        total_good_points += points
-                        subject_scores[subj] = subject_scores.get(subj, 0) + points
+                        if points > 0:
+                            subject_scores[subj] = subject_scores.get(subj, 0) + points
 
                     top_subjects_school = sorted(subject_scores.items(), key=lambda x: x[1], reverse=True)[:5]
+                    # =========================================================================
 
                     analysis_data = {
                         "month_name": selected_month,
@@ -8484,6 +8508,7 @@ def school_monthly_analysis():
         import traceback; traceback.print_exc()
         flash(f"Lỗi tải trang báo cáo toàn trường: {e}", "error")
         return redirect(url_for('dashboard'))
+    
 # =====================================================================
 # API: XEM BẢNG XẾP HẠNG TOÀN TRƯỜNG (HỖ TRỢ TUẦN, THÁNG, HỌC KỲ KÈM CHI TIẾT)
 # =====================================================================
