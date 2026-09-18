@@ -48,9 +48,6 @@
             .glass-card { border-radius: 12px; }
             .table-modern tbody td { padding: 12px 10px !important; font-size: 14px; }
             .table-modern thead th { padding: 12px 10px !important; font-size: 13px; }
-            .filter-container, .search-container { flex-direction: column; align-items: stretch !important; gap: 10px; }
-            .filter-container form { width: 100%; justify-content: space-between;}
-            .search-box { width: 100% !important; }
         }
 
         @media print {
@@ -74,13 +71,20 @@
     
     <div class="container-fluid py-3 py-md-4 px-3 px-xl-5">
         
-        <!-- NÚT QUAY LẠI VÀ XUẤT PDF TRÊN CÙNG -->
-        <div class="d-flex justify-content-between align-items-center mb-3 mb-md-4 no-print">
-            <a href="/dashboard" class="btn btn-light shadow-sm fw-bold d-flex align-items-center justify-content-center" style="border-radius: 10px; color: #475569; padding: 10px 20px; text-decoration: none;">
-                <i class="fa-solid fa-arrow-left me-2"></i> Quay lại
-            </a>
-            <button onclick="window.print()" class="btn btn-danger shadow-sm fw-bold d-flex align-items-center justify-content-center" style="border-radius: 10px; padding: 10px 20px;">
-                <i class="fa-solid fa-file-pdf me-2"></i> <span class="d-none d-md-inline">Xuất file PDF</span>
+        <!-- ==========================================
+             1. HEADER NHỎ GỌN (Tiêu đề + Nút PDF)
+             ========================================== -->
+        <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+            <div class="d-flex align-items-center gap-2">
+                <a href="/bgh/dashboard" class="btn btn-light shadow-sm d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; border-radius: 10px; color: #475569;" title="Quay lại">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </a>
+                <h5 class="fw-bold text-primary m-0" style="font-size: 16px;">
+                    <i class="fa-solid fa-fingerprint me-1"></i> Báo Cáo Điểm Danh
+                </h5>
+            </div>
+            <button class="btn btn-danger btn-sm shadow-sm fw-bold px-3" style="border-radius: 8px;" onclick="window.print()">
+                <i class="fa-solid fa-file-pdf me-1"></i> PDF
             </button>
         </div>
 
@@ -108,43 +112,48 @@
                 </p>
             </div>
 
-            <!-- HEADER WEB -->
-            <div class="p-3 p-md-4 border-bottom bg-white d-flex justify-content-between align-items-center flex-wrap gap-3 no-print filter-container">
-                <div>
-                    <h4 class="fw-bold mb-1" style="color: #0f172a;"><i class="fa-solid fa-fingerprint text-success me-2"></i> Báo Cáo Điểm Danh GVCN</h4>
-                    <p class="text-muted mb-0" style="font-size: 14px;">Hệ thống thống kê tự động số buổi lên lớp sinh hoạt 15 phút.</p>
-                </div>
-                
-                <!-- BỘ LỌC ĐÃ NÂNG CẤP ĐẦY ĐỦ CÁC MỐC -->
-                <form action="/gvcn_attendance_stats" method="GET" class="d-flex gap-2">
-                    <select name="time_mode" class="form-select fw-bold border-secondary" style="width: 140px;" onchange="this.form.submit()">
-                        <option value="week" {% if time_mode == 'week' %}selected{% endif %}>Theo Tuần</option>
-                        <option value="month" {% if time_mode == 'month' %}selected{% endif %}>Theo Tháng</option>
-                        <option value="semester" {% if time_mode == 'semester' %}selected{% endif %}>Theo Học kỳ</option>
-                        <option value="year" {% if time_mode == 'year' %}selected{% endif %}>Theo Năm học</option>
-                    </select>
-                    
-                    <select name="time_value" class="form-select fw-bold text-primary border-primary" style="min-width: 150px; max-width: 250px;" onchange="this.form.submit()">
-                        {% if time_mode == 'week' %}
-                            {% for w in available_weeks %}<option value="{{ w }}" {% if time_value == w %}selected{% endif %}>{{ w }}</option>{% endfor %}
-                        {% elif time_mode == 'month' %}
-                            {% for m in available_months %}<option value="{{ m }}" {% if time_value == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
-                        {% elif time_mode == 'semester' %}
-                            {% for s in available_semesters %}<option value="{{ s }}" {% if time_value == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
-                        {% elif time_mode == 'year' %}
-                            {% for y in available_years %}<option value="{{ y }}" {% if time_value == y %}selected{% endif %}>{{ y }}</option>{% endfor %}
-                        {% endif %}
-                    </select>
-                </form>
-            </div>
+            <!-- ==========================================
+                 2. BẢNG ĐIỀU KHIỂN (Gộp Bộ lọc & Tìm kiếm)
+                 ========================================== -->
+            <div class="card-body p-3 border-bottom bg-white no-print">
+                <form action="/gvcn_attendance_stats" method="GET">
+                    <div class="row g-2">
+                        <!-- Cột 1: Chọn chế độ (Tuần/Tháng/Năm) -->
+                        <div class="col-4">
+                            <select name="time_mode" class="form-select form-select-sm border-0 bg-light fw-bold text-secondary" style="border-radius: 8px; height: 35px;" onchange="this.form.submit()">
+                                <option value="week" {% if time_mode == 'week' %}selected{% endif %}>Theo Tuần</option>
+                                <option value="month" {% if time_mode == 'month' %}selected{% endif %}>Theo Tháng</option>
+                                <option value="semester" {% if time_mode == 'semester' %}selected{% endif %}>Học Kỳ</option>
+                                <option value="year" {% if time_mode == 'year' %}selected{% endif %}>Cả Năm</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Cột 2: Chọn giá trị tương ứng -->
+                        <div class="col-8">
+                            <select name="time_value" class="form-select form-select-sm border-0 bg-light fw-bold text-primary" style="border-radius: 8px; height: 35px;" onchange="this.form.submit()">
+                                {% if time_mode == 'week' %}
+                                    {% for w in available_weeks %}<option value="{{ w }}" {% if time_value == w %}selected{% endif %}>{{ w }}</option>{% endfor %}
+                                {% elif time_mode == 'month' %}
+                                    {% for m in available_months %}<option value="{{ m }}" {% if time_value == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
+                                {% elif time_mode == 'semester' %}
+                                    {% for s in available_semesters %}<option value="{{ s }}" {% if time_value == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+                                {% elif time_mode == 'year' %}
+                                    {% for y in available_years %}<option value="{{ y }}" {% if time_value == y %}selected{% endif %}>{{ y }}</option>{% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
 
-            <!-- THANH TÌM KIẾM GVCN TRỰC TIẾP -->
-            <div class="px-3 px-md-4 py-3 bg-light border-bottom d-flex justify-content-between align-items-center search-container no-print">
-                <span class="fw-bold text-secondary d-none d-md-inline"><i class="fa-solid fa-list me-2"></i>Chi tiết dữ liệu điểm danh</span>
-                <div class="input-group search-box" style="width: 300px;">
-                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
-                    <input type="text" id="searchInput" class="form-control border-start-0 ps-0 fw-bold text-primary" placeholder="Nhập tên GVCN hoặc Lớp..." onkeyup="filterTable()">
-                </div>
+                        <!-- Cột 3: Thanh tìm kiếm nhanh -->
+                        <div class="col-12 mt-2">
+                            <div class="input-group input-group-sm shadow-sm" style="border-radius: 8px;">
+                                <span class="input-group-text border-0 bg-white text-muted" style="border-radius: 8px 0 0 8px;">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                </span>
+                                <input type="text" id="searchInput" class="form-control border-0 bg-white" placeholder="Nhập tên GVCN hoặc Lớp để tìm nhanh..." style="border-radius: 0 8px 8px 0; height: 35px; font-size: 13px;" onkeyup="filterTable()">
+                            </div>
+                        </div>
+                    </div>
+                </form>
             </div>
 
             <!-- BẢNG DỮ LIỆU -->
