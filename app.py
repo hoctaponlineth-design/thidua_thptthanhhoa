@@ -8585,6 +8585,7 @@ def school_semester_analysis():
                                     valid_weeks.update([w.strip() for w in mr.weeks_used.split(',') if w.strip()])
                         
                 valid_weeks = list(valid_weeks)
+                valid_weeks.sort(key=lambda x: int(re.search(r'\d+', str(x)).group()) if re.search(r'\d+', str(x)) else 0)
 
                 if processed_records:
                     top_classes = processed_records[:5] 
@@ -8730,7 +8731,7 @@ def school_yearly_analysis():
                                                 valid_weeks.update([w.strip() for w in mr.weeks_used.split(',') if w.strip()])
                         
                 valid_weeks = list(valid_weeks)
-
+                valid_weeks.sort(key=lambda x: int(re.search(r'\d+', str(x)).group()) if re.search(r'\d+', str(x)) else 0)
                 if processed_records:
                     top_classes = processed_records[:5] 
                     bottom_classes = processed_records[-5:] if len(processed_records) > 5 else [] 
