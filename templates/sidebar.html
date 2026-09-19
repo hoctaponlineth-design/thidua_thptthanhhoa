@@ -124,8 +124,20 @@
         <!-- [NÂNG CẤP]: Nút xem Thống kê điểm danh GVCN -->
         <li><a href="/gvcn_attendance_stats" class="nav-link text-info"><i class="fa-solid fa-fingerprint me-2"></i> K.Tra Điểm Danh GVCN</a></li>
         {% endif %}
-        <!-- BÁO CÁO TOÀN TRƯỜNG -->
-        <li><a href="/school_monthly_analysis" class="nav-link text-warning"><i class="fa-solid fa-building-columns me-2"></i> Đánh giá Toàn Trường</a></li>
+        <!-- BÁO CÁO TOÀN TRƯỜNG (DẠNG DROPDOWN) -->
+        <li class="nav-item">
+            <a class="nav-link text-warning d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#schoolReportMenu">
+                <span><i class="fa-solid fa-building-columns me-2"></i> Đánh giá Toàn Trường</span>
+                <i class="fa-solid fa-chevron-down" style="font-size: 11px;"></i>
+            </a>
+            <div class="collapse ms-3 mt-1" id="schoolReportMenu">
+                <ul class="nav flex-column border-start border-warning ms-2 ps-1">
+                    <li class="nav-item mb-1"><a href="/school_monthly_analysis" class="nav-link py-1 ps-2 text-light" style="font-size: 13px;">Báo cáo Tháng</a></li>
+                    <li class="nav-item mb-1"><a href="/school_semester_analysis" class="nav-link py-1 ps-2 text-light" style="font-size: 13px;">Báo cáo Học kỳ</a></li>
+                    <li class="nav-item mb-1"><a href="/school_yearly_analysis" class="nav-link py-1 ps-2 text-light" style="font-size: 13px;">Tổng kết Năm học</a></li>
+                </ul>
+            </div>
+        </li>
         
         {% if session.get('role') != 'Giáo viên chủ nhiệm' %}
         <li><a href="/templates" class="nav-link"><i class="fa-solid fa-file-word me-2"></i> Biểu mẫu Báo cáo</a></li>
