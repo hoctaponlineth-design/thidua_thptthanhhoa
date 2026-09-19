@@ -634,7 +634,7 @@ def parse_sodaubai():
                         
                 val_vang = str(df.iloc[i, col_vang]).strip()
                 if val_vang and val_vang.lower() != 'nan':
-                    
+                    val_vang = re.sub(r'(?i)vắng\s*(không\s*phép|kp|có\s*phép|cp)?\s*[:\-\(]?\s*0\s*[\)]?\s*(hs|học\s*sinh)?', '', val_vang)
                     # Cắt chuỗi theo dấu phẩy/chấm phẩy để xử lý từng học sinh
                     for p in re.split(r'[,;\n]+', val_vang):
                         p = p.strip()
@@ -697,7 +697,7 @@ def parse_sodaubai():
             # [BẢN VÁ LỖI TỐI THƯỢNG]: Dùng dấu CHẤM PHẨY để tạo vách ngăn giữa các cột
             diem_raw = " ; ".join(row_scores)
             # =========================================================================
-            
+            diem_raw = re.sub(r'(?i)vắng\s*(không\s*phép|kp|có\s*phép|cp)?\s*[:\-\(]?\s*0\s*[\)]?\s*(hs|học\s*sinh)?', '', diem_raw)
             if not diem_raw or 'Ý kiến' in diem_raw or 'BAN GIÁM' in diem_raw:
                 continue
                 
@@ -3120,6 +3120,8 @@ def api_toggle_week_lock():
                         for part in parts:
                             part_clean = part.strip()
                             if not part_clean: continue
+                            if "Vắng: 0" in part_clean.lower() or "vắng 0" in part_clean.lower():
+                                continue
                             
                             stu_name_raw = ""
                             match_stu = re.search(r'\[(.*?)\]', part_clean)
@@ -3365,6 +3367,10 @@ def weekly():
                         for part in parts:
                             part_clean = part.strip()
                             if not part_clean: continue
+                            # ==========================================================
+                            # [KHIÊN BẢO VỆ]: Xóa sổ cụm "Vắng 0" bất chấp nó bị nhân x2, x5
+                            if "Vắng: 0" in part_clean.lower() or "vắng 0" in part_clean.lower():
+                                continue
                             
                             # [VÁ LỖI CỐT LÕI]: Gom nhóm chính xác thẻ ngày [T2] giống hệt App điện thoại
                             match_day = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', part_clean, re.IGNORECASE)
@@ -6190,8 +6196,9 @@ def preview_templates_report():
                     so_diem_tot = calculate_trimmed_good_points_web(db_session, time_val, branch.name, branch.group, max_mon, max_tot) if sc else 0
                     data_list.append({
                         "Chi đoàn": branch.name, "Nhóm": branch.group or "Nhóm 1", "Sĩ số": branch.si_so,
-                        "Điểm Trừ VP": getattr(sc, 'score_tru', 0) if sc else 0, "Số Điểm Tốt": so_diem_tot,
-                        "Tổng Điểm": getattr(sc, 'total_score', 0) if sc else 0,
+                        "Điểm Trừ VP": int(float(getattr(sc, 'score_tru', 0) or 0)), 
+                        "Số Điểm Tốt": int(float(so_diem_tot or 0)),
+                        "Tổng Điểm": int(float(getattr(sc, 'total_score', 0) or 0)),
                         "Giáo viên chủ nhiệm": gvcn_val
                     })
             elif "Báo cáo Tháng" in report_type:
@@ -6211,7 +6218,9 @@ def preview_templates_report():
                                 tong_diem_tot += calculate_trimmed_good_points_web(db_session, w, branch.name, branch.group, max_mon, max_tot)
                         data_list.append({
                             "Chi đoàn": branch.name, "Nhóm": branch.group or "Nhóm 1", "Sĩ số": branch.si_so,
-                            "Điểm Trừ VP": tong_diem_tru, "Số Điểm Tốt": tong_diem_tot, "Tổng Điểm": m_sc.total_score,
+                            "Điểm Trừ VP": int(float(tong_diem_tru or 0)), 
+                            "Số Điểm Tốt": int(float(tong_diem_tot or 0)), 
+                            "Tổng Điểm": int(float(m_sc.total_score or 0)),
                             "Giáo viên chủ nhiệm": gvcn_val
                         })
                     else:
@@ -6236,7 +6245,9 @@ def preview_templates_report():
                         tong_diem_tot = sum(calculate_trimmed_good_points_web(db_session, w, branch.name, branch.group, max_mon, max_tot) for w in target_weeks)
                         data_list.append({
                             "Chi đoàn": branch.name, "Nhóm": branch.group or "Nhóm 1", "Sĩ số": branch.si_so,
-                            "Điểm Trừ VP": tong_diem_tru_vp, "Số Điểm Tốt": tong_diem_tot, "Tổng Điểm": round(tong_diem, 2),
+                            "Điểm Trừ VP": int(float(tong_diem_tru_vp or 0)), 
+                            "Số Điểm Tốt": int(float(tong_diem_tot or 0)), 
+                            "Tổng Điểm": int(float(tong_diem or 0)),
                             "Giáo viên chủ nhiệm": gvcn_val
                         })
                     else:
@@ -6320,8 +6331,9 @@ def export_templates_excel():
                     so_diem_tot = calculate_trimmed_good_points_web(db_session, time_val, branch.name, branch.group, max_mon, max_tot) if sc else 0
                     data_list.append({
                         "Chi đoàn": branch.name, "Nhóm": branch.group or "Nhóm 1", "Sĩ số": branch.si_so,
-                        "Điểm Trừ VP": getattr(sc, 'score_tru', 0) if sc else 0, "Số Điểm Tốt": so_diem_tot,
-                        "Tổng Điểm": getattr(sc, 'total_score', 0) if sc else 0,
+                        "Điểm Trừ VP": int(float(getattr(sc, 'score_tru', 0) or 0)), 
+                        "Số Điểm Tốt": int(float(so_diem_tot or 0)),
+                        "Tổng Điểm": int(float(getattr(sc, 'total_score', 0) or 0)),
                         "Ghi chú VP": getattr(sc, 'note', '') if sc else 'Chưa nhập điểm',
                         "Giáo viên chủ nhiệm": gvcn_val
                     })
@@ -6344,7 +6356,9 @@ def export_templates_excel():
                                 tong_diem_tot += calculate_trimmed_good_points_web(db_session, w, branch.name, branch.group, max_mon, max_tot)
                         data_list.append({
                             "Chi đoàn": branch.name, "Nhóm": branch.group or "Nhóm 1", "Sĩ số": branch.si_so,
-                            "Điểm Trừ VP": tong_diem_tru, "Số Điểm Tốt": tong_diem_tot, "Tổng Điểm": m_sc.total_score,
+                            "Điểm Trừ VP": int(float(tong_diem_tru or 0)), 
+                            "Số Điểm Tốt": int(float(tong_diem_tot or 0)), 
+                            "Tổng Điểm": int(float(m_sc.total_score or 0)),
                             "Ghi chú VP": " | ".join(ghi_chu_gop), "Giáo viên chủ nhiệm": gvcn_val
                         })
                     else:
@@ -6370,7 +6384,9 @@ def export_templates_excel():
                         tong_diem_tot = sum(calculate_trimmed_good_points_web(db_session, w, branch.name, branch.group, max_mon, max_tot) for w in target_weeks)
                         data_list.append({
                             "Chi đoàn": branch.name, "Nhóm": branch.group or "Nhóm 1", "Sĩ số": branch.si_so,
-                            "Điểm Trừ VP": tong_diem_tru_vp, "Số Điểm Tốt": tong_diem_tot, "Tổng Điểm": round(tong_diem, 2),
+                            "Điểm Trừ VP": int(float(tong_diem_tru_vp or 0)), 
+                            "Số Điểm Tốt": int(float(tong_diem_tot or 0)), 
+                            "Tổng Điểm": int(float(tong_diem or 0)),
                             "Ghi chú VP": " | ".join(ghi_chu_gop), "Giáo viên chủ nhiệm": gvcn_val
                         })
                     else:
