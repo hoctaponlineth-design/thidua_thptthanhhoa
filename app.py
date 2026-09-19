@@ -8524,7 +8524,293 @@ def school_monthly_analysis():
         import traceback; traceback.print_exc()
         flash(f"Lỗi tải trang báo cáo toàn trường: {e}", "error")
         return redirect(url_for('dashboard'))
-    
+# =====================================================================
+# MODULE: BÁO CÁO TỔNG QUAN TOÀN TRƯỜNG (HỌC KỲ)
+# =====================================================================
+@app.route('/school_semester_analysis', methods=['GET'])
+def school_semester_analysis():
+    try:
+        with session_scope() as db_session:
+            active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
+            if not active_year:
+                flash("Chưa có năm học kích hoạt!", "error")
+                return redirect(url_for('dashboard'))
+
+            sems_db = db_session.query(MonthlyRecord.month_name).filter(
+                MonthlyRecord.school_year_id == active_year.id,
+                MonthlyRecord.month_name.like('Học kỳ%')
+            ).distinct().all()
+            
+            available_semesters = sorted([m[0] for m in sems_db if m[0]])
+            selected_semester = request.args.get('semester', available_semesters[-1] if available_semesters else "")
+            analysis_data = None
+
+            if selected_semester:
+                # 1. Lấy toàn bộ danh sách Chi đoàn
+                all_branches = db_session.query(Branch).filter_by(school_year_id=active_year.id).all()
+                branch_map = {b.id: b for b in all_branches}
+                branch_group_map = {b.name: b.group for b in all_branches}
+
+                # 2. Lấy tất cả các bản ghi điểm học kỳ đã chốt
+                records = db_session.query(MonthlyRecord).filter(
+                    MonthlyRecord.school_year_id == active_year.id, 
+                    MonthlyRecord.month_name == selected_semester
+                ).order_by(MonthlyRecord.rank).all()
+                
+                processed_records = []
+                valid_weeks = set()
+                
+                for s_rec in records:
+                    b_rec = branch_map.get(s_rec.branch_id)
+                    b_name = str(b_rec.name).strip() if b_rec and b_rec.name else f"Chi đoàn {s_rec.branch_id}"
+                    b_gvcn = str(b_rec.gvcn).strip() if b_rec and b_rec.gvcn else "Chưa cập nhật GVCN"
+
+                    processed_records.append({
+                        "rank": s_rec.rank,
+                        "total_score": round(float(s_rec.total_score or 0), 1),
+                        "branch_name": b_name,
+                        "branch_gvcn": b_gvcn
+                    })
+                    
+                    # Truy ngược từ Học kỳ -> Các Tháng -> Các Tuần
+                    if s_rec.weeks_used:
+                        months_used = [m.strip() for m in s_rec.weeks_used.split(',') if m.strip()]
+                        for m_name in months_used:
+                            m_records = db_session.query(MonthlyRecord).filter(
+                                MonthlyRecord.school_year_id == active_year.id,
+                                MonthlyRecord.month_name == m_name
+                            ).all()
+                            for mr in m_records:
+                                if mr.weeks_used:
+                                    valid_weeks.update([w.strip() for w in mr.weeks_used.split(',') if w.strip()])
+                        
+                valid_weeks = list(valid_weeks)
+
+                if processed_records:
+                    top_classes = processed_records[:5] 
+                    bottom_classes = processed_records[-5:] if len(processed_records) > 5 else [] 
+                    bottom_classes.reverse() 
+
+                    # QUÉT LỖI VI PHẠM (Tính tổng các tuần trong học kỳ)
+                    violations = db_session.query(WeeklyViolation, ViolationCategory).join(
+                        ViolationCategory, WeeklyViolation.violation_id == ViolationCategory.id
+                    ).join(
+                        WeeklyScore, WeeklyViolation.weekly_score_id == WeeklyScore.id
+                    ).filter(WeeklyScore.week.in_(valid_weeks), WeeklyScore.branch_id.in_(branch_map.keys())).all()
+
+                    viol_summary = {}
+                    total_violations = 0
+                    for v, cat in violations:
+                        qty = v.quantity or 1
+                        if getattr(cat, 'point_type', 'Điểm trừ') == 'Điểm trừ':
+                            viol_summary[cat.name] = viol_summary.get(cat.name, 0) + qty
+                            total_violations += qty
+
+                    top_violations_school = sorted(viol_summary.items(), key=lambda x: x[1], reverse=True)[:5] 
+
+                    # ĐẾM ĐIỂM TỐT TOÀN TRƯỜNG VÀ TOP 5 MÔN HỌC
+                    total_good_points = 0
+                    subject_scores = {}
+
+                    weekly_scores = db_session.query(WeeklyScore).filter(
+                        WeeklyScore.week.in_(valid_weeks),
+                        WeeklyScore.branch_id.in_(branch_map.keys())
+                    ).all()
+
+                    for sc in weekly_scores:
+                        b_rec = branch_map.get(sc.branch_id)
+                        grp = b_rec.group if b_rec else "Nhóm 1"
+                        
+                        sl_tot = int(sc.count_10 or 0) + int(sc.count_9 or 0)
+                        if "2" in str(grp):
+                            sl_tot += int(sc.count_8 or 0)
+                        total_good_points += sl_tot
+
+                    safe_valid_weeks = [f"{w}_Y{active_year.id}" for w in valid_weeks]
+                    raw_scores = db_session.query(RawScore).filter(RawScore.week.in_(safe_valid_weeks)).all()
+                    
+                    for rs in raw_scores:
+                        subj = rs.subject.strip().title()
+                        if not subj or subj.lower() in ["khác", "điểm đã nhập"]: continue
+                        
+                        b_name = rs.branch_name.strip()
+                        c10, c9, c8 = int(rs.c10 or 0), int(rs.c9 or 0), int(rs.c8 or 0)
+                        
+                        grp = branch_group_map.get(b_name, "")
+                        if "1" in str(grp): c8 = 0 
+                        
+                        points = c10 + c9 + c8
+                        if points > 0:
+                            subject_scores[subj] = subject_scores.get(subj, 0) + points
+
+                    top_subjects_school = sorted(subject_scores.items(), key=lambda x: x[1], reverse=True)[:5]
+
+                    analysis_data = {
+                        "month_name": selected_semester, # Dùng chung template html nên giữ nguyên key
+                        "weeks_used": ", ".join(valid_weeks),
+                        "top_classes": top_classes,
+                        "bottom_classes": bottom_classes,
+                        "total_violations": total_violations,
+                        "top_violations_school": top_violations_school,
+                        "total_good_points": total_good_points,
+                        "top_subjects_school": top_subjects_school,
+                        "total_classes": len(processed_records)
+                    }
+
+            return render_template('school_monthly_analysis.html', 
+                                   available_months=available_semesters, 
+                                   selected_month=selected_semester, 
+                                   data=analysis_data,
+                                   is_semester=True) # Truyền cờ để giao diện biết đây là form Học kỳ
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        flash(f"Lỗi tải trang báo cáo Học kỳ: {e}", "error")
+        return redirect(url_for('dashboard'))
+
+# =====================================================================
+# MODULE: BÁO CÁO TỔNG QUAN TOÀN TRƯỜNG (CẢ NĂM HỌC)
+# =====================================================================
+@app.route('/school_yearly_analysis', methods=['GET'])
+def school_yearly_analysis():
+    try:
+        with session_scope() as db_session:
+            active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
+            if not active_year:
+                flash("Chưa có năm học kích hoạt!", "error")
+                return redirect(url_for('dashboard'))
+
+            selected_year_name = f"Năm học {active_year.name}"
+            analysis_data = None
+
+            # 1. Lấy toàn bộ danh sách Chi đoàn
+            all_branches = db_session.query(Branch).filter_by(school_year_id=active_year.id).all()
+            branch_map = {b.id: b for b in all_branches}
+            branch_group_map = {b.name: b.group for b in all_branches}
+
+            # 2. Lấy tất cả các bản ghi điểm năm học đã chốt
+            records = db_session.query(MonthlyRecord).filter(
+                MonthlyRecord.school_year_id == active_year.id, 
+                MonthlyRecord.month_name == selected_year_name
+            ).order_by(MonthlyRecord.rank).all()
+            
+            processed_records = []
+            valid_weeks = set()
+            
+            if records:
+                for y_rec in records:
+                    b_rec = branch_map.get(y_rec.branch_id)
+                    b_name = str(b_rec.name).strip() if b_rec and b_rec.name else f"Chi đoàn {y_rec.branch_id}"
+                    b_gvcn = str(b_rec.gvcn).strip() if b_rec and b_rec.gvcn else "Chưa cập nhật GVCN"
+
+                    processed_records.append({
+                        "rank": y_rec.rank,
+                        "total_score": round(float(y_rec.total_score or 0), 1),
+                        "branch_name": b_name,
+                        "branch_gvcn": b_gvcn
+                    })
+                    
+                    # Truy ngược từ Năm học -> Học kỳ -> Tháng -> Tuần
+                    if y_rec.weeks_used:
+                        sems_used = [s.strip() for s in y_rec.weeks_used.split(',') if s.strip()]
+                        for s_name in sems_used:
+                            s_records = db_session.query(MonthlyRecord).filter(
+                                MonthlyRecord.school_year_id == active_year.id,
+                                MonthlyRecord.month_name == s_name
+                            ).all()
+                            for sr in s_records:
+                                if sr.weeks_used:
+                                    months_used = [m.strip() for m in sr.weeks_used.split(',') if m.strip()]
+                                    for m_name in months_used:
+                                        m_records = db_session.query(MonthlyRecord).filter(
+                                            MonthlyRecord.school_year_id == active_year.id,
+                                            MonthlyRecord.month_name == m_name
+                                        ).all()
+                                        for mr in m_records:
+                                            if mr.weeks_used:
+                                                valid_weeks.update([w.strip() for w in mr.weeks_used.split(',') if w.strip()])
+                        
+                valid_weeks = list(valid_weeks)
+
+                if processed_records:
+                    top_classes = processed_records[:5] 
+                    bottom_classes = processed_records[-5:] if len(processed_records) > 5 else [] 
+                    bottom_classes.reverse() 
+
+                    # QUÉT LỖI VI PHẠM CẢ NĂM
+                    violations = db_session.query(WeeklyViolation, ViolationCategory).join(
+                        ViolationCategory, WeeklyViolation.violation_id == ViolationCategory.id
+                    ).join(
+                        WeeklyScore, WeeklyViolation.weekly_score_id == WeeklyScore.id
+                    ).filter(WeeklyScore.week.in_(valid_weeks), WeeklyScore.branch_id.in_(branch_map.keys())).all()
+
+                    viol_summary = {}
+                    total_violations = 0
+                    for v, cat in violations:
+                        qty = v.quantity or 1
+                        if getattr(cat, 'point_type', 'Điểm trừ') == 'Điểm trừ':
+                            viol_summary[cat.name] = viol_summary.get(cat.name, 0) + qty
+                            total_violations += qty
+
+                    top_violations_school = sorted(viol_summary.items(), key=lambda x: x[1], reverse=True)[:5] 
+
+                    # ĐẾM ĐIỂM TỐT TOÀN TRƯỜNG VÀ TOP 5 MÔN HỌC
+                    total_good_points = 0
+                    subject_scores = {}
+
+                    weekly_scores = db_session.query(WeeklyScore).filter(
+                        WeeklyScore.week.in_(valid_weeks),
+                        WeeklyScore.branch_id.in_(branch_map.keys())
+                    ).all()
+
+                    for sc in weekly_scores:
+                        b_rec = branch_map.get(sc.branch_id)
+                        grp = b_rec.group if b_rec else "Nhóm 1"
+                        
+                        sl_tot = int(sc.count_10 or 0) + int(sc.count_9 or 0)
+                        if "2" in str(grp):
+                            sl_tot += int(sc.count_8 or 0)
+                        total_good_points += sl_tot
+
+                    safe_valid_weeks = [f"{w}_Y{active_year.id}" for w in valid_weeks]
+                    raw_scores = db_session.query(RawScore).filter(RawScore.week.in_(safe_valid_weeks)).all()
+                    
+                    for rs in raw_scores:
+                        subj = rs.subject.strip().title()
+                        if not subj or subj.lower() in ["khác", "điểm đã nhập"]: continue
+                        
+                        b_name = rs.branch_name.strip()
+                        c10, c9, c8 = int(rs.c10 or 0), int(rs.c9 or 0), int(rs.c8 or 0)
+                        
+                        grp = branch_group_map.get(b_name, "")
+                        if "1" in str(grp): c8 = 0 
+                        
+                        points = c10 + c9 + c8
+                        if points > 0:
+                            subject_scores[subj] = subject_scores.get(subj, 0) + points
+
+                    top_subjects_school = sorted(subject_scores.items(), key=lambda x: x[1], reverse=True)[:5]
+
+                    analysis_data = {
+                        "month_name": selected_year_name,
+                        "weeks_used": ", ".join(valid_weeks),
+                        "top_classes": top_classes,
+                        "bottom_classes": bottom_classes,
+                        "total_violations": total_violations,
+                        "top_violations_school": top_violations_school,
+                        "total_good_points": total_good_points,
+                        "top_subjects_school": top_subjects_school,
+                        "total_classes": len(processed_records)
+                    }
+
+            return render_template('school_monthly_analysis.html', 
+                                   available_months=[selected_year_name], 
+                                   selected_month=selected_year_name, 
+                                   data=analysis_data,
+                                   is_yearly=True) # Truyền cờ để giao diện biết đây là form Năm học
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        flash(f"Lỗi tải trang tổng kết năm học: {e}", "error")
+        return redirect(url_for('dashboard'))    
 # =====================================================================
 # API: XEM BẢNG XẾP HẠNG TOÀN TRƯỜNG (HỖ TRỢ TUẦN, THÁNG, HỌC KỲ KÈM CHI TIẾT)
 # =====================================================================
