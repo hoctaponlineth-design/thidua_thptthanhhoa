@@ -4497,7 +4497,11 @@ def class_dashboard():
                 selected_branch = db_session.query(Branch).filter_by(id=selected_branch_id).first()
                 if selected_branch:
                     group_val = selected_branch.group or "Nhóm 1"
-                    weekly_scores_db = db_session.query(WeeklyScore).filter_by(branch_id=selected_branch.id).order_by(WeeklyScore.id.desc()).all()
+                    
+                    # [VÁ LỖI]: Lấy dữ liệu và sắp xếp theo số Tuần giảm dần (Tuần mới nhất lên đầu)
+                    weekly_scores_db = db_session.query(WeeklyScore).filter_by(branch_id=selected_branch.id).all()
+                    import re
+                    weekly_scores_db.sort(key=lambda x: int(re.search(r'\d+', str(x.week)).group()) if x.week and re.search(r'\d+', str(x.week)) else 0, reverse=True)
                     
                     if weekly_scores_db:
                         for score in reversed(weekly_scores_db):
