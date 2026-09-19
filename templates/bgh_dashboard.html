@@ -315,7 +315,7 @@
                                 </a>
                                 <small class="text-muted">GVCN: {{ wc.class.gvcn }}</small>
                             </div>
-                            <span class="badge bg-danger fs-6 px-3 py-2">{{ wc.class.total_score }}đ</span>
+                            <span class="badge bg-danger fs-6 px-3 py-2">{{ wc.class.total_score | float | int }}đ</span>
                         </div>
                         {% else %}
                         <p class="text-muted fst-italic">Không có lớp nào dưới chuẩn cảnh báo.</p>
@@ -385,8 +385,8 @@
                                             </td>
                                             <td class="fw-bold text-primary">Lớp {{ row.branch_name }}</td>
                                             <td class="small text-muted">{{ row.gvcn }}</td>
-                                            <td class="text-danger fw-bold">-{{ row.score_tru }}đ</td>
-                                            <td class="text-end pe-4 fw-bold text-dark fs-6">{{ row.total_score }}đ</td>
+											<td class="text-danger fw-bold">-{{ row.score_tru | float | int }}đ</td>
+											<td class="text-end pe-4 fw-bold text-dark fs-6">{{ row.total_score | float | int }}đ</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
