@@ -153,10 +153,10 @@
                             <td class="text-center fw-bold text-muted">{{ loop.index }}</td>
                             <td class="text-center fw-bold text-primary">{{ row['Chi đoàn'] }}</td>
                             <td class="text-center">{{ row['Sĩ số'] }}</td>
-                            <td class="text-center text-danger fw-bold">{{ row['Điểm Trừ VP'] }}</td>
-                            <td class="text-center text-success fw-bold">{{ row['Số Điểm Tốt'] }}</td>
-                            <td class="text-center fw-bold" style="color: #6f42c1;">{{ row['Hạng'] if 'Hạng' in row else '-' }}</td>
-                            <td class="text-center fw-bold text-dark bg-light">{{ row['Tổng Điểm'] }}</td>
+							<td class="text-center text-danger fw-bold">{{ row['Điểm Trừ VP'] | float | int }}</td>
+							<td class="text-center text-success fw-bold">{{ row['Số Điểm Tốt'] | float | int }}</td>
+							<td class="text-center fw-bold" style="color: #6f42c1;">{{ row['Hạng'] if 'Hạng' in row else '-' }}</td>
+							<td class="text-center fw-bold text-dark bg-light">{{ row['Tổng Điểm'] | float | int }}</td>
                             <td class="text-center"><span class="badge bg-secondary">{{ row['Xếp loại'] }}</span></td>
                             <td class="text-start small">{{ row['Ghi chú VP'] }}</td>
                             <td class="text-start">{{ row['Giáo viên chủ nhiệm'] }}</td>
