@@ -3086,7 +3086,7 @@ def star_ranking(report_type):
         return redirect(url_for('dashboard'))
 
 # ==========================================
-# API: KIỂM TRA VÀ ĐỔI TRẠNG THÁI KHÓA SỔ TUẦN
+# API: KIỂM TRA VÀ ĐỔI TRẠNG THÁI KHÓA SỔ TUẦN (ĐÃ VÁ LỖI BẢO TOÀN TÊN HỌC SINH SỔ ĐEN)
 # ==========================================
 @app.route('/api/toggle_week_lock', methods=['POST'])
 def api_toggle_week_lock():
@@ -3110,7 +3110,6 @@ def api_toggle_week_lock():
             for s in scores:
                 if new_status == True and not s.is_locked: # Chỉ kích hoạt gộp lỗi khi Khóa sổ
                     if s.note:
-                       
                         all_categories = db_session.query(ViolationCategory).filter_by(school_year_id=s.branch.school_year_id).all()
                         sorted_cats = sorted(all_categories, key=lambda x: len(x.name), reverse=True)
                         parsed_errors = {}
@@ -3149,14 +3148,39 @@ def api_toggle_week_lock():
                                 parsed_errors[("MANUAL", part_clean.lower(), part_clean)] = 1
                                 
                         final_parts = []
+                        
+                        # =========================================================================
+                        # [BỔ SUNG QUAN TRỌNG]: Xóa và tái tạo lại bảng WeeklyViolation cá nhân
+                        # Để Sổ đen luôn đồng bộ 100% tên học sinh, không bị xóa mất sau khi chốt sổ
+                        # =========================================================================
+                        db_session.query(WeeklyViolation).filter_by(weekly_score_id=s.id).delete()
+                        
                         for (cat_name, stu_key, stu_display), qty in parsed_errors.items():
                             if cat_name == "MANUAL":
                                 final_parts.append(stu_display)
                             else:
                                 if stu_display: 
                                     final_parts.append(f"{cat_name} x{qty} [{stu_display}]")
+                                    
+                                    # Đẩy ngược dữ liệu chuẩn xác vào Sổ đen cá nhân
+                                    cat_obj = next((c for c in all_categories if c.name == cat_name), None)
+                                    if cat_obj and getattr(cat_obj, 'point_type', 'Điểm trừ') != 'Điểm cộng':
+                                        db_session.add(WeeklyViolation(
+                                            weekly_score_id=s.id,
+                                            violation_id=cat_obj.id,
+                                            quantity=qty,
+                                            student_name=stu_display
+                                        ))
                                 else: 
                                     final_parts.append(f"{cat_name} x{qty}")
+                                    cat_obj = next((c for c in all_categories if c.name == cat_name), None)
+                                    if cat_obj and getattr(cat_obj, 'point_type', 'Điểm trừ') != 'Điểm cộng':
+                                        db_session.add(WeeklyViolation(
+                                            weekly_score_id=s.id,
+                                            violation_id=cat_obj.id,
+                                            quantity=qty,
+                                            student_name=None
+                                        ))
                                 
                         s.note = " ; ".join(final_parts)
                 
