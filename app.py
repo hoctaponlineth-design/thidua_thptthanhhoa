@@ -1179,15 +1179,20 @@ def dashboard():
                     chart_labels = [item[0] for item in top_10]
                     chart_data = [round(float(item[1]), 1) if item[1] is not None else 0.0 for item in top_10]
 
-                    # --- THUẬT TOÁN QUÉT SỔ ĐEN TOÀN TRƯỜNG (CHỈ XÉT TUẦN HIỆN TẠI) ---
-                    all_scores_current_week = db_session.query(WeeklyScore).join(Branch).filter(
-                        WeeklyScore.week == current_week,
+                    # --- THUẬT TOÁN QUÉT SỔ ĐEN TOÀN TRƯỜNG (CỘNG DỒN TỪ ĐẦU NĂM & BỎ QUA ẢNH MINH CHỨNG) ---
+                    all_scores_year = db_session.query(WeeklyScore).join(Branch).filter(
                         Branch.school_year_id == active_year.id
                     ).all()
                     
-                    for score in all_scores_current_week:
-                        student_viol_counts = {}
+                    student_viol_counts = {} # ĐƯA BỘ ĐẾM RA NGOÀI ĐỂ CỘNG DỒN XUYÊN TUẦN
+                    
+                    for score in all_scores_year:
                         for viol in score.violations:
+                            # [KHIÊN BẢO VỆ]: Bỏ qua lỗi mang tên "Ảnh minh chứng"
+                            cat = db_session.query(ViolationCategory).filter_by(id=viol.violation_id).first()
+                            if cat and "ảnh minh chứng" in cat.name.lower():
+                                continue
+
                             if viol.student_name and str(viol.student_name).strip() != "":
                                 raw_names = str(viol.student_name).replace(';', ',').split(',')
                                 names = [n.strip().upper() for n in raw_names if n.strip()]
@@ -1198,16 +1203,24 @@ def dashboard():
                                 qty_per_student = max(1, total_qty // num_names) if num_names > 0 else total_qty
                                 
                                 for name in names:
-                                    student_viol_counts[name] = student_viol_counts.get(name, 0) + qty_per_student
+                                    # Gộp khóa bằng Tên Lớp + Tên Học sinh để phân biệt các lớp trùng tên HS
+                                    key = (score.branch.name, name.title())
+                                    student_viol_counts[key] = student_viol_counts.get(key, 0) + qty_per_student
                         
-                        # Nếu ai >= 3 lỗi, ném ngay ra bảng phong thần
-                        for name, count in student_viol_counts.items():
-                            if count >= 3:
-                                global_warnings.append({
-                                    'branch_name': score.branch.name,
-                                    'student_name': name.title(),
-                                    'count': count
-                                })
+                    # Nếu ai >= 3 lỗi, ném ngay ra bảng phong thần
+                    for (b_name, s_name), count in student_viol_counts.items():
+                        if count >= 3:
+                            # Cấp huy hiệu theo mức độ vi phạm
+                            badge_class = "danger" if count >= 5 else "warning text-dark"
+                            badge_label = "Báo Động Đỏ" if count >= 5 else "Cảnh Báo Vàng"
+                            
+                            global_warnings.append({
+                                'branch_name': b_name,
+                                'student_name': s_name,
+                                'count': count,
+                                'badge_class': badge_class,
+                                'badge_label': badge_label
+                            })
                     
                     # Xếp người vi phạm nhiều nhất lên đầu
                     global_warnings.sort(key=lambda x: x['count'], reverse=True)
@@ -1224,7 +1237,7 @@ def dashboard():
                             'branch_name': p.branch.name,
                             'week': p.week, 
                             'reason': p.appeal_reason,
-                            'note': p.note  # <--- BỔ SUNG DÒNG NÀY ĐỂ KÉO DỮ LIỆU RA CHECKBOX BGH
+                            'note': p.note  # <--- DÒNG KÉO DỮ LIỆU BGH VẪN ĐƯỢC GIỮ NGUYÊN
                         })
 
             return render_template(
@@ -4534,7 +4547,7 @@ def class_dashboard():
                     branches = db_session.query(Branch).filter(Branch.school_year_id == active_year.id).all()
                     
                     # [THUẬT TOÁN SẮP XẾP TỰ NHIÊN - NATURAL SORT]
-                    
+                    import re
                     branches.sort(key=lambda b: [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', str(b.name))])
                     
             selected_branch_id = request.args.get('branch_id', type=int)
@@ -4571,10 +4584,18 @@ def class_dashboard():
                     import re
                     weekly_scores_db.sort(key=lambda x: int(re.search(r'\d+', str(x.week)).group()) if x.week and re.search(r'\d+', str(x.week)) else 0, reverse=True)
                     
+                    # =========================================================================
+                    # [BẢN VÁ THUẬT TOÁN BÁO ĐỘNG]: CỘNG DỒN TỪ ĐẦU NĂM & BỎ QUA "ẢNH MINH CHỨNG"
+                    # =========================================================================
                     if weekly_scores_db:
-                        for score in reversed(weekly_scores_db):
-                            student_viol_counts = {}
+                        student_viol_counts = {} # Đưa bộ đếm ra ngoài vòng lặp tuần để cộng dồn
+                        for score in weekly_scores_db:
                             for viol in score.violations:
+                                # [KHIÊN BẢO VỆ]: Bỏ qua lỗi có tên "Ảnh minh chứng"
+                                cat = db_session.query(ViolationCategory).filter_by(id=viol.violation_id).first()
+                                if cat and "ảnh minh chứng" in cat.name.lower():
+                                    continue
+
                                 if viol.student_name and str(viol.student_name).strip() != "":
                                     raw_names = str(viol.student_name).replace(';', ',').split(',')
                                     names = [n.strip().upper() for n in raw_names if n.strip()]
@@ -4586,12 +4607,26 @@ def class_dashboard():
                                     
                                     for name in names:
                                         student_viol_counts[name] = student_viol_counts.get(name, 0) + qty_per_student
-                            
-                            current_warnings = [{'name': name.title(), 'count': count, 'week': score.week} 
-                                                for name, count in student_viol_counts.items() if count >= 3]
-                            if current_warnings:
-                                warning_students = sorted(current_warnings, key=lambda x: x['count'], reverse=True)
-                                break
+                        
+                        # Phân loại mức độ vi phạm cho lớp
+                        for name, count in student_viol_counts.items():
+                            if count >= 3:
+                                if count >= 5:
+                                    badge_class = "danger"
+                                    badge_label = "Báo Động Đỏ"
+                                else:
+                                    badge_class = "warning text-dark"
+                                    badge_label = "Cảnh Báo Vàng"
+                                    
+                                warning_students.append({
+                                    'name': name.title(),
+                                    'count': count,
+                                    'badge_class': badge_class,
+                                    'badge_label': badge_label
+                                })
+                        
+                        warning_students.sort(key=lambda x: x['count'], reverse=True)
+                    # =========================================================================
                     
                     # [BẢN VÁ MÚI GIỜ]: Ép giờ VN để khóa số lượt gửi phúc khảo trong ngày
                     from datetime import datetime, timezone, timedelta
