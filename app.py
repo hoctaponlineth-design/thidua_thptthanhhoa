@@ -3583,29 +3583,47 @@ def save_settings():
         
     return redirect(request.referrer or url_for('weekly'))    
 # ==========================================
-# MODULE TẠO FILE EXCEL SỔ ĐEN
+# MODULE TẠO FILE EXCEL SỔ ĐEN (ĐÃ NÂNG CẤP TỔNG HỢP TOÀN TRƯỜNG)
 # ==========================================
 @app.route('/preview_blacklist')
 def preview_blacklist():
     try:
         with session_scope() as db_session:
-            week_name = request.args.get('week', 'Tuần 1')
+            # Lấy bộ lọc thời gian (Mặc định là Cả năm học)
+            time_filter = request.args.get('time_filter', 'Cả năm')
             active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
             
             if not active_year:
                 flash("Chưa có năm học nào được kích hoạt!", "error")
-                return redirect(url_for('weekly', week=week_name))
+                return redirect(url_for('dashboard'))
+            
+            # --- XÁC ĐỊNH DANH SÁCH TUẦN CẦN LỌC ---
+            valid_weeks = []
+            if time_filter == 'Cả năm':
+                weeks_db = db_session.query(WeeklyScore.week).join(Branch).filter(Branch.school_year_id == active_year.id).distinct().all()
+                valid_weeks = [w[0] for w in weeks_db]
+            elif time_filter.startswith('Tháng') or time_filter.startswith('Học kỳ'):
+                time_rec = db_session.query(MonthlyRecord).filter_by(school_year_id=active_year.id, month_name=time_filter).first()
+                if time_rec and time_rec.weeks_used:
+                    valid_weeks = [w.strip() for w in time_rec.weeks_used.split(',') if w.strip()]
+            else:
+                valid_weeks = [time_filter] # Lọc theo 1 Tuần đơn lẻ
                 
+            if not valid_weeks:
+                valid_weeks = ['_NO_DATA_']
+
+            # --- TRUY VẤN TOÀN BỘ LỖI TRONG CÁC TUẦN ĐÃ CHỌN ---
             raw_violations = db_session.query(WeeklyViolation, WeeklyScore, Branch, ViolationCategory)\
                 .join(WeeklyScore, WeeklyViolation.weekly_score_id == WeeklyScore.id)\
                 .join(Branch, WeeklyScore.branch_id == Branch.id)\
                 .join(ViolationCategory, WeeklyViolation.violation_id == ViolationCategory.id)\
                 .filter(
-                    WeeklyScore.week == week_name, 
+                    WeeklyScore.week.in_(valid_weeks), 
                     Branch.school_year_id == active_year.id
                 ).all()
                 
-            violations = []
+            # [THUẬT TOÁN TỔNG HỢP]: Dùng Dictionary để cộng dồn lỗi trùng lặp của cùng 1 học sinh
+            summary_dict = {}
             
             for v, s, b, c in raw_violations:
                 if v.student_name and str(v.student_name).strip() != "":
@@ -3613,85 +3631,108 @@ def preview_blacklist():
                     valid_names = [n.strip().title() for n in raw_names if n.strip()]
                     num_names = len(valid_names)
                     
-                    # [THUẬT TOÁN CHIA ĐỀU LỖI CHO SỐ LƯỢNG HỌC SINH]
+                    # Chia đều lỗi nếu ghi chùm (VD: 3 em cùng vắng học -> Mỗi em 1 lỗi)
                     qty_per_student = max(1, v.quantity // num_names) if num_names > 0 else v.quantity
                     
                     for n_clean in valid_names:
-                        violations.append({
-                            'branch_name': b.name,
-                            'student_name': n_clean,
-                            'violation_name': c.name,
-                            'quantity': qty_per_student
-                        })
+                        # Chìa khóa gom nhóm: (Tên Lớp, Tên Học Sinh, Tên Lỗi)
+                        key = (b.name, n_clean, c.name)
+                        # Cộng dồn số lần vi phạm
+                        summary_dict[key] = summary_dict.get(key, 0) + qty_per_student
+            
+            # Đóng gói lại thành List để gửi ra giao diện
+            violations = []
+            for (b_name, stu_name, vio_name), total_qty in summary_dict.items():
+                violations.append({
+                    'branch_name': b_name,
+                    'student_name': stu_name,
+                    'violation_name': vio_name,
+                    'quantity': total_qty
+                })
                     
-            # Sắp xếp danh sách vi phạm theo tên Chi đoàn (từ A-Z)
-            violations.sort(key=lambda x: x['branch_name'])
-                
-            return render_template('preview_blacklist.html', violations=violations, week_name=week_name)
+            # Sắp xếp danh sách vi phạm: Ưu tiên Tên Lớp -> Số lần vi phạm nhiều nhất lên đầu
+            violations.sort(key=lambda x: (x['branch_name'], -x['quantity']))
+            
+            # Tạo danh sách các mốc thời gian để làm Dropdown chọn bộ lọc trên giao diện
+            time_options = ['Cả năm']
+            sems = db_session.query(MonthlyRecord.month_name).filter(MonthlyRecord.school_year_id == active_year.id, MonthlyRecord.month_name.like('Học kỳ%')).distinct().all()
+            months = db_session.query(MonthlyRecord.month_name).filter(MonthlyRecord.school_year_id == active_year.id, MonthlyRecord.month_name.like('Tháng%')).distinct().all()
+            weeks = db_session.query(WeeklyScore.week).join(Branch).filter(Branch.school_year_id == active_year.id).distinct().all()
+            
+            import re
+            time_options.extend(sorted([s[0] for s in sems]))
+            time_options.extend(sorted([m[0] for m in months]))
+            time_options.extend(sorted([w[0] for w in weeks], key=lambda x: int(re.search(r'\d+', x).group()) if re.search(r'\d+', x) else 0, reverse=True))
+
+            return render_template('preview_blacklist.html', violations=violations, time_filter=time_filter, time_options=time_options)
     except Exception as e:
+        import traceback; traceback.print_exc()
         flash(f"Lỗi xem trước sổ đen: {str(e)}", "error")
-        return redirect(url_for('weekly'))
+        return redirect(url_for('dashboard'))
     
 @app.route('/export_blacklist', methods=['GET', 'POST'])
 def export_blacklist():
     try:
         with session_scope() as db_session:
-            week_name = request.args.get('week', 'Tuần 1')
+            # Nhận lệnh linh hoạt từ cả GET (nút nhấn) và POST (Form)
+            time_filter = request.values.get('time_filter', 'Cả năm')
             active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
             
             if not active_year:
                 flash("Chưa có năm học nào được kích hoạt!", "error")
-                return redirect(url_for('weekly', week=week_name))
+                return redirect(url_for('dashboard'))
                 
+            valid_weeks = []
+            if time_filter == 'Cả năm':
+                weeks_db = db_session.query(WeeklyScore.week).join(Branch).filter(Branch.school_year_id == active_year.id).distinct().all()
+                valid_weeks = [w[0] for w in weeks_db]
+            elif time_filter.startswith('Tháng') or time_filter.startswith('Học kỳ'):
+                time_rec = db_session.query(MonthlyRecord).filter_by(school_year_id=active_year.id, month_name=time_filter).first()
+                if time_rec and time_rec.weeks_used:
+                    valid_weeks = [w.strip() for w in time_rec.weeks_used.split(',') if w.strip()]
+            else:
+                valid_weeks = [time_filter]
+                
+            if not valid_weeks: valid_weeks = ['_NO_DATA_']
+
             raw_violations = db_session.query(WeeklyViolation, WeeklyScore, Branch, ViolationCategory)\
                 .join(WeeklyScore, WeeklyViolation.weekly_score_id == WeeklyScore.id)\
                 .join(Branch, WeeklyScore.branch_id == Branch.id)\
                 .join(ViolationCategory, WeeklyViolation.violation_id == ViolationCategory.id)\
-                .filter(
-                    WeeklyScore.week == week_name, 
-                    Branch.school_year_id == active_year.id
-                ).all()
+                .filter(WeeklyScore.week.in_(valid_weeks), Branch.school_year_id == active_year.id).all()
                 
+            summary_dict = {}
+            for v, sc, b, c in raw_violations:
+                if v.student_name and str(v.student_name).strip() != "":
+                    raw_names = str(v.student_name).replace(';', ',').split(',')
+                    valid_names = [n.strip().title() for n in raw_names if n.strip()]
+                    num_names = len(valid_names)
+                    qty_per_student = max(1, v.quantity // num_names) if num_names > 0 else v.quantity
+                    for n_clean in valid_names:
+                        key = (b.name, n_clean, c.name)
+                        summary_dict[key] = summary_dict.get(key, 0) + qty_per_student
+            
             violations = []
-            for v, sc, b, c in results:
-                raw_names = str(v.student_name).replace(';', ',').split(',')
-                valid_names = [n.strip().title() for n in raw_names if n.strip()]
-                num_names = len(valid_names)
-                
-                # [THUẬT TOÁN CHIA ĐỀU LỖI VÀ ĐIỂM TRỪ]
-                qty_per_student = max(1, v.quantity // num_names) if num_names > 0 else v.quantity
-                
-                for n_clean in valid_names:
-                    if search_name and search_name.lower() not in n_clean.lower():
-                        continue
-                        
-                    violation_data.append({
-                        'week': sc.week,
-                        'branch_name': b.name,
-                        'student_name': n_clean,
-                        'violation_name': c.name,
-                        'quantity': qty_per_student,
-                        'penalty': float(c.penalty_points * qty_per_student) if getattr(c, 'point_type', 'Điểm trừ') != 'Điểm cộng' else 0
-                    })
-                    
-            violations.sort(key=lambda x: x['branch_name'])
+            for (b_name, stu_name, vio_name), total_qty in summary_dict.items():
+                violations.append({'branch_name': b_name, 'student_name': stu_name, 'violation_name': vio_name, 'quantity': total_qty})
+            violations.sort(key=lambda x: (x['branch_name'], -x['quantity']))
                 
             if not violations:
-                flash(f"Tuyệt vời! Trong {week_name} không có cá nhân nào bị ghi tên vi phạm vào Sổ đen.", "success")
-                return redirect(url_for('weekly', week=week_name))
+                flash(f"Tuyệt vời! Không có dữ liệu vi phạm nào trong {time_filter}.", "success")
+                return redirect(url_for('preview_blacklist', time_filter=time_filter))
                 
             wb = openpyxl.Workbook()
             ws = wb.active
-            ws.title = f"So_Den_{week_name}"
+            ws.title = "So_Den_Toan_Truong"
             
             ws['A1'] = "ĐOÀN TRƯỜNG THPT THANH HÒA"
             ws['A1'].font = Font(name="Times New Roman", size=11, bold=True)
-            ws['A3'] = f"TRÍCH LỤC SỔ ĐEN (CÁ NHÂN VI PHẠM) - {week_name.upper()}"
+            ws['A3'] = f"TỔNG HỢP HỒ SƠ CÁ BIỆT (SỔ ĐEN) - {time_filter.upper()}"
             ws['A3'].font = Font(name="Times New Roman", size=14, bold=True)
             ws['A3'].alignment = Alignment(horizontal="center")
             ws.merge_cells('A3:E3')
             
-            headers = ["STT", "Chi đoàn", "Họ và Tên Học Sinh", "Lỗi Vi Phạm", "Số Lần"]
+            headers = ["STT", "Chi đoàn", "Họ và Tên Học Sinh", "Lỗi Vi Phạm", "Tổng Số Lần"]
             thin = Side(border_style="thin", color="000000")
             border = Border(left=thin, right=thin, top=thin, bottom=thin)
             
@@ -3701,7 +3742,6 @@ def export_blacklist():
                 c.alignment = Alignment(horizontal="center", vertical="center")
                 c.border = border
                 
-            # THAY BẰNG ĐOẠN MỚI NÀY:
             for idx, item in enumerate(violations, 1):
                 row_idx = idx + 5
                 c1 = ws.cell(row=row_idx, column=1, value=idx)
@@ -3716,24 +3756,28 @@ def export_blacklist():
                 c1.alignment = Alignment(horizontal="center")
                 c2.alignment = Alignment(horizontal="center")
                 c5.alignment = Alignment(horizontal="center")
+
+                # Điểm nhấn: Bôi đỏ học sinh vi phạm từ 3 lần trở lên
+                if item['quantity'] >= 3:
+                    c5.font = Font(name="Times New Roman", size=11, bold=True, color="FF0000")
+                    c3.font = Font(name="Times New Roman", size=11, bold=True, color="FF0000")
                 
             ws.column_dimensions['A'].width = 6
             ws.column_dimensions['B'].width = 12
             ws.column_dimensions['C'].width = 25
             ws.column_dimensions['D'].width = 30
-            ws.column_dimensions['E'].width = 10
+            ws.column_dimensions['E'].width = 15
             
-            log_system_action("XUẤT EXCEL", f"Xuất Sổ đen Vi phạm {week_name}")
+            log_system_action("XUẤT EXCEL", f"Xuất Sổ đen Toàn trường - {time_filter}")
             out = io.BytesIO()
             wb.save(out)
             out.seek(0)
             
-            return send_file(out, download_name=f"So_Den_{week_name.replace(' ', '_')}.xlsx", as_attachment=True)
+            return send_file(out, download_name=f"So_Den_{time_filter.replace(' ', '_')}.xlsx", as_attachment=True)
     except Exception as e:
-        import traceback
-        print(traceback.format_exc()) 
+        import traceback; traceback.print_exc() 
         flash(f"Lỗi xuất sổ đen: {str(e)}", "error")
-        return redirect(url_for('weekly'))
+        return redirect(url_for('preview_blacklist'))
 
 # ==========================================
 # MODULE: QUẢN LÝ NGÂN HÀNG LỖI
