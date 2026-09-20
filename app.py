@@ -9751,6 +9751,196 @@ def reset_system_data():
         
     return redirect(url_for('school_years'))
 
+# =====================================================================
+# MODULE: HỒ SƠ CHỦ NHIỆM (XEM TRƯỚC VÀ XUẤT EXCEL) - Dành riêng Admin
+# =====================================================================
+@app.route('/homeroom_portfolio', methods=['GET', 'POST'])
+def homeroom_portfolio():
+    if session.get('role') not in ['Quản trị viên', 'Admin', 'Bí thư Đoàn trường', 'Bí thư']:
+        flash("⛔ Từ chối truy cập: Chỉ Quản trị viên mới được sử dụng chức năng này!", "error")
+        return redirect(url_for('dashboard'))
+
+    try:
+        with session_scope() as db_session:
+            active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
+            if not active_year:
+                flash("Chưa có năm học kích hoạt!", "error")
+                return redirect(url_for('dashboard'))
+
+            branches = db_session.query(Branch).filter_by(school_year_id=active_year.id).order_by(Branch.name).all()
+            
+            # Lấy danh sách Tháng
+            months_db = db_session.query(MonthlyRecord.month_name).filter(
+                MonthlyRecord.school_year_id == active_year.id, MonthlyRecord.month_name.like('Tháng%')
+            ).distinct().all()
+            school_order = ["Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12", "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5"]
+            available_months = sorted([m[0] for m in months_db if m[0]], key=lambda x: school_order.index(x) if x in school_order else 99)
+
+            # Lấy danh sách Tuần
+            weeks_db = db_session.query(WeeklyScore.week).join(Branch).filter(Branch.school_year_id == active_year.id).distinct().all()
+            available_weeks = sorted([w[0] for w in weeks_db if w[0]], key=lambda x: int(re.search(r'\d+', x).group()) if re.search(r'\d+', x) else 0)
+
+            # Tham số bộ lọc
+            selected_branch_id = request.form.get('branch_id') or request.args.get('branch_id')
+            selected_time = request.form.get('time_filter') or request.args.get('time_filter')
+            
+            if not selected_branch_id and branches: selected_branch_id = branches[0].id
+            if not selected_time: 
+                selected_time = available_months[-1] if available_months else (available_weeks[-1] if available_weeks else "")
+            
+            selected_branch_id = int(selected_branch_id) if selected_branch_id else 0
+            selected_branch = db_session.query(Branch).filter_by(id=selected_branch_id).first()
+
+            matrix_data = []
+            target_weeks = []
+            
+            if selected_branch and selected_time:
+                # Nếu người dùng chọn THÁNG -> Bung ra 4-5 tuần
+                if selected_time.startswith("Tháng"):
+                    month_rec = db_session.query(MonthlyRecord).filter_by(
+                        branch_id=selected_branch.id, month_name=selected_time, school_year_id=active_year.id
+                    ).first()
+                    
+                    if month_rec and month_rec.weeks_used:
+                        raw_weeks = [w.strip() for w in month_rec.weeks_used.split(',') if w.strip()]
+                        target_weeks = sorted(raw_weeks, key=lambda x: int(re.search(r'\d+', x).group()) if re.search(r'\d+', x) else 0)
+                    target_weeks = target_weeks[:5]
+                # Nếu người dùng chọn TUẦN -> Chỉ xuất 1 tuần đó
+                else:
+                    target_weeks = [selected_time]
+                
+                row_labels = [
+                    ("Số học sinh đi muộn", ['muộn', 'trễ']),
+                    ("Số học sinh bỏ tiết", ['bỏ tiết', 'trốn', 'vắng', 'nghỉ']),
+                    ("Số không chuẩn bị bài", ['không học', 'không chuẩn bị', 'không thuộc']),
+                    ("Số bị dưới 5,0 hoặc nhận xét loại: yếu, kém", ['điểm kém', 'yếu', '0 điểm']),
+                    ("Mắc thái độ sai", ['thái độ', 'vô lễ', 'ồn', 'nói chuyện', 'đùa giỡn']),
+                    ("Số điểm tốt", []), 
+                    ("Số việc tốt", ['việc tốt', 'nhặt được']),
+                    ("HS được khen", ['khen', 'tuyên dương']),
+                    ("HS bị phê bình", ['phê bình', 'khiển trách']),
+                    ("Số tiết trống", ['trống', 'giáo viên vắng']),
+                    ("Số tiết tự quản tốt", ['tự quản']),
+                    ("Xếp loại cả lớp", []) 
+                ]
+
+                matrix_dict = {label: [] for label, _ in row_labels}
+
+                for week in target_weeks:
+                    sc = db_session.query(WeeklyScore).filter_by(branch_id=selected_branch.id, week=week).first()
+                    if not sc:
+                        for key in matrix_dict: matrix_dict[key].append("")
+                        continue
+
+                    counts = {label: 0 for label, _ in row_labels}
+                    
+                    vios = db_session.query(WeeklyViolation, ViolationCategory).join(
+                        ViolationCategory, WeeklyViolation.violation_id == ViolationCategory.id
+                    ).filter(WeeklyViolation.weekly_score_id == sc.id).all()
+
+                    for v, cat in vios:
+                        c_name = cat.name.lower()
+                        qty = v.quantity or 1
+                        for label, keywords in row_labels:
+                            if keywords and any(k in c_name for k in keywords):
+                                counts[label] += qty
+                                break 
+
+                    counts["Số điểm tốt"] = int(sc.count_8 or 0) + int(sc.count_9 or 0) + int(sc.count_10 or 0)
+                    counts["Xếp loại cả lớp"] = sc.week_rating or "Bình thường"
+
+                    for label, _ in row_labels:
+                        val = counts[label]
+                        if isinstance(val, int) and val == 0: val = "" 
+                        matrix_dict[label].append(val)
+
+                for label, _ in row_labels:
+                    vals = matrix_dict[label] + [""] * (5 - len(target_weeks))
+                    matrix_data.append({"label": label, "values": vals})
+
+            return render_template('homeroom_portfolio.html', 
+                                   branches=branches, 
+                                   available_months=available_months,
+                                   available_weeks=available_weeks,
+                                   selected_branch=selected_branch,
+                                   selected_time=selected_time,
+                                   target_weeks=target_weeks,
+                                   matrix_data=matrix_data)
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        flash(f"Lỗi: {e}", "error")
+        return redirect(url_for('dashboard'))
+
+@app.route('/export_homeroom_portfolio', methods=['POST'])
+def export_homeroom_portfolio():
+    if session.get('role') not in ['Quản trị viên', 'Admin', 'Bí thư Đoàn trường', 'Bí thư']:
+        return redirect(url_for('dashboard'))
+
+    try:
+        matrix_data_json = request.form.get('matrix_data')
+        branch_name = request.form.get('branch_name', 'Lop_Khong_Ten')
+        time_name = request.form.get('time_name', 'Thoi_gian')
+        target_weeks = json.loads(request.form.get('target_weeks', '[]'))
+        data = json.loads(matrix_data_json) if matrix_data_json else []
+
+        if not data:
+            flash("Không có dữ liệu để xuất!", "error")
+            return redirect(url_for('homeroom_portfolio'))
+
+        wb = openpyxl.Workbook(); ws = wb.active; ws.title = "So_Ket_Tuan"
+        
+        ws.page_setup.paperSize = ws.PAPERSIZE_A4
+        ws.page_setup.orientation = ws.ORIENTATION_LANDSCAPE
+        ws.page_margins = PageMargins(left=0.5, right=0.5, top=0.5, bottom=0.5)
+
+        font_title = Font(name='Times New Roman', size=16, bold=True)
+        font_header = Font(name='Times New Roman', size=12, bold=True)
+        font_normal = Font(name='Times New Roman', size=12)
+        align_center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+
+        ws.merge_cells('A1:F1'); ws['A1'] = "ĐOÀN TRƯỜNG THPT THANH HÒA"; ws['A1'].font = Font(name='Times New Roman', size=12, bold=True); ws['A1'].alignment = align_left
+        ws.merge_cells('A3:F3'); ws['A3'] = f"SƠ KẾT HÀNG TUẦN - LỚP {branch_name.upper()}"; ws['A3'].font = font_title; ws['A3'].alignment = align_center
+        ws.merge_cells('A4:F4'); ws['A4'] = f"Kỳ đánh giá: {time_name}"; ws['A4'].font = Font(name='Times New Roman', size=12, italic=True); ws['A4'].alignment = align_center
+
+        start_row = 6
+        ws.cell(row=start_row, column=1, value="Nội dung đánh giá").font = font_header; ws.cell(row=start_row, column=1).alignment = align_center; ws.cell(row=start_row, column=1).border = thin_border
+        
+        for i in range(5): 
+            col = i + 2
+            val = target_weeks[i] if i < len(target_weeks) else ""
+            cell = ws.cell(row=start_row, column=col, value=val)
+            cell.font = font_header; cell.alignment = align_center; cell.border = thin_border
+
+        current_row = start_row + 1
+        for item in data:
+            c_label = ws.cell(row=current_row, column=1, value=item['label'])
+            c_label.font = font_normal; c_label.alignment = align_left; c_label.border = thin_border
+            
+            for i, val in enumerate(item['values']):
+                c_val = ws.cell(row=current_row, column=i+2, value=val)
+                c_val.font = font_normal; c_val.alignment = align_center; c_val.border = thin_border
+                
+            ws.row_dimensions[current_row].height = 25 
+            current_row += 1
+
+        ws.column_dimensions['A'].width = 38
+        for col_letter in ['B', 'C', 'D', 'E', 'F']:
+            ws.column_dimensions[col_letter].width = 18
+
+        current_row += 2
+        ws.merge_cells(start_row=current_row, start_column=5, end_row=current_row, end_column=6)
+        ws.cell(row=current_row, column=5, value="Giáo viên Chủ nhiệm").font = font_header; ws.cell(row=current_row, column=5).alignment = align_center
+
+        log_system_action("XUẤT EXCEL", f"Xuất Hồ sơ chủ nhiệm lớp {branch_name} - {time_name}")
+        out = io.BytesIO(); wb.save(out); out.seek(0)
+        return send_file(out, download_name=f"Ho_So_{branch_name}_{time_name.replace(' ', '_')}.xlsx", as_attachment=True)
+
+    except Exception as e:
+        flash(f"Lỗi xuất Excel: {e}", "error")
+        return redirect(url_for('homeroom_portfolio'))
+    
 if __name__ == "__main__":
     auto_init_accounts()
     init_db()
