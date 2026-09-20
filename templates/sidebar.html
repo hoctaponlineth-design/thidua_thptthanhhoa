@@ -109,6 +109,15 @@
         {% if session.get('role') != 'Giáo viên chủ nhiệm' %}
         <li><a href="/reports" class="nav-link"><i class="fa-solid fa-chart-line me-2"></i> Báo cáo & Thống kê</a></li>
         {% endif %}
+
+        <!-- CHỈ QUẢN TRỊ VIÊN MỚI THẤY MENU NÀY -->
+        {% if session.get('role') in ['Quản trị viên', 'Admin', 'Bí thư Đoàn trường', 'Bí thư'] %}
+        <li>
+            <a href="/homeroom_portfolio" class="nav-link text-success fw-bold">
+                <i class="fa-solid fa-folder-open me-2"></i> Hồ sơ chủ nhiệm
+            </a>
+        </li>
+        {% endif %}
         
         <!-- Nút Tra Cứu (Dành cho GVCN và Quản lý) -->
         <li><a href="/class-dashboard" class="nav-link"><i class="fa-solid fa-magnifying-glass-chart me-2"></i> Hồ sơ Lớp & Phúc khảo</a></li>
@@ -124,6 +133,7 @@
         <!-- [NÂNG CẤP]: Nút xem Thống kê điểm danh GVCN -->
         <li><a href="/gvcn_attendance_stats" class="nav-link text-info"><i class="fa-solid fa-fingerprint me-2"></i> K.Tra Điểm Danh GVCN</a></li>
         {% endif %}
+        
         <!-- BÁO CÁO TOÀN TRƯỜNG (DẠNG DROPDOWN) -->
         <li class="nav-item">
             <a class="nav-link text-warning d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#schoolReportMenu">
