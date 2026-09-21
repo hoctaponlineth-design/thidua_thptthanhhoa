@@ -183,17 +183,26 @@
                                     <span class="badge bg-danger fs-6 rounded-pill px-3 py-2"><i class="fa-solid fa-xmark me-1"></i> 0 buổi</span>
                                 {% endif %}
                             </td>
-                            <td>
-                                {% if item.dates %}
-                                    <div class="d-flex flex-wrap gap-1">
-                                        {% for d in item.dates %}
-                                            <span class="badge bg-light text-secondary border border-secondary">{{ d }}</span>
-                                        {% endfor %}
-                                    </div>
+                            <!-- CHỈ THAY ĐỔI DUY NHẤT CỘT DỮ LIỆU ĐIỂM DANH NÀY -->
+                            <td class="text-start">
+                                {% if item.weeks %}
+                                    {% for week_name, days in item.weeks.items() %}
+                                        <div class="mb-1">
+                                            <span class="fw-bold text-secondary" style="font-size: 0.85rem; min-width: 60px; display: inline-block;">
+                                                {{ week_name }}:
+                                            </span>
+                                            {% for day in days %}
+                                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 me-1">
+                                                    <i class="fa-solid fa-check"></i> {{ day }}
+                                                </span>
+                                            {% endfor %}
+                                        </div>
+                                    {% endfor %}
                                 {% else %}
                                     <span class="text-muted fst-italic" style="font-size: 13px;">Chưa ghi nhận</span>
                                 {% endif %}
                             </td>
+                            <!-- KẾT THÚC VÙNG THAY ĐỔI -->
                         </tr>
                         {% else %}
                         <tr>
