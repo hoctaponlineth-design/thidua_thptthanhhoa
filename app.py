@@ -3164,9 +3164,6 @@ def star_ranking(report_type):
         flash(f"Lỗi hệ thống khi tổng hợp đánh giá Sao đỏ: {e}", "error")
         return redirect(url_for('dashboard'))
 
-# ==========================================
-# API: KIỂM TRA VÀ ĐỔI TRẠNG THÁI KHÓA SỔ TUẦN (ĐÃ VÁ LỖI BẢO TOÀN TÊN CÓ/KHÔNG NGOẶC)
-# ==========================================
 @app.route('/api/toggle_week_lock', methods=['POST'])
 def api_toggle_week_lock():
     try:
@@ -3175,19 +3172,13 @@ def api_toggle_week_lock():
         
         with session_scope() as db_session:
             active_year = db_session.query(SchoolYear).filter_by(is_active=True).first()
-            if not active_year:
-                return {"success": False, "error": "Chưa có năm học kích hoạt!"}
+            if not active_year: return {"success": False, "error": "Chưa có năm học kích hoạt!"}
                 
-            scores = db_session.query(WeeklyScore).join(Branch).filter(
-                WeeklyScore.week == week_name,
-                Branch.school_year_id == active_year.id
-            ).all()
-            
-            current_lock_status = any(getattr(s, 'is_locked', False) for s in scores)
-            new_status = not current_lock_status
+            scores = db_session.query(WeeklyScore).join(Branch).filter(WeeklyScore.week == week_name, Branch.school_year_id == active_year.id).all()
+            new_status = not any(getattr(s, 'is_locked', False) for s in scores)
             
             for s in scores:
-                if new_status == True and not s.is_locked: # Chỉ kích hoạt gộp lỗi khi Khóa sổ
+                if new_status == True and not s.is_locked:
                     if s.note:
                         all_categories = db_session.query(ViolationCategory).filter_by(school_year_id=s.branch.school_year_id).all()
                         sorted_cats = sorted(all_categories, key=lambda x: len(x.name), reverse=True)
@@ -3196,98 +3187,63 @@ def api_toggle_week_lock():
                         parts = smart_split_note(s.note)
                         for part in parts:
                             part_clean = part.strip()
-                            if not part_clean: continue
-                            if "Vắng: 0" in part_clean.lower() or "vắng 0" in part_clean.lower():
-                                continue
+                            if not part_clean or "vắng 0" in part_clean.lower(): continue
                             
-                            # ==========================================================
-                            # Bóc tách Thẻ ngày [T2] ra trước và GIỮ LẠI VÀO BIẾN `day_pfx`
-                            # ==========================================================
-                            match_day = re.search(r'\[(T[2-7](?:\s*Chiều\vert{}\s*Chieu)?\vert{}CN)\]', part_clean, re.IGNORECASE)
-                            day_pfx = match_day.group(0).upper() if match_day else ""
-                            text_to_parse = part_clean.replace(match_day.group(0), "").strip() if match_day else part_clean
+                            # 1. BÓC TÁCH THẺ NGÀY BẤT KỂ VỊ TRÍ
+                            match_day = re.search(r'\[\s*(T[2-7]|CN)[^\]]*\]|\(\s*(T[2-7]|CN)[^\)]*\)', part_clean, re.IGNORECASE)
+                            day_pfx = match_day.group(0).upper().replace('(', '[').replace(')', ']') if match_day else ""
+                            if match_day: part_clean = part_clean.replace(match_day.group(0), "")
                             
+                            # 2. BÓC TÁCH TÊN HỌC SINH (Lúc này thẻ ngày đã bị xóa, không thể nhầm lẫn)
+                            match_stu = re.search(r'\[(.*?)\]|\((.*?)\)', part_clean)
                             stu_name_raw = ""
-                            match_stu = re.search(r'\[(.*?)\]|\((.*?)\)', text_to_parse)
-                            if match_stu: 
+                            if match_stu:
                                 stu_name_raw = match_stu.group(1) if match_stu.group(1) else match_stu.group(2)
-                            else:
-                                # [BẢN VÁ TỐI THƯỢNG]: Nếu GVCN gõ quên ngoặc vuông, tự động quét sạch Lỗi + Số lượng để lấy Tên HS
-                                temp_text = text_to_parse
-                                for cat in sorted_cats:
-                                    if cat.name.lower() in text_to_parse.lower():
-                                        temp_text = re.sub(re.escape(cat.name), '', temp_text, flags=re.IGNORECASE)
-                                        break
-                                temp_text = re.sub(r'(?:x|:|-)\s*\d+', '', temp_text, flags=re.IGNORECASE)
-                                stu_name_raw = temp_text.strip()
-                            
-                            stu_name_normalized = " ".join(str(stu_name_raw).split()).title() if stu_name_raw else ""
-                            stu_name_key = stu_name_normalized.lower() 
+                                part_clean = part_clean.replace(match_stu.group(0), "")
                             
                             matched = False
                             for cat in sorted_cats:
-                                if cat.name.lower() in text_to_parse.lower():
-                                    match_qty = re.search(r'(?:x|:|-)\s*(\d+)', text_to_parse.lower())
+                                if cat.name.lower() in part_clean.lower():
+                                    match_qty = re.search(r'(?:x|:|-)\s*(\d+)', part_clean.lower())
                                     qty = int(match_qty.group(1)) if match_qty else 1
                                     
-                                    # CHÌA KHÓA: Đính kèm thẻ ngày (day_pfx) vào Dictionary để gộp lỗi chính xác
-                                    key = (cat.name, stu_name_key, stu_name_normalized, day_pfx)
-                                    if key not in parsed_errors:
-                                        parsed_errors[key] = 0
-                                    parsed_errors[key] += qty
+                                    if not stu_name_raw: # Hỗ trợ quên ngoặc vuông
+                                        temp = re.sub(re.escape(cat.name), '', part_clean, flags=re.IGNORECASE)
+                                        temp = re.sub(r'(?:x|:|-)\s*\d+', '', temp, flags=re.IGNORECASE)
+                                        stu_name_raw = temp.strip()
+                                        
+                                    stu_name_normalized = " ".join(str(stu_name_raw).split()).title() if stu_name_raw else ""
+                                    key = (cat.name, stu_name_normalized.lower(), stu_name_normalized, day_pfx)
+                                    parsed_errors[key] = parsed_errors.get(key, 0) + qty
                                     matched = True
                                     break
                             
                             if not matched:
-                                parsed_errors[("MANUAL", part_clean.lower(), part_clean, day_pfx)] = 1
+                                parsed_errors[("MANUAL", part_clean.lower(), part_clean.strip(), day_pfx)] = 1
                                 
                         final_parts = []
                         db_session.query(WeeklyViolation).filter_by(weekly_score_id=s.id).delete()
                         
                         for (cat_name, stu_key, stu_display, day_pfx), qty in parsed_errors.items():
                             if cat_name == "MANUAL":
-                                final_parts.append(stu_display)
+                                final_parts.append(f"{day_pfx} {stu_display}".strip())
                             else:
-                                # Tái tạo lại chuỗi ghi chú tổng
-                                if stu_display: 
-                                    final_parts.append(f"{cat_name} x{qty} [{stu_display}]")
-                                else:
-                                    final_parts.append(f"{cat_name} x{qty}")
-
-                                # Đóng dấu ngày vào Tên Học sinh để cất vào CSDL
-                                safe_stu = f"{stu_display} {day_pfx}".strip() if stu_display else day_pfx
+                                base_str = f"{cat_name} x{qty} [{stu_display}]" if stu_display else f"{cat_name} x{qty}"
+                                final_parts.append(f"{day_pfx} {base_str}".strip())
                                 
+                                safe_stu = f"{stu_display} {day_pfx}".strip() if stu_display else day_pfx
                                 cat_obj = next((c for c in all_categories if c.name == cat_name), None)
                                 if cat_obj and getattr(cat_obj, 'point_type', 'Điểm trừ') != 'Điểm cộng':
-                                    db_session.add(WeeklyViolation(
-                                        weekly_score_id=s.id,
-                                        violation_id=cat_obj.id,
-                                        quantity=qty,
-                                        student_name=safe_stu if safe_stu else None
-                                    ))
+                                    db_session.add(WeeklyViolation(weekly_score_id=s.id, violation_id=cat_obj.id, quantity=qty, student_name=safe_stu if safe_stu else None))
                                 
                         s.note = " ; ".join(final_parts)
                 
-                if new_status == True: 
-                    if getattr(s, 'evidence_image', None):
-                        import os
-                        image_paths = s.evidence_image.split('|')
-                        for img_path in image_paths:
-                            if img_path.strip():
-                                try:
-                                    import cloudinary.uploader
-                                    if not os.environ.get("CLOUDINARY_URL"):
-                                        cloudinary.config(cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"), api_key=os.environ.get("CLOUDINARY_API_KEY"), api_secret=os.environ.get("CLOUDINARY_API_SECRET"), secure=True)
-                                    public_id = img_path.split('/')[-1].split('.')[0]
-                                    cloudinary.uploader.destroy(f"thidua_doantruong/{week_name}/{public_id}")
-                                except Exception as e: pass
-                        s.evidence_image = None
+                if new_status == True and getattr(s, 'evidence_image', None):
+                    s.evidence_image = None # Dọn rác ảnh
 
                 s.is_locked = new_status
                 
             status_text = "Khóa sổ (Đã chốt)" if new_status else "Mở khóa sổ"
-            log_system_action("CHỐT SỔ", f"Đã chuyển trạng thái {week_name} sang: {status_text}")
-            
             return {"success": True, "is_locked": new_status, "message": f"Đã {status_text} thành công {week_name}!"}
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -3429,16 +3385,13 @@ def weekly():
                     note = request.form.get(f'note_{b_id}', '').strip()
                     note = reconcile_same_day_absences(note)
                     
-                    # --- [BẢN VÁ LỖI BAREM]: XÉN ĐIỂM TỐT KHI NHẬP TAY TRÊN WEB ---
                     max_tot_web = int(getattr(settings, 'max_diem_tot', 14)) if settings else 14
                     tong_sl_diem = c_8 + c_9 + c_10
                     if tong_sl_diem > max_tot_web:
                         lech = tong_sl_diem - max_tot_web
-                        # Ưu tiên xén mất điểm 8 trước, rồi mới tới 9, 10
                         x8 = min(c_8, lech); c_8 -= x8; lech -= x8
                         x9 = min(c_9, lech); c_9 -= x9; lech -= x9
                         c_10 -= lech
-                    # --------------------------------------------------------------
                     
                     diem_quy_uoc = 0.0
                     if "1" in b_group: diem_quy_uoc = (c_9 * DIEM_9) + (c_10 * DIEM_10)
@@ -3459,35 +3412,44 @@ def weekly():
                         for part in parts:
                             part_clean = part.strip()
                             if not part_clean: continue
+                            if "Vắng: 0" in part_clean.lower() or "vắng 0" in part_clean.lower(): continue
+                            
                             # ==========================================================
-                            # [KHIÊN BẢO VỆ]: Xóa sổ cụm "Vắng 0" bất chấp nó bị nhân x2, x5
-                            if "Vắng: 0" in part_clean.lower() or "vắng 0" in part_clean.lower():
-                                continue
+                            # 1. BÓC TÁCH THẺ NGÀY (Cất đi)
+                            # ==========================================================
+                            match_day = re.search(r'\[\s*(T[2-7]|CN)[^\]]*\]|\(\s*(T[2-7]|CN)[^\)]*\)', part_clean, re.IGNORECASE)
+                            day_pfx = match_day.group(0).upper().replace('(', '[').replace(')', ']') if match_day else ""
                             
-                            # [VÁ LỖI CỐT LÕI]: Gom nhóm chính xác thẻ ngày [T2] giống hệt App điện thoại
-                            match_day = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', part_clean, re.IGNORECASE)
-                            day_pfx = match_day.group(0).upper() if match_day else ""
-                            text_to_parse = part_clean.replace(day_pfx, "").strip() if day_pfx else part_clean
+                            # 2. Xóa thẻ ngày khỏi câu để không nhiễu
+                            if match_day: part_clean = part_clean.replace(match_day.group(0), "")
                             
-                            match_stu = re.search(r'\[(.*?)\]|\((.*?)\)', text_to_parse)
-                            stu_name_raw = match_stu.group(1) if match_stu and match_stu.group(1) is not None else (match_stu.group(2) if match_stu else "")
-                            stu_name_normalized = " ".join(stu_name_raw.split()).title() if stu_name_raw else ""
+                            # 3. TÌM TÊN HỌC SINH TỪ PHẦN CÒN LẠI
+                            match_stu = re.search(r'\[(.*?)\]|\((.*?)\)', part_clean)
+                            stu_name_raw = ""
+                            if match_stu:
+                                stu_name_raw = match_stu.group(1) if match_stu.group(1) else match_stu.group(2)
+                                part_clean = part_clean.replace(match_stu.group(0), "") # Xóa luôn tên HS để dễ tìm Lỗi
                             
                             matched = False
                             for cat in sorted_cats:
-                                if cat.name.lower() in text_to_parse.lower():
-                                    match_qty = re.search(r'(?:x|:|-)\s*(\d+)', text_to_parse.lower())
+                                if cat.name.lower() in part_clean.lower():
+                                    match_qty = re.search(r'(?:x|:|-)\s*(\d+)', part_clean.lower())
                                     qty = int(match_qty.group(1)) if match_qty else 1 
+                                    
+                                    if not stu_name_raw: # Hỗ trợ quên ngoặc vuông
+                                        temp = re.sub(re.escape(cat.name), '', part_clean, flags=re.IGNORECASE)
+                                        temp = re.sub(r'(?:x|:|-)\s*\d+', '', temp, flags=re.IGNORECASE)
+                                        stu_name_raw = temp.strip()
+                                        
+                                    stu_name_normalized = " ".join(str(stu_name_raw).split()).title() if stu_name_raw else ""
                                     key = (cat.name, stu_name_normalized.lower(), stu_name_normalized, day_pfx)
                                     parsed_errors[key] = parsed_errors.get(key, 0) + qty
                                     matched = True
                                     break
                                     
                             if not matched:
-                                key = ("MANUAL", text_to_parse.lower(), text_to_parse, day_pfx)
-                                parsed_errors[key] = parsed_errors.get(key, 0) + 1
+                                parsed_errors[("MANUAL", part_clean.lower(), part_clean.strip(), day_pfx)] = 1
 
-                        # Xén trần điểm
                         max_tot_bad = int(getattr(settings, 'max_diem_tot', 14)) if settings else 14
                         max_mon_bad = int(getattr(settings, 'max_diem_mon', 4)) if settings else 4
                         bad_marks_expanded = []
@@ -3524,8 +3486,6 @@ def weekly():
                             for cat in sorted_cats:
                                 if cat.name == cat_name and getattr(cat, 'point_type', 'Điểm trừ') != 'Điểm cộng':
                                     diem_tru_auto += float(cat.penalty_points * qty)
-                                    
-                                    # [ĐÃ VÁ]: Đính kèm Ngày vào đuôi Tên HS
                                     safe_stu = f"{stu_display} {day_pfx}".strip() if stu_display else day_pfx
                                     new_violations.append({'violation_id': cat.id, 'quantity': qty, 'student_name': safe_stu if safe_stu else None})
                                     break
@@ -3539,8 +3499,6 @@ def weekly():
                                 for cat in sorted_cats:
                                     if cat.name == cat_name and getattr(cat, 'point_type', 'Điểm trừ') != 'Điểm cộng':
                                         diem_tru_auto += float(cat.penalty_points * qty)
-                                        
-                                        # [ĐÃ VÁ]: Đính kèm Ngày vào đuôi Tên HS
                                         safe_stu = f"{stu_display} {day_pfx}".strip() if stu_display else day_pfx
                                         new_violations.append({'violation_id': cat.id, 'quantity': qty, 'student_name': safe_stu if safe_stu else None})
                                         break
@@ -3548,8 +3506,7 @@ def weekly():
                         note = " ; ".join(final_note_parts)
                         
                     tong_diem_tru = diem_tru_auto
-                    tru = diem_tru_auto # Đồng bộ lại biến tru để lưu vào CSDL
-                    
+                    tru = diem_tru_auto 
                     total_val = truc + diem_xep_loai + diem_quy_uoc + cong - tong_diem_tru
                     
                     score = db_session.query(WeeklyScore).filter_by(branch_id=branch.id, week=week_name).first()
@@ -3575,26 +3532,18 @@ def weekly():
                 flash(f"Đã lưu và cập nhật chính xác bảng điểm {week_name}!", "success")
                 return redirect(url_for('weekly', week=week_name))
 
-            # --- [BẢN VÁ LỖI TỐI THƯỢNG]: TỰ ĐỘNG HIỂN THỊ TUẦN MỚI NHẤT DỰA TRÊN SỐ TUẦN LỚN NHẤT ---
             week_param = request.args.get('week')
             if week_param:
                 current_week = week_param
             else:
-                # Ưu tiên 1: Lấy tất cả các tuần và tìm Số tuần lớn nhất bằng Toán học
-                all_weeks = db_session.query(WeeklyScore.week).join(Branch).filter(
-                    Branch.school_year_id == active_year.id if active_year else True
-                ).distinct().all()
-                
+                all_weeks = db_session.query(WeeklyScore.week).join(Branch).filter(Branch.school_year_id == active_year.id if active_year else True).distinct().all()
                 if all_weeks:
                     current_week = max([w[0] for w in all_weeks], key=lambda x: int(re.search(r'\d+', str(x)).group()) if re.search(r'\d+', str(x)) else 0)
                 else:
-                    # Ưu tiên 2: Nếu chưa có điểm, lấy tuần mới nhất vừa được phân công lịch trực
                     latest_assign = db_session.query(Assignment).order_by(Assignment.week_number.desc()).first()
                     current_week = f"Tuần {latest_assign.week_number}" if latest_assign else "Tuần 1"
 
-            branches_data = []
-            cat_list = []
-            # -------------------------------------------------------------------
+            branches_data = []; cat_list = []
             categories = db_session.query(ViolationCategory).filter_by(school_year_id=active_year.id).all() if active_year else []
             for c in categories: cat_list.append({"name": c.name, "points": float(c.penalty_points), "type": getattr(c, 'point_type', 'Điểm trừ')})
             categories_json = json.dumps(cat_list)
@@ -3618,11 +3567,7 @@ def weekly():
 
             if active_year:
                 branches = db_session.query(Branch).filter(Branch.school_year_id == active_year.id).all()
-                
-                # [THUẬT TOÁN ĐỒNG BỘ]: Sắp xếp tự nhiên (Natural Sort) tên Chi đoàn từ A-Z chuẩn xác (10A2 sẽ đứng trước 10A10)
-                
                 branches.sort(key=lambda b: [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', str(b.name))])
-                
                 for b in branches:
                     sc = db_session.query(WeeklyScore).filter_by(branch_id=b.id, week=current_week).first()
                     branches_data.append({'branch': b, 'score': sc})
