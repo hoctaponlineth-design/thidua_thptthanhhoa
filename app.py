@@ -3165,7 +3165,7 @@ def star_ranking(report_type):
         return redirect(url_for('dashboard'))
 
 # ==========================================
-# API: KIỂM TRA VÀ ĐỔI TRẠNG THÁI KHÓA SỔ TUẦN
+# API: KIỂM TRA VÀ ĐỔI TRẠNG THÁI KHÓA SỔ TUẦN (ĐÃ VÁ LỖI BẢO TOÀN TÊN CÓ/KHÔNG NGOẶC)
 # ==========================================
 @app.route('/api/toggle_week_lock', methods=['POST'])
 def api_toggle_week_lock():
@@ -3211,6 +3211,15 @@ def api_toggle_week_lock():
                             match_stu = re.search(r'\[(.*?)\]|\((.*?)\)', text_to_parse)
                             if match_stu: 
                                 stu_name_raw = match_stu.group(1) if match_stu.group(1) else match_stu.group(2)
+                            else:
+                                # [BẢN VÁ TỐI THƯỢNG]: Nếu GVCN gõ quên ngoặc vuông, tự động quét sạch Lỗi + Số lượng để lấy Tên HS
+                                temp_text = text_to_parse
+                                for cat in sorted_cats:
+                                    if cat.name.lower() in text_to_parse.lower():
+                                        temp_text = re.sub(re.escape(cat.name), '', temp_text, flags=re.IGNORECASE)
+                                        break
+                                temp_text = re.sub(r'(?:x|:|-)\s*\d+', '', temp_text, flags=re.IGNORECASE)
+                                stu_name_raw = temp_text.strip()
                             
                             stu_name_normalized = " ".join(str(stu_name_raw).split()).title() if stu_name_raw else ""
                             stu_name_key = stu_name_normalized.lower() 
