@@ -3201,21 +3201,29 @@ def api_toggle_week_lock():
                             if "Vắng: 0" in part_clean.lower() or "vắng 0" in part_clean.lower():
                                 continue
                             
-                            stu_name_raw = ""
-                            match_stu = re.search(r'\[(.*?)\]', part_clean)
-                            if match_stu: stu_name_raw = match_stu.group(1).strip()
+                            # ==========================================================
+                            # [BẢN VÁ LỖI MẤT TÊN]: Bóc tách Thẻ ngày [T2] ra trước để bảo toàn tên học sinh
+                            # ==========================================================
+                            match_day = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', part_clean, re.IGNORECASE)
+                            text_to_parse = part_clean.replace(match_day.group(0), "").strip() if match_day else part_clean
                             
-                            # Chuẩn hóa tên học sinh: Bỏ khoảng trắng thừa, viết hoa chữ cái đầu (Không phân biệt hoa/thường)
-                            stu_name_normalized = " ".join(stu_name_raw.split()).title() if stu_name_raw else ""
+                            stu_name_raw = ""
+                            # Bây giờ chỉ lấy tên trong ngoặc khi chuỗi đã không còn Thẻ ngày
+                            match_stu = re.search(r'\[(.*?)\]|\((.*?)\)', text_to_parse)
+                            if match_stu: 
+                                stu_name_raw = match_stu.group(1) if match_stu.group(1) else match_stu.group(2)
+                            
+                            # Chuẩn hóa tên học sinh: Bỏ khoảng trắng thừa, viết hoa chữ cái đầu
+                            stu_name_normalized = " ".join(str(stu_name_raw).split()).title() if stu_name_raw else ""
                             stu_name_key = stu_name_normalized.lower() # Dùng key chữ thường để so sánh chính xác tuyệt đối
                             
                             matched = False
                             for cat in sorted_cats:
-                                if cat.name.lower() in part_clean.lower():
-                                    match_qty = re.search(r'(?:x|:|-)\s*(\d+)', part_clean.lower())
+                                if cat.name.lower() in text_to_parse.lower():
+                                    match_qty = re.search(r'(?:x|:|-)\s*(\d+)', text_to_parse.lower())
                                     qty = int(match_qty.group(1)) if match_qty else 1
                                     
-                                    # [TIÊU CHÍ CỐT LÕI]: Chỉ gộp chung khi CÙNG TÊN LỖI (cat.name) và CÙNG TÊN HỌC SINH (stu_name_key)
+                                    # [TIÊU CHÍ CỐT LÕI]: Chỉ gộp chung khi CÙNG TÊN LỖI và CÙNG TÊN HỌC SINH
                                     key = (cat.name, stu_name_key, stu_name_normalized)
                                     if key not in parsed_errors:
                                         parsed_errors[key] = 0
@@ -3229,7 +3237,7 @@ def api_toggle_week_lock():
                         final_parts = []
                         
                         # =========================================================================
-                        # [BỔ SUNG QUAN TRỌNG]: Xóa và tái tạo lại bảng WeeklyViolation cá nhân
+                        # Xóa và tái tạo lại bảng WeeklyViolation cá nhân
                         # Để Sổ đen luôn đồng bộ 100% tên học sinh, không bị xóa mất sau khi chốt sổ
                         # =========================================================================
                         db_session.query(WeeklyViolation).filter_by(weekly_score_id=s.id).delete()
@@ -3264,20 +3272,16 @@ def api_toggle_week_lock():
                         s.note = " ; ".join(final_parts)
                 
                 # =======================================================
-                # [BỔ SUNG]: TỰ ĐỘNG DỌN RÁC (XÓA ẢNH) KHI CHỐT SỔ TUẦN
+                # TỰ ĐỘNG DỌN RÁC (XÓA ẢNH) KHI CHỐT SỔ TUẦN
                 # =======================================================
                 if new_status == True:  # Nếu hành động là Khóa sổ
                     if getattr(s, 'evidence_image', None):
                         import os
-                        # Tách mảng đường dẫn ảnh
                         image_paths = s.evidence_image.split('|')
                         for img_path in image_paths:
                             if img_path.strip():
-                                # Loại bỏ dấu '/' ở đầu để lấy đường dẫn vật lý trên server (VD: static/uploads/...)
                                 try:
                                     import cloudinary.uploader
-                                    import os
-                                    # Cấu hình lại Cloudinary nếu cần
                                     if not os.environ.get("CLOUDINARY_URL"):
                                         cloudinary.config( 
                                             cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME"), 
@@ -3285,13 +3289,11 @@ def api_toggle_week_lock():
                                             api_secret = os.environ.get("CLOUDINARY_API_SECRET"),
                                             secure = True
                                         )
-                                    # Trích xuất public_id từ URL Cloudinary (Ví dụ lấy: img_1_abcd1234)
                                     public_id = img_path.split('/')[-1].split('.')[0]
                                     cloudinary.uploader.destroy(f"thidua_doantruong/{week_name}/{public_id}")
                                 except Exception as e:
                                     print(f"Lỗi dọn rác ảnh trên Cloudinary: {e}")
                         
-                        # Xóa đường dẫn trong CSDL để nút "Xem ảnh" trên giao diện tự động biến mất
                         s.evidence_image = None
                 # =======================================================
 
@@ -3302,6 +3304,7 @@ def api_toggle_week_lock():
             
             return {"success": True, "is_locked": new_status, "message": f"Đã {status_text} thành công {week_name}!"}
     except Exception as e:
+        import traceback; traceback.print_exc()
         return {"success": False, "error": str(e)}
 
 @app.route('/api/get_week_lock_status/<week_name>')
