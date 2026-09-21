@@ -3165,7 +3165,7 @@ def star_ranking(report_type):
         return redirect(url_for('dashboard'))
 
 # ==========================================
-# API: KIỂM TRA VÀ ĐỔI TRẠNG THÁI KHÓA SỔ TUẦN (ĐÃ VÁ LỖI BẢO TOÀN TÊN HỌC SINH SỔ ĐEN)
+# API: KIỂM TRA VÀ ĐỔI TRẠNG THÁI KHÓA SỔ TUẦN
 # ==========================================
 @app.route('/api/toggle_week_lock', methods=['POST'])
 def api_toggle_week_lock():
@@ -3193,7 +3193,6 @@ def api_toggle_week_lock():
                         sorted_cats = sorted(all_categories, key=lambda x: len(x.name), reverse=True)
                         parsed_errors = {}
                         
-                        # [BẢN VÁ LỖI]: Làm sạch chuỗi trước khi gộp
                         parts = smart_split_note(s.note)
                         for part in parts:
                             part_clean = part.strip()
@@ -3202,20 +3201,19 @@ def api_toggle_week_lock():
                                 continue
                             
                             # ==========================================================
-                            # [BẢN VÁ LỖI MẤT TÊN]: Bóc tách Thẻ ngày [T2] ra trước để bảo toàn tên học sinh
+                            # Bóc tách Thẻ ngày [T2] ra trước và GIỮ LẠI VÀO BIẾN `day_pfx`
                             # ==========================================================
-                            match_day = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', part_clean, re.IGNORECASE)
+                            match_day = re.search(r'\[(T[2-7](?:\s*Chiều\vert{}\s*Chieu)?\vert{}CN)\]', part_clean, re.IGNORECASE)
+                            day_pfx = match_day.group(0).upper() if match_day else ""
                             text_to_parse = part_clean.replace(match_day.group(0), "").strip() if match_day else part_clean
                             
                             stu_name_raw = ""
-                            # Bây giờ chỉ lấy tên trong ngoặc khi chuỗi đã không còn Thẻ ngày
                             match_stu = re.search(r'\[(.*?)\]|\((.*?)\)', text_to_parse)
                             if match_stu: 
                                 stu_name_raw = match_stu.group(1) if match_stu.group(1) else match_stu.group(2)
                             
-                            # Chuẩn hóa tên học sinh: Bỏ khoảng trắng thừa, viết hoa chữ cái đầu
                             stu_name_normalized = " ".join(str(stu_name_raw).split()).title() if stu_name_raw else ""
-                            stu_name_key = stu_name_normalized.lower() # Dùng key chữ thường để so sánh chính xác tuyệt đối
+                            stu_name_key = stu_name_normalized.lower() 
                             
                             matched = False
                             for cat in sorted_cats:
@@ -3223,8 +3221,8 @@ def api_toggle_week_lock():
                                     match_qty = re.search(r'(?:x|:|-)\s*(\d+)', text_to_parse.lower())
                                     qty = int(match_qty.group(1)) if match_qty else 1
                                     
-                                    # [TIÊU CHÍ CỐT LÕI]: Chỉ gộp chung khi CÙNG TÊN LỖI và CÙNG TÊN HỌC SINH
-                                    key = (cat.name, stu_name_key, stu_name_normalized)
+                                    # CHÌA KHÓA: Đính kèm thẻ ngày (day_pfx) vào Dictionary để gộp lỗi chính xác
+                                    key = (cat.name, stu_name_key, stu_name_normalized, day_pfx)
                                     if key not in parsed_errors:
                                         parsed_errors[key] = 0
                                     parsed_errors[key] += qty
@@ -3232,49 +3230,36 @@ def api_toggle_week_lock():
                                     break
                             
                             if not matched:
-                                parsed_errors[("MANUAL", part_clean.lower(), part_clean)] = 1
+                                parsed_errors[("MANUAL", part_clean.lower(), part_clean, day_pfx)] = 1
                                 
                         final_parts = []
-                        
-                        # =========================================================================
-                        # Xóa và tái tạo lại bảng WeeklyViolation cá nhân
-                        # Để Sổ đen luôn đồng bộ 100% tên học sinh, không bị xóa mất sau khi chốt sổ
-                        # =========================================================================
                         db_session.query(WeeklyViolation).filter_by(weekly_score_id=s.id).delete()
                         
-                        for (cat_name, stu_key, stu_display), qty in parsed_errors.items():
+                        for (cat_name, stu_key, stu_display, day_pfx), qty in parsed_errors.items():
                             if cat_name == "MANUAL":
                                 final_parts.append(stu_display)
                             else:
+                                # Tái tạo lại chuỗi ghi chú tổng
                                 if stu_display: 
                                     final_parts.append(f"{cat_name} x{qty} [{stu_display}]")
-                                    
-                                    # Đẩy ngược dữ liệu chuẩn xác vào Sổ đen cá nhân
-                                    cat_obj = next((c for c in all_categories if c.name == cat_name), None)
-                                    if cat_obj and getattr(cat_obj, 'point_type', 'Điểm trừ') != 'Điểm cộng':
-                                        db_session.add(WeeklyViolation(
-                                            weekly_score_id=s.id,
-                                            violation_id=cat_obj.id,
-                                            quantity=qty,
-                                            student_name=stu_display
-                                        ))
-                                else: 
+                                else:
                                     final_parts.append(f"{cat_name} x{qty}")
-                                    cat_obj = next((c for c in all_categories if c.name == cat_name), None)
-                                    if cat_obj and getattr(cat_obj, 'point_type', 'Điểm trừ') != 'Điểm cộng':
-                                        db_session.add(WeeklyViolation(
-                                            weekly_score_id=s.id,
-                                            violation_id=cat_obj.id,
-                                            quantity=qty,
-                                            student_name=None
-                                        ))
+
+                                # Đóng dấu ngày vào Tên Học sinh để cất vào CSDL
+                                safe_stu = f"{stu_display} {day_pfx}".strip() if stu_display else day_pfx
+                                
+                                cat_obj = next((c for c in all_categories if c.name == cat_name), None)
+                                if cat_obj and getattr(cat_obj, 'point_type', 'Điểm trừ') != 'Điểm cộng':
+                                    db_session.add(WeeklyViolation(
+                                        weekly_score_id=s.id,
+                                        violation_id=cat_obj.id,
+                                        quantity=qty,
+                                        student_name=safe_stu if safe_stu else None
+                                    ))
                                 
                         s.note = " ; ".join(final_parts)
                 
-                # =======================================================
-                # TỰ ĐỘNG DỌN RÁC (XÓA ẢNH) KHI CHỐT SỔ TUẦN
-                # =======================================================
-                if new_status == True:  # Nếu hành động là Khóa sổ
+                if new_status == True: 
                     if getattr(s, 'evidence_image', None):
                         import os
                         image_paths = s.evidence_image.split('|')
@@ -3283,19 +3268,11 @@ def api_toggle_week_lock():
                                 try:
                                     import cloudinary.uploader
                                     if not os.environ.get("CLOUDINARY_URL"):
-                                        cloudinary.config( 
-                                            cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME"), 
-                                            api_key = os.environ.get("CLOUDINARY_API_KEY"), 
-                                            api_secret = os.environ.get("CLOUDINARY_API_SECRET"),
-                                            secure = True
-                                        )
+                                        cloudinary.config(cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"), api_key=os.environ.get("CLOUDINARY_API_KEY"), api_secret=os.environ.get("CLOUDINARY_API_SECRET"), secure=True)
                                     public_id = img_path.split('/')[-1].split('.')[0]
                                     cloudinary.uploader.destroy(f"thidua_doantruong/{week_name}/{public_id}")
-                                except Exception as e:
-                                    print(f"Lỗi dọn rác ảnh trên Cloudinary: {e}")
-                        
+                                except Exception as e: pass
                         s.evidence_image = None
-                # =======================================================
 
                 s.is_locked = new_status
                 
@@ -3538,7 +3515,10 @@ def weekly():
                             for cat in sorted_cats:
                                 if cat.name == cat_name and getattr(cat, 'point_type', 'Điểm trừ') != 'Điểm cộng':
                                     diem_tru_auto += float(cat.penalty_points * qty)
-                                    new_violations.append({'violation_id': cat.id, 'quantity': qty, 'student_name': stu_display if stu_display else None})
+                                    
+                                    # [ĐÃ VÁ]: Đính kèm Ngày vào đuôi Tên HS
+                                    safe_stu = f"{stu_display} {day_pfx}".strip() if stu_display else day_pfx
+                                    new_violations.append({'violation_id': cat.id, 'quantity': qty, 'student_name': safe_stu if safe_stu else None})
                                     break
                                     
                         for cat_name, stu_display, qty, day_pfx in other_errors:
@@ -3550,7 +3530,10 @@ def weekly():
                                 for cat in sorted_cats:
                                     if cat.name == cat_name and getattr(cat, 'point_type', 'Điểm trừ') != 'Điểm cộng':
                                         diem_tru_auto += float(cat.penalty_points * qty)
-                                        new_violations.append({'violation_id': cat.id, 'quantity': qty, 'student_name': stu_display if stu_display else None})
+                                        
+                                        # [ĐÃ VÁ]: Đính kèm Ngày vào đuôi Tên HS
+                                        safe_stu = f"{stu_display} {day_pfx}".strip() if stu_display else day_pfx
+                                        new_violations.append({'violation_id': cat.id, 'quantity': qty, 'student_name': safe_stu if safe_stu else None})
                                         break
 
                         note = " ; ".join(final_note_parts)
@@ -3689,7 +3672,7 @@ def save_settings():
         
     return redirect(request.referrer or url_for('weekly'))    
 # ==========================================
-# MODULE TẠO FILE EXCEL SỔ ĐEN (ĐÃ NÂNG CẤP TỔNG HỢP TOÀN TRƯỜNG)
+# MODULE TẠO FILE EXCEL SỔ ĐEN (ĐÃ NÂNG CẤP TỔNG HỢP TOÀN TRƯỜNG & HIỂN THỊ NGÀY)
 # ==========================================
 @app.route('/preview_blacklist')
 def preview_blacklist():
@@ -3728,12 +3711,22 @@ def preview_blacklist():
                     Branch.school_year_id == active_year.id
                 ).all()
                 
-            # [THUẬT TOÁN TỔNG HỢP]: Dùng Dictionary để cộng dồn lỗi trùng lặp của cùng 1 học sinh
+            # [THUẬT TOÁN TỔNG HỢP]: Dùng Dictionary để cộng dồn lỗi và gom Thẻ ngày
+            import re
             summary_dict = {}
             
             for v, s, b, c in raw_violations:
-                if v.student_name and str(v.student_name).strip() != "":
-                    raw_names = str(v.student_name).replace(';', ',').split(',')
+                raw_val = str(v.student_name) if v.student_name else ""
+                
+                # Bóc tách thẻ ngày (VD: [T2], [T4]) đang cất giấu trong CSDL
+                match_day = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', raw_val, re.IGNORECASE)
+                day_str = match_day.group(0).upper() if match_day else ""
+                
+                # Gỡ bỏ thẻ ngày để trả lại tên trắng sạch cho học sinh
+                clean_names_str = raw_val.replace(day_str, "").strip() if day_str else raw_val
+                
+                if clean_names_str and clean_names_str != "":
+                    raw_names = clean_names_str.replace(';', ',').split(',')
                     valid_names = [n.strip().title() for n in raw_names if n.strip()]
                     num_names = len(valid_names)
                     
@@ -3741,19 +3734,37 @@ def preview_blacklist():
                     qty_per_student = max(1, v.quantity // num_names) if num_names > 0 else v.quantity
                     
                     for n_clean in valid_names:
-                        # Chìa khóa gom nhóm: (Tên Lớp, Tên Học Sinh, Tên Lỗi)
                         key = (b.name, n_clean, c.name)
-                        # Cộng dồn số lần vi phạm
-                        summary_dict[key] = summary_dict.get(key, 0) + qty_per_student
+                        # Nếu là lỗi mới thì tạo giỏ chứa, có rồi thì cộng dồn
+                        if key not in summary_dict:
+                            summary_dict[key] = {'qty': 0, 'days': set()}
+                            
+                        summary_dict[key]['qty'] += qty_per_student
+                        # Thêm thẻ ngày vào Set (Set sẽ tự động loại bỏ ngày trùng lặp)
+                        if day_str: summary_dict[key]['days'].add(day_str)
+                else:
+                    # Bắt các Lỗi Tập Thể Lớp (Không có học sinh cụ thể)
+                    key = (b.name, "Tập thể lớp", c.name)
+                    if key not in summary_dict:
+                        summary_dict[key] = {'qty': 0, 'days': set()}
+                        
+                    summary_dict[key]['qty'] += v.quantity
+                    if day_str: summary_dict[key]['days'].add(day_str)
             
             # Đóng gói lại thành List để gửi ra giao diện
             violations = []
-            for (b_name, stu_name, vio_name), total_qty in summary_dict.items():
+            for (b_name, stu_name, vio_name), data in summary_dict.items():
+                # Ráp nối các thẻ ngày lại (VD: [T2] [T5])
+                days_joined = " ".join(sorted(list(data['days'])))
+                
+                # Gắn chuỗi ngày vào đuôi tên Lỗi để hiển thị
+                display_vio_name = f"{vio_name} {days_joined}" if days_joined else vio_name
+                
                 violations.append({
                     'branch_name': b_name,
                     'student_name': stu_name,
-                    'violation_name': vio_name,
-                    'quantity': total_qty
+                    'violation_name': display_vio_name,
+                    'quantity': data['qty']
                 })
                     
             # Sắp xếp danh sách vi phạm: Ưu tiên Tên Lớp -> Số lần vi phạm nhiều nhất lên đầu
@@ -3765,7 +3776,6 @@ def preview_blacklist():
             months = db_session.query(MonthlyRecord.month_name).filter(MonthlyRecord.school_year_id == active_year.id, MonthlyRecord.month_name.like('Tháng%')).distinct().all()
             weeks = db_session.query(WeeklyScore.week).join(Branch).filter(Branch.school_year_id == active_year.id).distinct().all()
             
-            import re
             time_options.extend(sorted([s[0] for s in sems]))
             time_options.extend(sorted([m[0] for m in months]))
             time_options.extend(sorted([w[0] for w in weeks], key=lambda x: int(re.search(r'\d+', x).group()) if re.search(r'\d+', x) else 0, reverse=True))
@@ -3776,6 +3786,9 @@ def preview_blacklist():
         flash(f"Lỗi xem trước sổ đen: {str(e)}", "error")
         return redirect(url_for('dashboard'))
     
+# ==========================================
+# MODULE XUẤT EXCEL SỔ ĐEN (ĐÃ NÂNG CẤP ĐÍNH KÈM THẺ NGÀY)
+# ==========================================
 @app.route('/export_blacklist', methods=['GET', 'POST'])
 def export_blacklist():
     try:
@@ -3807,20 +3820,46 @@ def export_blacklist():
                 .join(ViolationCategory, WeeklyViolation.violation_id == ViolationCategory.id)\
                 .filter(WeeklyScore.week.in_(valid_weeks), Branch.school_year_id == active_year.id).all()
                 
+            import re
             summary_dict = {}
             for v, sc, b, c in raw_violations:
-                if v.student_name and str(v.student_name).strip() != "":
-                    raw_names = str(v.student_name).replace(';', ',').split(',')
+                raw_val = str(v.student_name) if v.student_name else ""
+                
+                # =========================================================
+                # BÓC TÁCH: Lấy Thẻ ngày đang giấu trong tên HS ra ngoài
+                # =========================================================
+                match_day = re.search(r'\[(T[2-7](?:\s*Chiều|\s*Chieu)?|CN)\]', raw_val, re.IGNORECASE)
+                day_str = match_day.group(0).upper() if match_day else ""
+                
+                clean_names_str = raw_val.replace(day_str, "").strip() if day_str else raw_val
+                
+                if clean_names_str and clean_names_str != "":
+                    raw_names = clean_names_str.replace(';', ',').split(',')
                     valid_names = [n.strip().title() for n in raw_names if n.strip()]
                     num_names = len(valid_names)
                     qty_per_student = max(1, v.quantity // num_names) if num_names > 0 else v.quantity
+                    
                     for n_clean in valid_names:
                         key = (b.name, n_clean, c.name)
-                        summary_dict[key] = summary_dict.get(key, 0) + qty_per_student
+                        if key not in summary_dict:
+                            summary_dict[key] = {'qty': 0, 'days': set()}
+                        summary_dict[key]['qty'] += qty_per_student
+                        if day_str: summary_dict[key]['days'].add(day_str)
+                else:
+                    key = (b.name, "Tập thể lớp", c.name)
+                    if key not in summary_dict:
+                        summary_dict[key] = {'qty': 0, 'days': set()}
+                    summary_dict[key]['qty'] += v.quantity
+                    if day_str: summary_dict[key]['days'].add(day_str)
             
             violations = []
-            for (b_name, stu_name, vio_name), total_qty in summary_dict.items():
-                violations.append({'branch_name': b_name, 'student_name': stu_name, 'violation_name': vio_name, 'quantity': total_qty})
+            for (b_name, stu_name, vio_name), data in summary_dict.items():
+                # Ráp nối các thẻ ngày lại và đính vào đuôi tên lỗi
+                days_joined = " ".join(sorted(list(data['days'])))
+                display_vio_name = f"{vio_name} {days_joined}" if days_joined else vio_name
+                
+                violations.append({'branch_name': b_name, 'student_name': stu_name, 'violation_name': display_vio_name, 'quantity': data['qty']})
+                
             violations.sort(key=lambda x: (x['branch_name'], -x['quantity']))
                 
             if not violations:
@@ -3871,7 +3910,7 @@ def export_blacklist():
             ws.column_dimensions['A'].width = 6
             ws.column_dimensions['B'].width = 12
             ws.column_dimensions['C'].width = 25
-            ws.column_dimensions['D'].width = 30
+            ws.column_dimensions['D'].width = 35
             ws.column_dimensions['E'].width = 15
             
             log_system_action("XUẤT EXCEL", f"Xuất Sổ đen Toàn trường - {time_filter}")
