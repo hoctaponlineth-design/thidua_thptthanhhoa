@@ -345,17 +345,30 @@ def gvcn_checkin():
     branch_id = data.get('branch_id')
     week_name = data.get('week_name')
 
-    if not branch_id or not week_name:
-        return {"success": False, "error": "Thiếu thông tin lớp hoặc tuần!"}, 400
+    if not branch_id:
+        return {"success": False, "error": "Thiếu thông tin lớp!"}, 400
 
     try:
-        # [BẢN VÁ LỖI MÚI GIỜ]: Ép cứng giờ Việt Nam (UTC+7) cho chức năng điểm danh
         from datetime import datetime, timezone, timedelta
         vn_tz = timezone(timedelta(hours=7))
         
         with session_scope() as db_session:
-            # Lấy ngày hiện tại chuẩn 100% theo giờ Việt Nam
             today_date = datetime.now(vn_tz).date()
+            
+            # =========================================================================
+            # [BẢN VÁ LỖI CỐT LÕI]: Chặn đứng chuỗi "Tuần hiện tại" từ Mobile App gửi lên
+            # Tự động đồng bộ tên tuần với lịch trực / điểm thi đua
+            # =========================================================================
+            if not week_name or week_name == "Tuần hiện tại" or "Tuần" not in str(week_name):
+                latest_assign = db_session.query(Assignment).order_by(Assignment.week_number.desc()).first()
+                if latest_assign:
+                    week_name = f"Tuần {latest_assign.week_number}"
+                else:
+                    latest_score = db_session.query(WeeklyScore).order_by(WeeklyScore.id.desc()).first()
+                    if latest_score:
+                        week_name = latest_score.week
+                    else:
+                        week_name = "Tuần 1"
             
             # Kiểm tra xem hôm nay thầy cô đã bấm chưa
             exist = db_session.query(GVCNAttendance).filter_by(branch_id=branch_id, date=today_date).first()
@@ -370,8 +383,7 @@ def gvcn_checkin():
             )
             db_session.add(new_attendance)
             
-            # (Tùy chọn) Lưu vết hệ thống để BGH biết
-            log_system_action("ĐIỂM DANH GVCN", f"GVCN Lớp ID {branch_id} đã điểm danh sinh hoạt 15p Tuần {week_name}")
+            log_system_action("ĐIỂM DANH GVCN", f"GVCN Lớp ID {branch_id} đã điểm danh sinh hoạt 15p {week_name}")
             
             return {"success": True, "message": "✅ Điểm danh thành công! Cảm ơn Thầy/Cô."}, 200
     except Exception as e:
@@ -398,6 +410,48 @@ def gvcn_attendance_stats():
             # Lấy toàn bộ dữ liệu điểm danh của năm học hiện tại
             all_atts = db_session.query(GVCNAttendance).join(Branch).filter(Branch.school_year_id == active_year.id).all()
             
+            # =====================================================================
+            # [THUẬT TOÁN CHỮA BỆNH]: TỰ ĐỘNG QUÉT VÀ SỬA LỖI TÊN TUẦN TRONG CSDL
+            # Giúp bóc tách T2(14/09) và T2(21/09) về đúng 2 Tuần riêng biệt
+            # =====================================================================
+            import datetime as dt
+            changes_made = False
+            known_weeks = {}
+            
+            # Lấy mốc chuẩn từ Lịch phân công trực
+            asm_records = db_session.query(Assignment).filter(Assignment.date != None).all()
+            for asm in asm_records:
+                try:
+                    py_date = asm.date
+                    if isinstance(py_date, str):
+                        py_date = dt.datetime.strptime(py_date.split()[0], '%Y-%m-%d').date()
+                    monday = py_date - dt.timedelta(days=py_date.weekday())
+                    known_weeks[monday] = f"Tuần {asm.week_number}"
+                except: pass
+
+            base_monday = min(known_weeks.keys()) if known_weeks else None
+            if not base_monday and all_atts:
+                valid_dates = [a.date for a in all_atts if a.date]
+                if valid_dates:
+                    base_monday = min(valid_dates) - dt.timedelta(days=min(valid_dates).weekday())
+
+            # Chữa lỗi cho các bản ghi bị gắn mác "Tuần hiện tại"
+            for a in all_atts:
+                if (not a.week_name or a.week_name == "Tuần hiện tại" or "Tuần" not in str(a.week_name)) and a.date:
+                    a_monday = a.date - dt.timedelta(days=a.date.weekday())
+                    if a_monday in known_weeks:
+                        a.week_name = known_weeks[a_monday]
+                    elif base_monday:
+                        week_num = ((a_monday - base_monday).days // 7) + 1
+                        a.week_name = f"Tuần {week_num}"
+                    else:
+                        a.week_name = f"Tuần {a.date.isocalendar()[1] - 34}"
+                    changes_made = True
+            
+            if changes_made:
+                db_session.commit()
+            # =====================================================================
+            
             # Tự động trích xuất các Tuần, Tháng, Học kỳ, Năm học đã có dữ liệu để làm bộ lọc
             import re
             available_weeks = sorted(list(set([a.week_name for a in all_atts if a.week_name])), key=lambda x: int(''.join(filter(str.isdigit, x))) if any(c.isdigit() for c in x) else 0)
@@ -418,7 +472,7 @@ def gvcn_attendance_stats():
             available_semesters = sorted(list(available_semesters), reverse=True)
             available_years = sorted(list(available_years), reverse=True)
 
-            # Đặt giá trị mặc định khi vừa vào trang
+            # Đặt giá trị mặc định khi vừa vào trang -> Ưu tiên TUẦN MỚI NHẤT
             if time_mode == 'week' and not time_value and available_weeks:
                 time_value = available_weeks[-1] 
             elif time_mode == 'month' and not time_value and available_months:
@@ -428,7 +482,7 @@ def gvcn_attendance_stats():
             elif time_mode == 'year' and not time_value and available_years:
                 time_value = available_years[0]
                 
-            # Bộ lọc dữ liệu
+            # Bộ lọc dữ liệu (Chỉ lấy đúng mốc BGH chọn)
             filtered_atts = []
             for a in all_atts:
                 if not a.date: continue
@@ -446,9 +500,7 @@ def gvcn_attendance_stats():
                     if f"Năm học {start_year}-{start_year + 1}" == time_value:
                         filtered_atts.append(a)
                     
-            # =========================================================================
-            # [BẢN VÁ LÕI]: NHÓM DỮ LIỆU ĐIỂM DANH THEO TỪNG TUẦN THI ĐUA
-            # =========================================================================
+            # NHÓM DỮ LIỆU ĐIỂM DANH THEO TỪNG TUẦN THI ĐUA
             stats = {}
             branches = db_session.query(Branch).filter_by(school_year_id=active_year.id).all()
             for b in branches:
@@ -456,19 +508,18 @@ def gvcn_attendance_stats():
                     'branch_name': b.name,
                     'gvcn': b.gvcn or "Chưa cập nhật",
                     'count': 0,
-                    'weeks': {} # <-- THAY ĐỔI CỐT LÕI: Dùng Dictionary thay vì Array phẳng
+                    'weeks': {} # Dictionary chứa số buổi tách biệt từng tuần
                 }
             
             day_map = {0: 'T2', 1: 'T3', 2: 'T4', 3: 'T5', 4: 'T6', 5: 'T7', 6: 'CN'}   
             
             for a in filtered_atts:
                 if a.branch_id in stats and a.date:
-                    stats[a.branch_id]['count'] += 1 # Vẫn đếm tổng số buổi để BGH dễ nhìn
+                    stats[a.branch_id]['count'] += 1 
                     
                     day_str = day_map.get(a.date.weekday(), '')
                     date_str = f"{day_str} ({a.date.strftime('%d/%m')})" 
                     
-                    # Phân loại ngày này vào đúng hộp "Tuần thi đua" của nó
                     week_key = a.week_name or "Khác"
                     if week_key not in stats[a.branch_id]['weeks']:
                         stats[a.branch_id]['weeks'][week_key] = []
@@ -482,9 +533,7 @@ def gvcn_attendance_stats():
                     sorted_weeks[w] = b_data['weeks'][w]
                 b_data['weeks'] = sorted_weeks
 
-            # =========================================================================
-            # [THUẬT TOÁN ĐỒNG BỘ]: Sắp xếp tự nhiên (Natural Sort) tên lớp 10A2 đứng trước 10A10
-            # =========================================================================
+            # Sắp xếp tự nhiên tên lớp 10A2 đứng trước 10A10
             stats_list = list(stats.values())
             stats_list.sort(key=lambda x: [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', str(x['branch_name']))])
             
