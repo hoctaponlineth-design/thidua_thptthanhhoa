@@ -175,28 +175,18 @@
                             <td class="fw-bold text-primary class-col align-middle">{{ item.branch_name }}</td>
                             <td class="fw-bold text-dark gvcn-col align-middle">{{ item.gvcn }}</td>
                             
-                            <!-- BẢN VÁ: CỘT 4 - ĐẾM TÁCH RIÊNG SỐ BUỔI TỪNG TUẦN -->
+                            <!-- CỘT 4: GIAO DIỆN NÚT HUY HIỆU ĐƠN GIẢN -->
                             <td class="text-center align-middle">
-                                {% if item.weeks %}
-                                    {% for week_name, days in item.weeks.items() %}
-                                        <div class="mb-1 d-flex justify-content-center align-items-center gap-2">
-                                            <span class="fw-bold text-dark" style="font-size: 13px;">{{ week_name }}:</span> 
-                                            <!-- Tự động đếm số buổi trong tuần -->
-                                            <span class="badge {% if days|length >= 3 %}bg-success{% else %}bg-warning text-dark{% endif %} rounded-pill" style="font-size: 12px;">
-                                                {{ days|length }} buổi
-                                            </span>
-                                        </div>
-                                    {% endfor %}
-                                    <!-- Dòng tổng hợp của tháng/kỳ -->
-                                    <hr class="my-1 border-secondary opacity-25">
-                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2 py-1" style="font-size: 12px;">
-                                        Tổng cộng: {{ item.count }} buổi
-                                    </span>
+                                {% if item.count >= 3 %}
+                                    <span class="badge bg-success fs-6 rounded-pill px-3 py-2"><i class="fa-solid fa-check me-1"></i> {{ item.count }} buổi</span>
+                                {% elif item.count > 0 %}
+                                    <span class="badge bg-warning text-dark fs-6 rounded-pill px-3 py-2">{{ item.count }} buổi</span>
                                 {% else %}
                                     <span class="badge bg-danger fs-6 rounded-pill px-3 py-2"><i class="fa-solid fa-xmark me-1"></i> 0 buổi</span>
                                 {% endif %}
                             </td>
                             
+                            <!-- CỘT 5: GIỮ NGUYÊN CHI TIẾT TỪNG TUẦN -->
                             <td class="text-start align-middle">
                                 {% if item.weeks %}
                                     {% for week_name, days in item.weeks.items() %}
