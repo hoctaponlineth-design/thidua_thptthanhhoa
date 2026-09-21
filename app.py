@@ -399,6 +399,7 @@ def gvcn_attendance_stats():
             all_atts = db_session.query(GVCNAttendance).join(Branch).filter(Branch.school_year_id == active_year.id).all()
             
             # Tự động trích xuất các Tuần, Tháng, Học kỳ, Năm học đã có dữ liệu để làm bộ lọc
+            import re
             available_weeks = sorted(list(set([a.week_name for a in all_atts if a.week_name])), key=lambda x: int(''.join(filter(str.isdigit, x))) if any(c.isdigit() for c in x) else 0)
             available_months = sorted(list(set([a.date.strftime('Tháng %m/%Y') for a in all_atts if a.date])), reverse=True)
             
@@ -445,7 +446,9 @@ def gvcn_attendance_stats():
                     if f"Năm học {start_year}-{start_year + 1}" == time_value:
                         filtered_atts.append(a)
                     
-            # Thống kê tổng hợp theo từng lớp
+            # =========================================================================
+            # [BẢN VÁ LÕI]: NHÓM DỮ LIỆU ĐIỂM DANH THEO TỪNG TUẦN THI ĐUA
+            # =========================================================================
             stats = {}
             branches = db_session.query(Branch).filter_by(school_year_id=active_year.id).all()
             for b in branches:
@@ -453,23 +456,37 @@ def gvcn_attendance_stats():
                     'branch_name': b.name,
                     'gvcn': b.gvcn or "Chưa cập nhật",
                     'count': 0,
-                    'dates': []
+                    'weeks': {} # <-- THAY ĐỔI CỐT LÕI: Dùng Dictionary thay vì Array phẳng
                 }
+            
             day_map = {0: 'T2', 1: 'T3', 2: 'T4', 3: 'T5', 4: 'T6', 5: 'T7', 6: 'CN'}   
+            
             for a in filtered_atts:
                 if a.branch_id in stats and a.date:
-                    stats[a.branch_id]['count'] += 1 # Đếm cộng dồn thành Tổng số buổi
+                    stats[a.branch_id]['count'] += 1 # Vẫn đếm tổng số buổi để BGH dễ nhìn
+                    
                     day_str = day_map.get(a.date.weekday(), '')
                     date_str = f"{day_str} ({a.date.strftime('%d/%m')})" 
-                    stats[a.branch_id]['dates'].append(date_str)                    
+                    
+                    # Phân loại ngày này vào đúng hộp "Tuần thi đua" của nó
+                    week_key = a.week_name or "Khác"
+                    if week_key not in stats[a.branch_id]['weeks']:
+                        stats[a.branch_id]['weeks'][week_key] = []
+                        
+                    stats[a.branch_id]['weeks'][week_key].append(date_str)                    
             
+            # Sắp xếp các tuần bên trong từng lớp cho chuẩn (VD: Tuần 1 hiển thị trước Tuần 2)
+            for b_id, b_data in stats.items():
+                sorted_weeks = {}
+                for w in sorted(b_data['weeks'].keys(), key=lambda x: int(''.join(filter(str.isdigit, x))) if any(c.isdigit() for c in x) else 0):
+                    sorted_weeks[w] = b_data['weeks'][w]
+                b_data['weeks'] = sorted_weeks
+
             # =========================================================================
             # [THUẬT TOÁN ĐỒNG BỘ]: Sắp xếp tự nhiên (Natural Sort) tên lớp 10A2 đứng trước 10A10
             # =========================================================================
-            
             stats_list = list(stats.values())
             stats_list.sort(key=lambda x: [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', str(x['branch_name']))])
-            # =========================================================================
             
             return render_template('gvcn_attendance.html', 
                                    stats_list=stats_list,
