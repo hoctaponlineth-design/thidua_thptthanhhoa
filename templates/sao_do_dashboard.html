@@ -462,6 +462,28 @@
                                     <i class="fa-solid fa-floppy-disk me-2"></i> CHUYỂN LÊN HỆ THỐNG
                                 </button>
                             {% endif %}
+
+                            <!-- ========================================================== -->
+                            <!-- [BỔ SUNG MỚI]: VÙNG LỊCH SỬ LỖI ĐÃ GHI NHẬN TRONG TUẦN      -->
+                            <!-- ========================================================== -->
+                            <div class="mt-3 p-3 rounded-3" style="background-color: #f8f9fa; border: 1px dashed #adb5bd;">
+                                <div class="fw-bold text-secondary mb-2" style="font-size: 12px;">
+                                    <i class="fa-solid fa-clock-rotate-left me-1"></i> LỊCH SỬ LỖI ĐÃ GHI NHẬN TRONG TUẦN:
+                                </div>
+                                <div id="history_note_{{ b.id }}" class="text-dark fw-medium" style="font-size: 13px; line-height: 1.5;">
+                                    {% if sc and sc.note %}
+                                        {% for note_item in sc.note.split(';') %}
+                                            {% if note_item.strip() %}
+                                                <div class="mb-1"><i class="fa-solid fa-caret-right text-danger me-1" style="font-size: 10px;"></i> {{ note_item.strip() }}</div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="text-muted fst-italic">Chưa có vi phạm nào trong tuần.</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <!-- ========================================================== -->
+
                         </form>
                         
                     </div>
@@ -1582,12 +1604,12 @@
         setInterval(autoSyncOfflineData, 10000); 
     </script>
 	<script>
-        // Hàm tự động đồng bộ dữ liệu, HỢP NHẤT NHÁP và ĐÓNG BĂNG GIAO DIỆN từ Bảng tuần ra App Sao Đỏ
+		// Hàm tự động đồng bộ dữ liệu, HỢP NHẤT NHÁP và ĐÓNG BĂNG GIAO DIỆN từ Bảng tuần ra App Sao Đỏ
         function startAutoSyncSaoDo(weekName) {
             setInterval(async () => {
                 try {
                     let response = await fetch(`/api/weekly_scores_json/${encodeURIComponent(weekName)}`);
-                    if (response.status === 401) return; // Bỏ qua nếu mất phiên đăng nhập
+                    if (response.status === 401) return; 
                     
                     let result = await response.json();
                     if (result.success && result.data) {
@@ -1599,6 +1621,26 @@
                             let noteInputEl = document.getElementById(`detailNote_${branchId}`);
                             let liveScoreEl = document.getElementById(`live_total_score_${branchId}`);
                             
+                            // Lấy Khung hiển thị Lịch sử
+                            let historyBoxEl = document.getElementById(`history_note_${branchId}`); 
+
+                            // ========================================================
+                            // [NÂNG CẤP]: CẬP NHẬT TRỰC TIẾP KHUNG LỊCH SỬ LỖI MỖI 4 GIÂY
+                            // ========================================================
+                            if (historyBoxEl && item.note !== undefined) {
+                                if (item.note.trim() !== "") {
+                                    let html = "";
+                                    item.note.split(';').forEach(part => {
+                                        if (part.trim()) {
+                                            html += `<div class="mb-1"><i class="fa-solid fa-caret-right text-danger me-1" style="font-size: 10px;"></i> ${part.trim()}</div>`;
+                                        }
+                                    });
+                                    historyBoxEl.innerHTML = html;
+                                } else {
+                                    historyBoxEl.innerHTML = `<span class="text-muted fst-italic">Chưa có vi phạm nào trong tuần.</span>`;
+                                }
+                            }
+                            
                             // ========================================================
                             // THUẬT TOÁN ĐỒNG BỘ THÔNG MINH (CHỐNG MẤT CHỮ ĐANG GÕ)
                             // ========================================================
@@ -1607,41 +1649,30 @@
                                 let oldServerNote = oldNoteEl.value.trim();
                                 let newServerNote = item.note || "";
                                 
-                                // TRƯỜNG HỢP 1: Sao đỏ đã ấn Submit hoặc Ghi chú đang khớp hoàn toàn với Server
                                 if (currentInput === newServerNote) {
                                     oldNoteEl.value = newServerNote;
                                     oldTotalScoreEl.value = item.total_score;
                                     if (liveScoreEl) liveScoreEl.innerText = item.total_score.toFixed(1);
                                     
-                                // TRƯỜNG HỢP 2: Sao đỏ CHƯA gõ gì (Ô ghi chú trống trơn hoặc không thay đổi)
                                 } else if (currentInput === oldServerNote) {
                                     noteInputEl.value = newServerNote;
                                     oldNoteEl.value = newServerNote;
                                     oldTotalScoreEl.value = item.total_score;
                                     if (liveScoreEl) liveScoreEl.innerText = item.total_score.toFixed(1);
                                     
-                                // TRƯỜNG HỢP 3: Sao đỏ ĐANG CÓ BẢN NHÁP (Vừa gõ chữ hoặc bấm Thẻ chạm nhanh)
                                 } else {
-                                    // Nếu Admin trên Web vừa có thay đổi dữ liệu Ghi chú (new != old)
                                     if (newServerNote !== oldServerNote) {
-                                        // Tách phần chữ nháp mà SĐ vừa gõ
                                         let draftText = currentInput;
                                         if (oldServerNote !== "" && currentInput.includes(oldServerNote)) {
                                             draftText = currentInput.replace(oldServerNote, "").trim();
-                                            // Dọn dẹp dấu phẩy thừa do tách chuỗi
                                             if (draftText.startsWith(";") || draftText.startsWith(",")) {
                                                 draftText = draftText.substring(1).trim();
                                             }
                                         }
-                                        
-                                        // Nối nháp của SĐ vào đuôi dữ liệu mới của Admin để không làm mất chữ
                                         noteInputEl.value = newServerNote ? `${newServerNote} ; ${draftText}` : draftText;
-                                        
-                                        // Bơm mốc điểm mới của Admin vào
                                         oldNoteEl.value = newServerNote;
                                     }
                                     
-                                    // Kích hoạt tính toán lại nếu Admin trên máy tính có thay đổi Điểm (để Điểm Dự Kiến trên app khớp mốc mới)
                                     if (oldTotalScoreEl.value != item.total_score) {
                                         oldTotalScoreEl.value = item.total_score;
                                         noteInputEl.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1655,14 +1686,12 @@
                             let formEl = document.getElementById(`form_submit_${branchId}`);
                             if (formEl) {
                                 let btnSubmit = formEl.querySelector('.btn-submit');
-                                // Quét tìm TẤT CẢ ô nhập, dropdown, nút bấm trong lớp này (ngoại trừ nút "Xem ảnh đã gửi" màu xanh)
                                 let allInputs = formEl.querySelectorAll('input, select, textarea, button:not(.btn-info)');
-                                let quickTags = formEl.querySelectorAll('.quick-tag'); // Các thẻ chạm nhanh
+                                let quickTags = formEl.querySelectorAll('.quick-tag'); 
 
                                 if (item.is_locked) {
-                                    // KHÓA SỔ: Tê liệt mọi thao tác
                                     allInputs.forEach(el => el.disabled = true);
-                                    quickTags.forEach(tag => tag.style.pointerEvents = 'none'); // Vô hiệu hóa thẻ chạm
+                                    quickTags.forEach(tag => tag.style.pointerEvents = 'none'); 
                                     
                                     if (btnSubmit) {
                                         btnSubmit.classList.remove('btn-primary');
@@ -1670,7 +1699,6 @@
                                         btnSubmit.innerHTML = '<i class="fa-solid fa-lock me-2"></i> ĐÃ KHÓA SỔ (CHỐT ĐIỂM)';
                                     }
                                 } else {
-                                    // MỞ SỔ: Khôi phục hoạt động
                                     allInputs.forEach(el => el.disabled = false);
                                     quickTags.forEach(tag => tag.style.pointerEvents = 'auto');
                                     
@@ -1686,7 +1714,7 @@
                 } catch (err) {
                     // Tạm ẩn log để tối ưu RAM điện thoại
                 }
-            }, 4000); // Tốc độ quét: 4 giây/lần
+            }, 4000); 
         }
 
         // Kích hoạt ngay khi mở App
