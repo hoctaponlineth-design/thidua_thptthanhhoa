@@ -355,7 +355,7 @@
                 display: flex;
             }
             .main-content {
-                padding-bottom: 100px !important;
+                padding-bottom: 50px !important;
             }
         }
 		/* =========================================
@@ -867,13 +867,13 @@
                                                         <div class="alert alert-info mt-2 py-2 px-3 border-0 shadow-sm d-flex gap-2 align-items-start mb-0">
                                                             <i class="fa-solid fa-circle-info fs-5 mt-1"></i>
                                                             <div>
-                                                                <strong class="d-block mb-1">Phản hồi từ Đoàn trường:</strong>
+                                                                <strong class="d-block mb-1">Phản hồi từ Ban thi đua:</strong>
                                                                 {{ sc.appeal_response }}
                                                             </div>
                                                         </div>
                                                     {% endif %}
                                                 {% else %}
-                                                    <div class="badge-soft badge-secondary w-100 justify-content-center mb-2">Đang chờ Đoàn trường xem xét...</div>
+                                                    <div class="badge-soft badge-secondary w-100 justify-content-center mb-2">Đang chờ Ban thi đua xem xét...</div>
                                                     {% if not is_gvcn %}
                                                         <button class="btn-modern btn-modern-primary mt-2 w-100 p-2" onclick="openResolveModal(this)"
                                                                 data-score-id="{{ sc.score_id }}"
