@@ -1161,7 +1161,7 @@ def resolve_appeal():
                     # ====================================================================
                     # [NÂNG CẤP LÕI]: Đóng dấu "Người xử lý" và "Thời gian" vào chuỗi
                     # ====================================================================
-                    score.appeal_response = f"[ĐÃ DUYỆT BỘ PHẬN] Đã gỡ lỗi được chọn và hoàn {final_refund}đ. Phản hồi: {response_text}\n(Xử lý bởi: {responder} lúc {now_str})"
+                    score.appeal_response = f"[ĐÃ DUYỆT] Đã gỡ lỗi được chọn và hoàn {final_refund}đ. Phản hồi: {response_text}\n(Xử lý bởi: {responder} lúc {now_str})"
                     
                     log_system_action("XỬ LÝ PHÚC KHẢO", f"Đã DUYỆT 1 PHẦN khiếu nại lớp {score.branch.name} Tuần {score.week}. Tự động hoàn {final_refund}đ.")
                     flash(f"✅ Đã duyệt khiếu nại, hệ thống hoàn {final_refund}đ và xử lý Sổ đen chuẩn xác!", "success")
@@ -3164,6 +3164,9 @@ def star_ranking(report_type):
         flash(f"Lỗi hệ thống khi tổng hợp đánh giá Sao đỏ: {e}", "error")
         return redirect(url_for('dashboard'))
 
+# ==========================================
+# API: KIỂM TRA VÀ ĐỔI TRẠNG THÁI KHÓA SỔ TUẦN (BẢO TOÀN LỖI ĐÃ PHÚC KHẢO)
+# ==========================================
 @app.route('/api/toggle_week_lock', methods=['POST'])
 def api_toggle_week_lock():
     try:
@@ -3188,6 +3191,13 @@ def api_toggle_week_lock():
                         for part in parts:
                             part_clean = part.strip()
                             if not part_clean or "vắng 0" in part_clean.lower(): continue
+                            
+                            # ==========================================================
+                            # [KIM BÀI MIỄN TỬ]: BỎ QUA HOÀN TOÀN CÁC LỖI ĐÃ ĐƯỢC GỠ
+                            # ==========================================================
+                            if "(đã gỡ)" in part_clean.lower():
+                                parsed_errors[("ĐÃ_GỠ", part_clean.lower(), part_clean, "")] = 1
+                                continue
                             
                             # 1. BÓC TÁCH THẺ NGÀY BẤT KỂ VỊ TRÍ
                             match_day = re.search(r'\[\s*(T[2-7]|CN)[^\]]*\]|\(\s*(T[2-7]|CN)[^\)]*\)', part_clean, re.IGNORECASE)
@@ -3227,6 +3237,8 @@ def api_toggle_week_lock():
                         for (cat_name, stu_key, stu_display, day_pfx), qty in parsed_errors.items():
                             if cat_name == "MANUAL":
                                 final_parts.append(f"{day_pfx} {stu_display}".strip())
+                            elif cat_name == "ĐÃ_GỠ":
+                                final_parts.append(stu_display) # Bê nguyên xi chuỗi (ĐÃ GỠ) vào lại mà không trừ điểm!
                             else:
                                 base_str = f"{cat_name} x{qty} [{stu_display}]" if stu_display else f"{cat_name} x{qty}"
                                 final_parts.append(f"{day_pfx} {base_str}".strip())
@@ -3338,7 +3350,7 @@ def reconcile_same_day_absences(note_string):
         
     return " ; ".join(filtered_parts)
 # ==========================================
-# MODULE: NHẬP ĐIỂM TUẦN & TỰ ĐỘNG BÓC TÁCH LỖI VÀO SỔ ĐEN
+# MODULE: NHẬP ĐIỂM TUẦN & TỰ ĐỘNG BÓC TÁCH LỖI VÀO SỔ ĐEN (BẢO TOÀN LỖI ĐÃ PHÚC KHẢO)
 # ==========================================
 @app.route('/weekly', methods=['GET', 'POST'])
 def weekly():
@@ -3415,8 +3427,13 @@ def weekly():
                             if "Vắng: 0" in part_clean.lower() or "vắng 0" in part_clean.lower(): continue
                             
                             # ==========================================================
-                            # 1. BÓC TÁCH THẺ NGÀY (Cất đi)
+                            # [KIM BÀI MIỄN TỬ]: BỎ QUA HOÀN TOÀN CÁC LỖI ĐÃ ĐƯỢC GỠ
                             # ==========================================================
+                            if "(đã gỡ)" in part_clean.lower():
+                                parsed_errors[("ĐÃ_GỠ", part_clean.lower(), part_clean, "")] = 1
+                                continue
+                            
+                            # 1. BÓC TÁCH THẺ NGÀY (Cất đi)
                             match_day = re.search(r'\[\s*(T[2-7]|CN)[^\]]*\]|\(\s*(T[2-7]|CN)[^\)]*\)', part_clean, re.IGNORECASE)
                             day_pfx = match_day.group(0).upper().replace('(', '[').replace(')', ']') if match_day else ""
                             
@@ -3456,7 +3473,7 @@ def weekly():
                         other_errors = []
                         
                         for (cat_name, stu_key, stu_display, day_pfx), qty in parsed_errors.items():
-                            if cat_name == "MANUAL":
+                            if cat_name == "MANUAL" or cat_name == "ĐÃ_GỠ":
                                 other_errors.append((cat_name, stu_display, qty, day_pfx))
                             else:
                                 is_bad_mark = "không học bài" in cat_name.lower() or "điểm kém" in cat_name.lower()
@@ -3493,6 +3510,8 @@ def weekly():
                         for cat_name, stu_display, qty, day_pfx in other_errors:
                             if cat_name == "MANUAL":
                                 final_note_parts.append(f"{day_pfx} {stu_display}".strip() if day_pfx else stu_display)
+                            elif cat_name == "ĐÃ_GỠ":
+                                final_note_parts.append(stu_display) # Bê nguyên xi chuỗi đã gỡ vào lại
                             else:
                                 base_str = f"{cat_name} x{qty} [{stu_display}]" if stu_display else f"{cat_name} x{qty}"
                                 final_note_parts.append(f"{day_pfx} {base_str}".strip())
