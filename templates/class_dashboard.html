@@ -67,16 +67,6 @@
         .card-header-modern { padding: 20px 24px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; justify-content: space-between; align-items: center; }
         .card-title-modern { font-size: 16px; font-weight: 700; margin: 0; color: var(--text-main); display: flex; align-items: center; gap: 8px;}
 
-        /* WIDGETS TỔNG QUAN */
-        .widget-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 24px; width: 100%;}
-        .widget-card { background: var(--surface); border-radius: var(--radius-md); padding: 20px; display: flex; align-items: flex-start; gap: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); transition: transform 0.2s;}
-        .widget-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        .widget-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
-        .widget-content { flex: 1; min-width: 0; }
-        .widget-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-        .widget-value { font-size: 16px; font-weight: 700; color: var(--text-main); margin: 0 0 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-        .widget-sub { font-size: 13px; font-weight: 500; color: var(--primary); text-decoration: none;}
-
         /* BỘ LỌC TÌM KIẾM */
         .filter-section { padding: 24px; }
         .form-select-modern { border-radius: var(--radius-md); border: 1px solid #cbd5e1; font-size: 15px; font-weight: 600; padding: 12px 16px; color: var(--text-main); background-color: #f8fafc; transition: all 0.2s; width: 100%;}
@@ -87,56 +77,78 @@
         .btn-modern-warning { background-color: #f59e0b; color: white; }
         .btn-modern-warning:hover { background-color: #d97706; }
 
-		/* TABS HIỆN ĐẠI DẠNG SCROLLABLE PILLS */
-        .modern-tabs-container { 
-            padding: 12px 16px; 
-            background: var(--surface); 
+        /* =========================================
+           MENU CHỨC NĂNG DẠNG LƯỚI (APP STYLE)
+           ========================================= */
+        .app-features-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4 cột trên Desktop */
+            gap: 20px 10px;
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 24px 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+            border: 1px solid #f1f5f9;
         }
-        .modern-tabs { 
-            display: flex; 
-            flex-wrap: nowrap !important; /* Ép buộc nằm trên 1 dòng */
-            gap: 8px; /* Khoảng cách giữa các viên thuốc */
-            overflow-x: auto; /* Cho phép vuốt ngang */
-            scrollbar-width: none; /* Ẩn thanh cuộn Firefox */
-            -ms-overflow-style: none; /* Ẩn thanh cuộn IE */
-            padding-bottom: 4px; /* Chừa không gian cho bóng mờ */
+        @media (max-width: 480px) {
+            .app-features-grid {
+                grid-template-columns: repeat(3, 1fr); /* 3 cột trên Mobile cho to và rõ */
+                gap: 20px 5px;
+            }
         }
-        .modern-tabs::-webkit-scrollbar { 
-            display: none; /* Ẩn thanh cuộn Chrome/Safari */
+        .app-feature-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: transparent;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            transition: transform 0.15s;
         }
-		.modern-tab { 
-            background: #ffffff; /* Nền trắng tinh dứt khoát */
-            border: 1px solid #cbd5e1; /* Viền xám nhạt để tạo khung khối rõ ràng */
-            border-radius: 20px; 
-            padding: 9px 18px; /* Tăng nhẹ độ rộng để nút thoáng hơn */
-            font-size: 13.5px; 
-            font-weight: 600; 
-            color: #64748b; 
-            white-space: nowrap; 
-            transition: all 0.3s ease; 
-            cursor: pointer; 
-            display: flex; 
-            align-items: center; 
-            gap: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        .app-feature-btn:active { transform: scale(0.92); }
+        
+        .app-feature-icon-wrapper {
+            width: 56px;
+            height: 56px;
+            border-radius: 18px; /* Bo góc dạng hộp vuông mềm (Squircle) */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            margin-bottom: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
         }
-        .modern-tab:hover { 
-            background: #f8fafc; 
+        
+        .app-feature-text {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #475569;
+            text-align: center;
+            line-height: 1.25;
+            max-width: 90px;
+        }
+        
+        /* Hiệu ứng khi Tab đang được mở */
+        .app-feature-btn.active .app-feature-icon-wrapper {
+            box-shadow: 0 0 0 3px #ffffff, 0 0 0 5px var(--primary);
+            transform: scale(1.05);
+        }
+        .app-feature-btn.active .app-feature-text {
             color: var(--primary);
-            border-color: #94a3b8;
+            font-weight: 800;
         }
-        /* [LỘT XÁC TAB ACTIVE]: Biến thành khối đặc nổi bật */
-        .modern-tab.active { 
-            background: linear-gradient(135deg, var(--primary), #1e40af); /* Gradient xanh đậm */
-            color: #ffffff !important; /* Đổi chữ thành màu trắng */
-            border: 1px solid #1e40af; 
-            box-shadow: 0 4px 10px rgba(37,99,235,0.35); /* Bóng đổ sâu hơn */
-            transform: translateY(-2px); /* Hiệu ứng nhô lên khỏi mặt phẳng */
-        }
-        /* Ép icon bên trong Tab Active thành màu trắng */
-        .modern-tab.active i {
-            color: #ffffff !important;
-        }
+        
+        /* Bộ màu Gradient hiện đại cho Icon */
+        .bg-icon-1 { background: linear-gradient(135deg, #3b82f6, #2563eb); } /* Xanh dương */
+        .bg-icon-2 { background: linear-gradient(135deg, #ef4444, #dc2626); } /* Đỏ */
+        .bg-icon-3 { background: linear-gradient(135deg, #f59e0b, #d97706); } /* Cam */
+        .bg-icon-4 { background: linear-gradient(135deg, #8b5cf6, #7c3aed); } /* Tím */
+        .bg-icon-5 { background: linear-gradient(135deg, #10b981, #059669); } /* Xanh lá */
+        .bg-icon-6 { background: linear-gradient(135deg, #06b6d4, #0891b2); } /* Cyan */
+        .bg-icon-7 { background: linear-gradient(135deg, #f43f5e, #e11d48); } /* Hồng đỏ */
 
         /* BẢNG DỮ LIỆU DESKTOP */
         .table-responsive-custom { width: 100%; overflow-x: auto; }
@@ -240,15 +252,15 @@
                 display: block !important;
             }
             
-            .glass-card, .widget-grid, .empty-state-container { margin-left: 15px !important; margin-right: 15px !important; width: calc(100% - 30px) !important; }
-            .widget-grid { grid-template-columns: 1fr 1fr; gap: 12px;}
-			/* [BẢN VÁ LỖI KHOẢNG TRẮNG]: Ép toàn bộ cấu trúc bảng thành khối (Block) để trình duyệt không sinh ra khoảng trống ảo */
+            .glass-card, .empty-state-container { margin-left: 15px !important; margin-right: 15px !important; width: calc(100% - 30px) !important; }
+            
+			/* [BẢN VÁ LỖI KHOẢNG TRẮNG]: ÉP KHỐI BẢNG */
             .table-modern, .table-modern tbody, .table-modern tr, .table-modern td { display: block !important; width: 100% !important; box-sizing: border-box !important; }
             .table-modern thead { display: none !important; }
             
             /* Cưỡng chế ẩn hoàn toàn chiều cao của các Tab đang không mở */
             .tab-content > .tab-pane:not(.active) { display: none !important; height: 0 !important; overflow: hidden !important; }
-			/* [NÂNG CẤP XẾP HẠNG]: Xóa khung nền xám, bỏ viền cứng, dùng bóng đổ mềm mại */
+			/* [NÂNG CẤP XẾP HẠNG] */
             .table-responsive-custom { padding: 0 !important; background: transparent !important; border: none !important;}
             .table-modern tr { background: var(--surface); border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 16px; border: none !important; overflow: hidden;}
             .table-modern td { padding: 8px 16px !important; display: flex !important; justify-content: space-between !important; align-items: center !important; border-bottom: 1px solid #f8fafc !important; text-align: right !important;}
@@ -257,47 +269,6 @@
             .table-modern td.mobile-header-row { background: #f8fafc !important; border-bottom: 2px solid var(--border) !important;}
             .table-modern td.col-details { display: block !important; text-align: left !important; border-bottom: none !important; background: #ffffff !important;}
             .table-modern td.col-details::before { display: block !important; margin-bottom: 8px !important; }
-        }
-        
-		@media (max-width: 480px) {
-            .widget-grid { 
-                grid-template-columns: 1fr 1fr; 
-                gap: 10px; 
-            }
-            .widget-card { 
-                padding: 12px 8px; 
-                gap: 8px; 
-                flex-direction: column; 
-                align-items: center; 
-                text-align: center; 
-                border-radius: 14px;
-            }
-            .widget-icon { 
-                width: 36px; 
-                height: 36px; 
-                font-size: 16px; 
-            }
-            .widget-content {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                width: 100%;
-            }
-            .widget-label { 
-                font-size: 10px; 
-                margin-bottom: 4px; 
-                letter-spacing: 0; 
-                text-align: center;
-            }
-            .widget-value { 
-                font-size: 13px; 
-                width: 100%;
-                text-align: center;
-            }
-            .widget-sub { 
-                font-size: 11px; 
-                margin-top: 3px; 
-            }
         }
 
         /* =========================================
@@ -426,7 +397,6 @@
         }
         .eval-option-box span { font-size: 14px; font-weight: 600; line-height: 1.4; color: #475569; transition: all 0.2s; }
 
-        /* HIỆU ỨNG MỚI: ĐỒNG NHẤT 1 MÀU XANH CHỦ ĐẠO CHO MỌI LỰA CHỌN (TRÁNH RỐI MẮT) */
         .eval-option-box:has(input[type="radio"]:checked) { 
             border-color: var(--primary); 
             background: #eff6ff; 
@@ -449,11 +419,7 @@
     <!-- MAIN CONTENT -->
     <div class="main-content">
         
-        <!-- ======================================================== -->
-        <!-- WRAPPER CỐ ĐỊNH BANNER KHI CUỘN (TỐI ƯU KHÔNG GIAN)      -->
-        <!-- ======================================================== -->
         <div class="mobile-sticky-wrapper">
-            <!-- BANNER ĐỎ TRÊN MOBILE (ĐÃ TÍCH HỢP MENU) -->
             <div class="mobile-red-banner">
                 <div class="banner-title-wrapper">
                     <i class="fa-solid fa-shield-halved"></i>
@@ -463,21 +429,16 @@
                     </div>
                 </div>
                 
-                <!-- NÚT MENU ĐƯỢC NHÚNG VÀO GÓC PHẢI BANNER ĐỎ -->
                 <button class="btn-menu" onclick="document.getElementById('desktopSidebar').classList.toggle('show')">
                     <i class="fa-solid fa-bars fs-4"></i>
                 </button>
             </div>
         </div>
 
-		<!-- BỘ LỌC TÌM KIẾM VÀ HÀNH ĐỘNG (Đã sửa lỗi dấu chú thích) -->
-        
-        <!-- BẢNG ĐIỆN TỬ: KHẨU HIỆU / CHỦ ĐỀ THÁNG -->
-		<!-- [BẢN VÁ LỖI]: BỔ SUNG KHOẢNG ĐỆM ĐẨY NỘI DUNG XUỐNG DƯỚI HEADER ĐỎ TRÊN MOBILE -->
         <div class="d-block d-xl-none" style="margin-top: 40px;"></div>
 
         <!-- BẢNG ĐIỆN TỬ: KHẨU HIỆU / CHỦ ĐỀ THÁNG -->
-        <div class="mb-2 mt-3" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); border: 1px solid #7dd3fc; border-radius: 12px; padding: 10px 15px; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+        <div class="mb-2 mt-3 mx-md-0" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); border: 1px solid #7dd3fc; border-radius: 12px; padding: 10px 15px; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-left: 15px; margin-right: 15px;">
              <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm me-3" style="width: 32px; height: 32px;">
                 <i class="fa-solid fa-bullhorn fa-shake" style="font-size: 14px;"></i>
             </div>
@@ -501,14 +462,14 @@
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
-                            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} bg-opacity-10 border-0 fw-bold rounded-3 mb-2 d-flex align-items-center gap-2" style="font-size: 14px; padding: 10px;">
+                            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} bg-opacity-10 border-0 fw-bold rounded-3 mb-2 d-flex align-items-center gap-2 mx-md-0" style="font-size: 14px; padding: 10px; margin-left: 15px; margin-right: 15px;">
                                 <i class="fa-solid fa-circle-info"></i> {{ message }}
                             </div>
                         {% endfor %}
                     {% endif %}
                 {% endwith %}
 
-                <form method="GET" action="/class-dashboard" class="row g-2 align-items-end w-100 m-0">
+                <form method="GET" action="/class-dashboard" class="row g-2 align-items-end w-100 m-0 px-md-0 px-3">
                     
                     {% if not is_gvcn %}
                     <div class="col-12 col-md-6 px-0 pe-md-2">
@@ -567,7 +528,6 @@
 		<!-- BẮT ĐẦU: KHỐI ĐIỂM DANH GVCN 15 PHÚT (ĐÃ NÂNG CẤP TOÀN DIỆN) -->
         {% if is_gvcn %}
         
-        <!-- Bổ sung CSS Hiệu ứng nhịp đập trái tim -->
         <style>
             @keyframes pulse-white {
                 0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.6); }
@@ -577,8 +537,7 @@
             .btn-checkin-pulse { animation: pulse-white 2s infinite; }
         </style>
 
-        <div class="glass-card mt-3 mb-4 border-0 position-relative overflow-hidden" style="background: linear-gradient(135deg, #10b981, #047857); color: white; box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.4); border-radius: 16px;">
-            <!-- Họa tiết chìm trang trí (Watermark chiếc lá) -->
+        <div class="glass-card mt-3 mb-4 border-0 position-relative overflow-hidden mx-md-0 mx-3" style="background: linear-gradient(135deg, #10b981, #047857); color: white; box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.4); border-radius: 16px;">
             <i class="fa-solid fa-seedling position-absolute opacity-10" style="font-size: 120px; right: -20px; bottom: -20px; transform: rotate(-15deg);"></i>
             
             <div class="p-3 p-md-4 d-flex flex-column flex-md-row align-items-center justify-content-between gap-3 position-relative z-1">
@@ -587,7 +546,6 @@
                         <i class="fa-solid fa-hand-holding-heart fs-3 fa-beat"></i>
                     </div>
                     <div>
-						<!-- Lời chào cá nhân hóa tự động gọi tên GVCN -->
                         <div class="text-warning fw-bold mb-1" style="letter-spacing: 0.5px; text-transform: uppercase;">
                             <div style="font-size: 11px; opacity: 0.9;" class="mb-1"><i class="fa-regular fa-sun me-1 fa-spin-pulse"></i> Chào buổi sáng, Thầy/cô:</div>
                             <div style="font-size: 14px;">{% if selected_branch and selected_branch.gvcn %}{{ selected_branch.gvcn }}{% else %}Thầy/cô{% endif %}!</div>
@@ -596,7 +554,6 @@
                         <p class="mb-0 opacity-90" style="font-size: 13px;">Thầy/Cô bấm vào GHI NHẬN CÓ MẶT để xác nhận có mặt tại lớp nhé!</p>
                     </div>
                 </div>
-                <!-- Nút bấm có class btn-checkin-pulse tạo hiệu ứng nhịp thở -->
                 <button id="btn-checkin" class="btn btn-light text-success fw-bold px-4 py-3 shadow w-100 w-md-auto btn-checkin-pulse" style="border-radius: 12px; font-size: 15px; white-space: nowrap; transition: all 0.3s;" 
                         onclick="diemDanh15Phut({{ selected_branch.id }}, 'Tuần hiện tại')">
                     <i class="fa-solid fa-face-smile-wink me-2 fs-5"></i> GHI NHẬN CÓ MẶT
@@ -605,7 +562,6 @@
         </div>
 
 		<script>
-        // [BỔ SUNG 1]: TỰ ĐỘNG KIỂM TRA TRÍ NHỚ KHI VỪA MỞ TRANG HOẶC F5
         document.addEventListener("DOMContentLoaded", function() {
             {% if is_gvcn and selected_branch %}
             const branchId = '{{ selected_branch.id }}';
@@ -614,7 +570,6 @@
             
             let btn = document.getElementById('btn-checkin');
             
-            // Nếu điện thoại nhớ ra là hôm nay đã điểm danh rồi -> Khóa nút luôn
             if(btn && localStorage.getItem(storageKey) === 'done') {
                 btn.disabled = true;
                 btn.classList.remove('btn-checkin-pulse', 'text-success');
@@ -625,13 +580,12 @@
             {% endif %}
         });
 
-        // GIỮ NGUYÊN HÀM CŨ CỦA THẦY - CHỈ CẤY THÊM LỆNH LƯU TRÍ NHỚ
         function diemDanh15Phut(branchId, weekName) {
             if(!confirm("Xác nhận Thầy/Cô đang có mặt tại lớp để đồng hành cùng các em?")) return;
             
             let btn = document.getElementById('btn-checkin');
             btn.disabled = true;
-            btn.classList.remove('btn-checkin-pulse'); // Tắt nhịp đập khi đã bấm
+            btn.classList.remove('btn-checkin-pulse'); 
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang xử lý...';
 
             fetch('/api/gvcn_checkin', {
@@ -641,12 +595,10 @@
             })
             .then(res => res.json())
             .then(data => {
-                // Tự động tạo chìa khóa lưu trí nhớ cho ngày hôm nay
                 const today = new Date().toLocaleDateString('vi-VN');
                 const storageKey = 'checkin_status_' + branchId + '_' + today;
 
                 if(data.success) {
-                    // [BỔ SUNG 2]: Bấm thành công -> Lưu vào bộ nhớ điện thoại
                     localStorage.setItem(storageKey, 'done'); 
                     
                     btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ĐÃ GHI NHẬN';
@@ -656,7 +608,6 @@
                 } else {
                     alert("⚠️ " + data.error);
                     if(data.error.includes("rồi")) {
-                        // [BỔ SUNG 3]: Nếu hệ thống báo "đã ghi nhận rồi" -> Cập nhật luôn trí nhớ để lần sau không hiện lại
                         localStorage.setItem(storageKey, 'done'); 
                         
                         btn.innerHTML = '<i class="fa-solid fa-check-double"></i> ĐÃ GHI NHẬN';
@@ -664,7 +615,7 @@
                         btn.style.background = '#e2e8f0';
                     } else {
                         btn.disabled = false;
-                        btn.classList.add('btn-checkin-pulse'); // Bật lại nhịp đập nếu bị lỗi
+                        btn.classList.add('btn-checkin-pulse'); 
                         btn.innerHTML = '<i class="fa-solid fa-face-smile-wink me-2 fs-5"></i> GHI NHẬN CÓ MẶT';
                     }
                 }
@@ -672,93 +623,64 @@
             .catch(err => {
                 alert("Lỗi kết nối mạng!");
                 btn.disabled = false;
-                btn.classList.add('btn-checkin-pulse'); // Bật lại nhịp đập nếu bị lỗi
+                btn.classList.add('btn-checkin-pulse'); 
                 btn.innerHTML = '<i class="fa-solid fa-face-smile-wink me-2 fs-5"></i> GHI NHẬN CÓ MẶT';
             });
         }
         </script>
         {% endif %}
-        <!-- KẾT THÚC: KHỐI ĐIỂM DANH GVCN 15 PHÚT -->
 
-        <!-- WIDGETS THÔNG TIN -->
-        <div class="widget-grid">
-            <div class="widget-card">
-                <div class="widget-icon" style="background: #e0e7ff; color: #4338ca;"><i class="fa-solid fa-school-flag"></i></div>
-                <div class="widget-content">
-                    <div class="widget-label">Chi đoàn</div>
-                    <div class="widget-value">{{ selected_branch.name }}</div>
-                </div>
-            </div>
-            <div class="widget-card">
-                <div class="widget-icon" style="background: #fce7f3; color: #be185d;"><i class="fa-solid fa-users"></i></div>
-                <div class="widget-content">
-                    <div class="widget-label">Sĩ số</div>
-                    <div class="widget-value">{{ selected_branch.si_so }} HS</div>
-                    <div class="widget-sub text-muted">{{ selected_branch.group }}</div>
-                </div>
-            </div>
-            <div class="widget-card">
-                <div class="widget-icon" style="background: #dcfce7; color: #15803d;"><i class="fa-solid fa-chalkboard-user"></i></div>
-                <div class="widget-content">
-                    <div class="widget-label">Giáo viên chủ nhiệm</div>
-                    <div class="widget-value">{{ selected_branch.gvcn if selected_branch.gvcn else 'Chưa cập nhật' }}</div>
-                    <a href="tel:{{ selected_branch.phone_gvcn }}" class="widget-sub"><i class="fa-solid fa-phone"></i> {{ selected_branch.phone_gvcn if selected_branch.phone_gvcn else '---' }}</a>
-                </div>
-            </div>
-            <div class="widget-card">
-                <div class="widget-icon" style="background: #fef3c7; color: #b45309;"><i class="fa-solid fa-user-graduate"></i></div>
-                <div class="widget-content">
-                    <div class="widget-label">Lớp Trưởng</div>
-                    <div class="widget-value">{{ selected_branch.class_monitor if selected_branch.class_monitor else 'Chưa cập nhật' }}</div>
-                    <a href="tel:{{ selected_branch.phone_monitor }}" class="widget-sub"><i class="fa-solid fa-phone"></i> {{ selected_branch.phone_monitor if selected_branch.phone_monitor else '---' }}</a>
-                </div>
+        <!-- MENU CHỨC NĂNG DẠNG GRID (APP STYLE) TÍCH HỢP TABS -->
+        <div class="mb-4 mt-3 px-1 mx-md-0 mx-2">
+            <h6 class="fw-bold mb-3" style="color: #334155; font-size: 16px; padding-left: 5px;">Các chức năng quản lý</h6>
+            
+            <div class="app-features-grid nav" id="classDataTabs" role="tablist">
+                <!-- 1. Điểm thi đua -->
+                <button class="app-feature-btn active" data-bs-toggle="tab" data-bs-target="#scores-pane" type="button" role="tab">
+                    <div class="app-feature-icon-wrapper bg-icon-1"><i class="fa-solid fa-chart-line"></i></div>
+                    <div class="app-feature-text">Điểm thi đua</div>
+                </button>
+
+                <!-- 2. BXH Toàn Trường -->
+                <button class="app-feature-btn" data-bs-toggle="tab" data-bs-target="#leaderboard-pane" type="button" role="tab" onclick="loadSchoolLeaderboard()">
+                    <div class="app-feature-icon-wrapper bg-icon-2"><i class="fa-solid fa-trophy"></i></div>
+                    <div class="app-feature-text">Xếp hạng</div>
+                </button>
+
+                <!-- 3. Sổ Đen Của Lớp -->
+                <button class="app-feature-btn" data-bs-toggle="tab" data-bs-target="#blacklist-pane" type="button" role="tab">
+                    <div class="app-feature-icon-wrapper bg-icon-3"><i class="fa-solid fa-book-skull"></i></div>
+                    <div class="app-feature-text">Tra Sổ đen</div>
+                </button>
+
+                <!-- 4. Hồ sơ Phúc khảo -->
+                <button class="app-feature-btn" data-bs-toggle="tab" data-bs-target="#appeal-history-pane" type="button" role="tab">
+                    <div class="app-feature-icon-wrapper bg-icon-4"><i class="fa-solid fa-scale-balanced"></i></div>
+                    <div class="app-feature-text">Phúc khảo</div>
+                </button>
+
+                <!-- 5. Sao Đỏ TRỰC Lớp tôi -->
+                <button class="app-feature-btn" data-bs-toggle="tab" data-bs-target="#monitor-pane" type="button" role="tab">
+                    <div class="app-feature-icon-wrapper bg-icon-5"><i class="fa-solid fa-eye"></i></div>
+                    <div class="app-feature-text">SĐ chấm lớp</div>
+                </button>
+
+                <!-- 6. Sao Đỏ Lớp tôi đi trực -->
+                <button class="app-feature-btn" data-bs-toggle="tab" data-bs-target="#assignments-pane" type="button" role="tab">
+                    <div class="app-feature-icon-wrapper bg-icon-6"><i class="fa-solid fa-user-shield"></i></div>
+                    <div class="app-feature-text">Lịch trực SĐ</div>
+                </button>
+                
+                <!-- 7. Ngân Hàng Lỗi -->
+                <button class="app-feature-btn" data-bs-toggle="tab" data-bs-target="#violation-bank-pane" type="button" role="tab">
+                    <div class="app-feature-icon-wrapper bg-icon-7"><i class="fa-solid fa-list-check"></i></div>
+                    <div class="app-feature-text">Ngân hàng lỗi</div>
+                </button>
             </div>
         </div>
 
-        <!-- TABS TRÌNH BÀY DỮ LIỆU ĐA TẦNG -->
-        <div class="glass-card mb-4">
-            <div class="modern-tabs-container">
-                <ul class="nav modern-tabs" id="classDataTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="modern-tab active" data-bs-toggle="tab" data-bs-target="#scores-pane" type="button" role="tab">
-                            <i class="fa-solid fa-chart-line"></i> Điểm thi đua Tuần
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="modern-tab" data-bs-toggle="tab" data-bs-target="#leaderboard-pane" type="button" role="tab" onclick="loadSchoolLeaderboard()">
-                            <i class="fa-solid fa-trophy"></i> BXH Toàn Trường
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="modern-tab" data-bs-toggle="tab" data-bs-target="#monitor-pane" type="button" role="tab">
-                            <i class="fa-solid fa-eye"></i> Sao Đỏ TRỰC Lớp tôi
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="modern-tab" data-bs-toggle="tab" data-bs-target="#assignments-pane" type="button" role="tab">
-                            <i class="fa-solid fa-user-shield"></i> Sao Đỏ Lớp tôi đi trực
-                        </button>
-                    </li>
-					<li class="nav-item" role="presentation">
-                        <button class="modern-tab" data-bs-toggle="tab" data-bs-target="#violation-bank-pane" type="button" role="tab">
-                            <i class="fa-solid fa-scale-balanced"></i> Ngân Hàng Lỗi
-                        </button>
-                    </li>
-                    <!-- TAB SỔ ĐEN CỦA LỚP ĐƯỢC TÍCH HỢP -->
-                    <li class="nav-item" role="presentation">
-                        <button class="modern-tab text-danger" data-bs-toggle="tab" data-bs-target="#blacklist-pane" type="button" role="tab" style="border-color: #fecaca; background-color: #fef2f2;">
-                            <i class="fa-solid fa-book-skull"></i> Sổ Đen Của Lớp
-                        </button>
-                    </li>
-                    <!-- TAB HỒ SƠ PHÚC KHẢO ĐƯỢC TÍCH HỢP -->
-                    <li class="nav-item" role="presentation">
-                        <button class="modern-tab text-primary" data-bs-toggle="tab" data-bs-target="#appeal-history-pane" type="button" role="tab" style="border-color: #bfdbfe; background-color: #eff6ff;">
-                            <i class="fa-solid fa-scale-balanced"></i> Hồ sơ Phúc khảo
-                        </button>
-                    </li>
-                </ul>
-            </div>
-            
+        <!-- KHUNG CHỨA NỘI DUNG TỪNG TAB -->
+        <div class="glass-card mb-4" style="background: transparent; border: none; box-shadow: none;">
             <div class="tab-content p-0" id="classDataTabsContent">
                 
                 <!-- TAB 1: ĐIỂM THI ĐUA -->
@@ -963,11 +885,9 @@
                         </ul>
                     </div>
 
-					<!-- [NÂNG CẤP XẾP HẠNG]: Giảm padding mobile (px-2) và xóa khung viền ngoài cùng -->
                     <div class="tab-content px-2 px-md-4 pb-4" id="groupTabsContent">
                         
                         <div class="tab-pane fade show active" id="group1Pane" role="tabpanel">
-                            <!-- ĐÃ XÓA CLASS: border rounded-3 bg-white -->
                             <div class="table-responsive-custom">
                                 <table class="table-modern">
                                     <thead>
@@ -986,50 +906,6 @@
                         </div>
 
                         <div class="tab-pane fade" id="group2Pane" role="tabpanel">
-                            <!-- ĐÃ XÓA CLASS: border rounded-3 bg-white -->
-                            <div class="table-responsive-custom">
-                                <table class="table-modern">
-                                    <thead>
-                                        <tr>
-                                            <th>Hạng</th>
-                                            <th>Chi đoàn (Nhóm 2)</th>
-                                            <th>Đánh giá / Xếp loại</th>
-                                            <th class="text-end pe-4">Tổng điểm</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="leaderboardGroup2Body">
-                                        <tr><td colspan="4" class="text-center py-4 text-muted"><i class="fa-solid fa-spinner fa-spin me-2"></i> Đang tải dữ liệu...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        
-                    </div>
-
-					<!-- [NÂNG CẤP XẾP HẠNG]: Giảm padding mobile (px-2) và xóa khung viền ngoài cùng -->
-                    <div class="tab-content px-2 px-md-4 pb-4" id="groupTabsContent">
-                        
-                        <div class="tab-pane fade show active" id="group1Pane" role="tabpanel">
-                            <!-- ĐÃ XÓA CLASS: border rounded-3 bg-white -->
-                            <div class="table-responsive-custom">
-                                <table class="table-modern">
-                                    <thead>
-                                        <tr>
-                                            <th>Hạng</th>
-                                            <th>Chi đoàn (Nhóm 1)</th>
-                                            <th>Đánh giá / Xếp loại</th>
-                                            <th class="text-end pe-4">Tổng điểm</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="leaderboardGroup1Body">
-                                        <tr><td colspan="4" class="text-center py-4 text-muted"><i class="fa-solid fa-spinner fa-spin me-2"></i> Đang tải dữ liệu...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <div class="tab-pane fade" id="group2Pane" role="tabpanel">
-                            <!-- ĐÃ XÓA CLASS: border rounded-3 bg-white -->
                             <div class="table-responsive-custom">
                                 <table class="table-modern">
                                     <thead>
@@ -1050,7 +926,6 @@
                     </div>
                 </div>
 
-                <!-- TAB 2: SAO ĐỎ CHẤM ĐIỂM -->
                 <!-- TAB 2: SAO ĐỎ CHẤM ĐIỂM -->
                 <div class="tab-pane fade" id="monitor-pane" role="tabpanel">
                     <div class="p-4 pb-0">
@@ -2112,7 +1987,7 @@
                         }
                     }
                     
-                    document.querySelectorAll('.bottom-nav .bottom-nav-item').forEach(el => el.classList.remove('active'));
+                    document.querySelectorAll('.app-feature-btn, .bottom-nav-item').forEach(el => el.classList.remove('active'));
                     let activeNav = document.querySelector(`.bottom-nav-item[data-bs-target="${hash}"]`);
                     if(activeNav) activeNav.classList.add('active');
                 }
@@ -2387,7 +2262,7 @@
                     var targetId = event.target.getAttribute('data-bs-target');
                     history.pushState(null, null, targetId);
                     
-                    document.querySelectorAll('.modern-tab, .bottom-nav-item').forEach(btn => {
+                    document.querySelectorAll('.app-feature-btn, .bottom-nav-item').forEach(btn => {
                         btn.classList.remove('active');
                     });
 
