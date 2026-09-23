@@ -676,6 +676,13 @@
                     <div class="app-feature-icon-wrapper bg-icon-7"><i class="fa-solid fa-list-check"></i></div>
                     <div class="app-feature-text">Ngân hàng lỗi</div>
                 </button>
+				<!-- 8. Bảng Vàng Học Tập (Bổ sung mới) -->
+                <button class="app-feature-btn" data-bs-toggle="tab" data-bs-target="#honor-board-pane" type="button" role="tab" onclick="triggerHaptic(20)">
+                    <div class="app-feature-icon-wrapper" style="background: linear-gradient(135deg, #f59e0b, #fbbf24); box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);">
+                        <i class="fa-solid fa-crown"></i>
+                    </div>
+                    <div class="app-feature-text text-warning">Bảng Vàng</div>
+                </button>
             </div>
         </div>
 
@@ -1732,7 +1739,7 @@
                 violations.forEach((v, index) => {
                     let vClean = v.trim();
                     if(vClean) {
-                        let matchDay = vClean.match(/\[?(T[2-7]|CN)\]?/i);
+                        let matchDay = vClean.match(/\[?(T[2-7]\vert{}CN)\]?/i);
                         let isPastDay = false;
                         
                         if (matchDay && matchDay[1]) {
@@ -1756,24 +1763,27 @@
                         let itemPoints = foundPoints * qty;
 
                         let labelNode = document.createElement('label');
-                        labelNode.className = 'd-flex align-items-center p-3 border rounded-3 w-100 mb-1 transition-all';
+                        // [TỐI ƯU]: Bóp mỏng chiều cao ô chứa bằng py-2 px-2 thay vì p-3
+                        labelNode.className = 'd-flex align-items-center py-2 px-2 border rounded-3 w-100 mb-1 transition-all';
                         labelNode.style.cursor = isPastDay ? 'not-allowed' : 'pointer';
                         labelNode.style.background = isPastDay ? '#f8fafc' : '#ffffff';
                         labelNode.style.borderColor = '#e2e8f0';
                         
                         let disabledAttr = isPastDay ? 'disabled' : '';
-                        let badgePast = isPastDay ? '<span class="badge bg-secondary ms-2 opacity-75" style="font-size: 10px;">Hết hạn</span>' : '';
                         
-                        // Hiển thị điểm phạt bằng nhãn đỏ
-                        let pointBadge = itemPoints > 0 ? `<span class="badge bg-danger ms-2">-${itemPoints}đ</span>` : '';
+                        // [TỐI ƯU]: Bóp nhỏ padding và font-size của nhãn
+                        let badgePast = isPastDay ? '<span class="badge bg-secondary opacity-75" style="font-size: 10px; padding: 3px 6px;">Hết hạn</span>' : '';
+                        let pointBadge = itemPoints > 0 ? `<span class="badge bg-danger" style="font-size: 10px; padding: 3px 6px;">-${itemPoints}đ</span>` : '';
 
                         labelNode.innerHTML = `
-                            <div class="form-check m-0 pe-3 d-flex align-items-center">
-                                <input class="form-check-input shadow-none appeal-err-cb" type="checkbox" value="${vClean}" data-points="${itemPoints}" ${disabledAttr} style="width: 20px; height: 20px; cursor: inherit;">
+                            <div class="form-check m-0 pe-2 d-flex align-items-center">
+                                <!-- [TỐI ƯU]: Thu nhỏ kích thước checkbox -->
+                                <input class="form-check-input shadow-none appeal-err-cb" type="checkbox" value="${vClean}" data-points="${itemPoints}" ${disabledAttr} style="width: 16px; height: 16px; cursor: inherit; margin-top: 0;">
                             </div>
-                            <div class="flex-grow-1" style="line-height: 1.4;">
-                                <div class="fw-bold ${isPastDay ? 'text-muted opacity-50 text-decoration-line-through' : 'text-main'}" style="font-size: 14px;">
-                                    ${vClean} ${pointBadge} ${badgePast}
+                            <div class="flex-grow-1" style="line-height: 1.2;">
+                                <!-- [TỐI ƯU]: Giảm size chữ và dùng flex-wrap để nhãn gọn gàng -->
+                                <div class="fw-bold ${isPastDay ? 'text-muted opacity-50 text-decoration-line-through' : 'text-main'} d-flex flex-wrap align-items-center gap-1" style="font-size: 13px;">
+                                    <span>${vClean}</span> ${pointBadge} ${badgePast}
                                 </div>
                             </div>
                         `;
