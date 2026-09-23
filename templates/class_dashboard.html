@@ -1737,16 +1737,17 @@
                 let violations = noteText.split(';');
                 violations.forEach((v, index) => {
                     let vClean = v.trim();
-                    if(vClean) {
-                        let matchDay = vClean.match(/\[?(T[2-7]\vert{}CN)\]?/i);
+					if(vClean) {
+                        // [ĐÃ SỬA]: Thay \vert{} bằng dấu gạch đứng | để hệ thống đọc được chữ [T2], [T3]
+                        let matchDay = vClean.match(/\[?(T[2-7]|CN)\]?/i);
                         let isPastDay = false;
                         
                         if (matchDay && matchDay[1]) {
                             let violationDayCode = matchDay[1].toUpperCase();
                             let violationRank = dayOrder[violationDayCode];
                             
-                            // Nếu hạng của ngày lỗi NHỎ HƠN ngày hiện tại -> Đã sang ngày hôm sau -> KHÓA NGAY
-                            if (violationRank !== undefined && violationRank < currentRank) {
+                            // [ĐÃ SỬA]: Dùng toán tử !== (Khác). Khác ngày hiện tại là khóa ngay lập tức.
+                            if (violationRank !== undefined && violationRank !== currentRank) {
                                 isPastDay = true;
                             }
                         }
