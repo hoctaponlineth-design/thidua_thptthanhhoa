@@ -1727,11 +1727,10 @@
             let section = document.getElementById('appealViolationsSection');
             container.innerHTML = ''; 
             
-            const dayOrder = { 'CN': 0, 'T2': 1, 'T3': 2, 'T4': 3, 'T5': 4, 'T6': 5, 'T7': 6 };
-            const jsDay = new Date().getDay(); 
-            const dayMap = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-            const currentDayCode = dayMap[jsDay];
-            const currentRank = dayOrder[currentDayCode] !== undefined ? dayOrder[currentDayCode] : 99;
+            // [BẢN VÁ LỖI TỐI THƯỢNG 1]: Chuẩn hóa lịch Việt Nam (Thứ 2 là ngày 1, Chủ nhật là ngày 7)
+            const dayOrder = { 'T2': 1, 'T3': 2, 'T4': 3, 'T5': 4, 'T6': 5, 'T7': 6, 'CN': 7 };
+            const jsDay = new Date().getDay(); // JS mặc định Chủ nhật = 0
+            const currentRank = (jsDay === 0) ? 7 : jsDay; 
 
             if (noteText && noteText.trim() !== '' && noteText.trim() !== 'Không có vi phạm' && noteText.trim() !== 'Không có') {
                 section.style.display = 'block';
@@ -1745,45 +1744,49 @@
                         if (matchDay && matchDay[1]) {
                             let violationDayCode = matchDay[1].toUpperCase();
                             let violationRank = dayOrder[violationDayCode];
+                            
+                            // Nếu hạng của ngày lỗi NHỎ HƠN ngày hiện tại -> Đã sang ngày hôm sau -> KHÓA NGAY
                             if (violationRank !== undefined && violationRank < currentRank) {
                                 isPastDay = true;
                             }
                         }
                         
-                        // [TÍNH NĂNG MỚI]: Tự động tra cứu và gắn điểm phạt cho GVCN thấy
+                        // Tính điểm phạt tự động
                         let qtyMatch = vClean.match(/x\s*(\d+)/i);
                         let qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
                         let foundPoints = 0.0;
-                        for (let i = 0; i < violationBankData.length; i++) {
-                            if (vClean.toLowerCase().includes(violationBankData[i].name.toLowerCase())) {
-                                foundPoints = violationBankData[i].points;
-                                break;
+                        if (typeof violationBankData !== 'undefined') {
+                            for (let i = 0; i < violationBankData.length; i++) {
+                                if (vClean.toLowerCase().includes(violationBankData[i].name.toLowerCase())) {
+                                    foundPoints = violationBankData[i].points;
+                                    break;
+                                }
                             }
                         }
                         let itemPoints = foundPoints * qty;
 
                         let labelNode = document.createElement('label');
-                        // [TỐI ƯU]: Bóp mỏng chiều cao ô chứa bằng py-2 px-2 thay vì p-3
                         labelNode.className = 'd-flex align-items-center py-2 px-2 border rounded-3 w-100 mb-1 transition-all';
                         labelNode.style.cursor = isPastDay ? 'not-allowed' : 'pointer';
                         labelNode.style.background = isPastDay ? '#f8fafc' : '#ffffff';
                         labelNode.style.borderColor = '#e2e8f0';
                         
-                        let disabledAttr = isPastDay ? 'disabled' : '';
-                        
-                        // [TỐI ƯU]: Bóp nhỏ padding và font-size của nhãn
+                        // [BẢN VÁ LỖI TỐI THƯỢNG 2]: Ép cứng thuộc tính Khóa HTML và hiệu ứng Gạch ngang chữ
+                        let disabledAttr = isPastDay ? 'disabled="disabled"' : '';
                         let badgePast = isPastDay ? '<span class="badge bg-secondary opacity-75" style="font-size: 10px; padding: 3px 6px;">Hết hạn</span>' : '';
                         let pointBadge = itemPoints > 0 ? `<span class="badge bg-danger" style="font-size: 10px; padding: 3px 6px;">-${itemPoints}đ</span>` : '';
+                        
+                        let textClass = isPastDay ? 'text-muted opacity-50' : 'text-main';
+                        let strikeStyle = isPastDay ? 'text-decoration: line-through;' : '';
 
                         labelNode.innerHTML = `
                             <div class="form-check m-0 pe-2 d-flex align-items-center">
-                                <!-- [TỐI ƯU]: Thu nhỏ kích thước checkbox -->
                                 <input class="form-check-input shadow-none appeal-err-cb" type="checkbox" value="${vClean}" data-points="${itemPoints}" ${disabledAttr} style="width: 16px; height: 16px; cursor: inherit; margin-top: 0;">
                             </div>
-                            <div class="flex-grow-1" style="line-height: 1.2;">
-                                <!-- [TỐI ƯU]: Giảm size chữ và dùng flex-wrap để nhãn gọn gàng -->
-                                <div class="fw-bold ${isPastDay ? 'text-muted opacity-50 text-decoration-line-through' : 'text-main'} d-flex flex-wrap align-items-center gap-1" style="font-size: 13px;">
-                                    <span>${vClean}</span> ${pointBadge} ${badgePast}
+                            <div class="flex-grow-1" style="line-height: 1.3;">
+                                <div class="fw-bold ${textClass} d-flex flex-wrap align-items-center gap-1" style="font-size: 13px;">
+                                    <span style="${strikeStyle}">${vClean}</span> 
+                                    ${pointBadge} ${badgePast}
                                 </div>
                             </div>
                         `;
