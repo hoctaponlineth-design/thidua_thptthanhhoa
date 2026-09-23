@@ -496,10 +496,10 @@
                                 <span>Xuất Hồ Sơ</span>
                             </a>
 
-                            <!-- 2. Nút Tra Sổ Đen -->
-                            <button type="button" class="btn-gvcn-equal" style="background: linear-gradient(135deg, #ef4444, #dc2626);" onclick="document.querySelector('[data-bs-target=\'#blacklist-pane\']').click()" title="Tra cứu Sổ Đen của lớp">
-                                <i class="fa-solid fa-book-skull"></i>
-                                <span>Tra Sổ Đen</span>
+							<!-- 2. Nút Làm Mới Dữ Liệu -->
+                            <button type="button" class="btn-gvcn-equal" style="background: linear-gradient(135deg, #0ea5e9, #0369a1);" onclick="refreshAppData(this)" title="Tải lại dữ liệu mới nhất">
+                                <i class="fa-solid fa-arrows-rotate"></i>
+                                <span>Làm mới</span>
                             </button>
                             
                             <!-- 3. Nút Sửa Thông Tin -->
@@ -631,7 +631,7 @@
         {% endif %}
 
         <!-- MENU CHỨC NĂNG DẠNG GRID (APP STYLE) TÍCH HỢP TABS -->
-        <div class="mb-4 mt-3 px-1 mx-md-0 mx-2">
+        <div class="mb-2 mt-3 px-1 mx-md-0 mx-2">
             <h6 class="fw-bold mb-3" style="color: #334155; font-size: 16px; padding-left: 5px;">Các chức năng quản lý</h6>
             
             <div class="app-features-grid nav" id="classDataTabs" role="tablist">
@@ -674,7 +674,7 @@
                 <!-- 7. Ngân Hàng Lỗi -->
                 <button class="app-feature-btn" data-bs-toggle="tab" data-bs-target="#violation-bank-pane" type="button" role="tab">
                     <div class="app-feature-icon-wrapper bg-icon-7"><i class="fa-solid fa-list-check"></i></div>
-                    <div class="app-feature-text">Ngân hàng lỗi</div>
+                    <div class="app-feature-text">Tra cứu lỗi</div>
                 </button>
 				<!-- 8. Bảng Vàng Học Tập (Bổ sung mới) -->
                 <button class="app-feature-btn" data-bs-toggle="tab" data-bs-target="#honor-board-pane" type="button" role="tab" onclick="triggerHaptic(20)">
@@ -935,7 +935,7 @@
 
                 <!-- TAB 2: SAO ĐỎ CHẤM ĐIỂM -->
                 <div class="tab-pane fade" id="monitor-pane" role="tabpanel">
-                    <div class="p-4 pb-0">
+                    <div class="px-3 pt-2 pb-0">
                         <div class="alert alert-primary bg-opacity-10 border-0 text-primary fw-bold rounded-3 small mb-0 d-flex gap-2">
                             <i class="fa-solid fa-circle-info mt-1"></i> Danh sách SĐ đã được phân công chấm lớp {{ selected_branch.name }}, kèm tổng điểm thi đua tuần tương ứng.
                         </div>
@@ -1002,7 +1002,7 @@
 
 				<!-- TAB 3: LỊCH ĐI TRỰC -->
                 <div class="tab-pane fade" id="assignments-pane" role="tabpanel">
-                    <div class="p-4 pb-0">
+                    <div class="px-3 pt-2 pb-0">
                         <div class="alert alert-info bg-opacity-10 border-0 text-primary fw-bold rounded-3 small mb-0 d-flex gap-2">
                             <i class="fa-solid fa-clipboard-user mt-1"></i> Lịch phân công nhiệm vụ cho HS lớp {{ selected_branch.name }} tham gia Đội Sao đỏ.
                         </div>
@@ -1042,7 +1042,7 @@
                 
                 <!-- KHỐI NỘI DUNG TAB 4 (NGÂN HÀNG LỖI) -->
                 <div class="tab-pane fade" id="violation-bank-pane" role="tabpanel">
-                    <div class="p-4 pb-0">
+                    <div class="px-3 pt-2 pb-0">
                         <div class="alert alert-secondary bg-opacity-10 border-0 text-secondary fw-bold rounded-3 small mb-0 d-flex gap-2">
                             <i class="fa-solid fa-book-open mt-1"></i> Bảng tra cứu Barem điểm thi đua đang được áp dụng cho năm học hiện tại.
                         </div>
@@ -1085,7 +1085,7 @@
                 <!-- [BẢN VÁ LỖI TỐI THƯỢNG]: TAB SỔ ĐEN CỦA LỚP ĐƯỢC CHUẨN HÓA -->
                 <!-- ========================================= -->
                 <div class="tab-pane fade" id="blacklist-pane" role="tabpanel">
-                    <div class="p-4 pb-0">
+                    <div class="px-3 pt-2 pb-0">
                         <div class="alert alert-danger bg-opacity-10 border-0 text-danger fw-bold rounded-3 small mb-3 d-flex gap-2">
                             <i class="fa-solid fa-triangle-exclamation mt-1"></i> Danh sách chi tiết các học sinh lớp {{ selected_branch.name }} có lỗi vi phạm được ghi nhận.
                         </div>
@@ -1137,7 +1137,7 @@
                 <!-- [BẢN NÂNG CẤP LÕI]: TAB HỒ SƠ PHÚC KHẢO (ĐÃ ĐƯỢC BÓC TÁCH) -->
                 <!-- ========================================= -->
                 <div class="tab-pane fade" id="appeal-history-pane" role="tabpanel">
-                    <div class="p-4 pb-0">
+                    <div class="px-3 pt-2 pb-0">
                         <div class="alert alert-primary bg-opacity-10 border-0 text-primary fw-bold rounded-3 small mb-3 d-flex gap-2">
                             <i class="fa-solid fa-circle-info mt-1"></i> Tra cứu và theo dõi tiến trình xử lý các yêu cầu khiếu nại điểm của lớp.
                         </div>
@@ -2519,6 +2519,24 @@
             let editMonitorPhone = document.getElementById('editMonitorPhone');
             if (editMonitorPhone) editMonitorPhone.value = formatPhoneNumber(editMonitorPhone.value);
         });
+		// Nút Làm mới dữ liệu App GVCN
+        function refreshAppData(btn) {
+            // Rung phản hồi (nếu điện thoại hỗ trợ)
+            if (navigator.vibrate) navigator.vibrate(50);
+            
+            // Thêm hiệu ứng xoay icon và đổi chữ
+            let icon = btn.querySelector('i');
+            let text = btn.querySelector('span');
+            
+            icon.classList.add('fa-spin');
+            text.innerText = 'Đang tải...';
+            btn.style.opacity = '0.8';
+            
+            // Delay 0.4s để hiển thị hiệu ứng mượt mà trước khi load lại server
+            setTimeout(() => {
+                window.location.reload();
+            }, 400);
+        }
     </script>
 </body>
 </html>
