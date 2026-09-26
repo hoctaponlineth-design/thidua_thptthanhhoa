@@ -10,3 +10,4 @@ requests
 webauthn
 psycopg2-binary
 cloudinary
+psycopg-binary
