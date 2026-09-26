@@ -820,17 +820,17 @@ def parse_sodaubai():
                     continue # Đã là lỗi bằng chữ thì bỏ qua, không quét điểm số nữa để tránh nhầm lẫn
                 # =========================================================================
                 # [ĐÃ NÂNG CẤP]: Cho phép thêm [0-9] vào phần tên học sinh
-                match = re.search(r'([A-ZÀ-Ỹa-zà-ỹ0-9\s]+?)\s*[:\-]?\s*(\+)?\s*(10|[0-9])\s*(?:đ|Đ|điểm|Điểm)?(?!\d)', entry)
+                match = re.search(r'([A-ZÀ-Ỹa-zà-ỹ0-9\s]+?)\s*[:\-]?\s*(\+)?\s*(10|[0-9])\s*(\+)?\s*(?:đ|Đ|điểm|Điểm)?(?!\d)', entry)
                 if match:
                     parsed_any = True
                     raw_name = match.group(1).strip()
-                    has_plus = match.group(2) # Hứng dấu cộng
+                    has_plus_before = match.group(2) # Dấu cộng đứng trước (VD: +1)
                     score_val = int(match.group(3))
+                    has_plus_after = match.group(4)  # Dấu cộng đứng sau (VD: 1+)
                     
-                    # [CHỐNG TRỪ ĐIỂM OAN]: Nếu phát hiện dấu + trước số 1, 2 thì BỎ QUA hoàn toàn
-                    if has_plus == '+' and score_val in [1, 2]:
-                        continue
-                        
+                    # [CHỐNG TRỪ ĐIỂM OAN]: Có dấu + ở trước HOẶC sau đều bỏ qua (không trừ điểm)
+                    if (has_plus_before == '+' or has_plus_after == '+') and score_val in [1, 2]:
+                        continue     
                     # Tách các từ ra để lọc
                     name_words = raw_name.split()             
                     # [BẢN VÁ LỖI]: Danh sách các từ vô nghĩa cần loại bỏ khi giáo viên ghi nhận xét
@@ -864,15 +864,15 @@ def parse_sodaubai():
                         bad_marks_list.append({'type': cat_dk, 'key': key, 'mon': mon}) # Lỗi điểm kém            
             # THUẬT TOÁN DỰ PHÒNG: Nếu không tách được theo tên, quét toàn bộ số nguyên hợp lệ trong ô
             if not parsed_any:
-                # [NÂNG CẤP]: Bắt thêm dấu + ở thuật toán dự phòng
-                numbers = re.findall(r'(?<!\d)(\+)?\s*(10|9|8|0|[1-2])\s*(?:đ|Đ|điểm|Điểm)?(?!\d)', diem_raw)
-                for has_plus, num_str in numbers:
+                # [ĐÃ VÁ LỖI]: Bắt thêm dấu + ở phía sau cho thuật toán dự phòng
+                numbers = re.findall(r'(?<!\d)(\+)?\s*(10|9|8|0|[1-2])\s*(\+)?\s*(?:đ|Đ|điểm|Điểm)?(?!\d)', diem_raw)
+                for has_plus_before, num_str, has_plus_after in numbers:
                     num = int(num_str)
                     
-                    # [CHỐNG TRỪ ĐIỂM OAN]: Nếu phát hiện dấu + trước số 1, 2 thì BỎ QUA hoàn toàn
-                    if has_plus == '+' and num in [1, 2]:
+                    # [CHỐNG TRỪ ĐIỂM OAN]: Bỏ qua nếu có dấu + trước hoặc sau
+                    if (has_plus_before == '+' or has_plus_after == '+') and num in [1, 2]:
                         continue
-                        
+                    
                     tiet = str(df.iloc[i, 2]).strip()
                     tiet_str = f"Tiết {tiet}" if tiet != 'nan' else "Tiết học"
                     
