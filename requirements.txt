@@ -8,6 +8,7 @@ pywebpush
 cryptography
 requests
 webauthn
+psycopg
 psycopg2-binary
 cloudinary
 psycopg-binary
