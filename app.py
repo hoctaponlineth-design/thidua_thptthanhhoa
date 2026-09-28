@@ -1245,52 +1245,6 @@ def dashboard():
                     chart_labels = [item[0] for item in top_10]
                     chart_data = [round(float(item[1]), 1) if item[1] is not None else 0.0 for item in top_10]
 
-                    # --- THUẬT TOÁN QUÉT SỔ ĐEN TOÀN TRƯỜNG (CỘNG DỒN TỪ ĐẦU NĂM & BỎ QUA ẢNH MINH CHỨNG) ---
-                    all_scores_year = db_session.query(WeeklyScore).join(Branch).filter(
-                        Branch.school_year_id == active_year.id
-                    ).all()
-                    
-                    student_viol_counts = {} # ĐƯA BỘ ĐẾM RA NGOÀI ĐỂ CỘNG DỒN XUYÊN TUẦN
-                    
-                    for score in all_scores_year:
-                        for viol in score.violations:
-                            # [KHIÊN BẢO VỆ]: Bỏ qua lỗi mang tên "Ảnh minh chứng"
-                            cat = db_session.query(ViolationCategory).filter_by(id=viol.violation_id).first()
-                            if cat and "ảnh minh chứng" in cat.name.lower():
-                                continue
-
-                            if viol.student_name and str(viol.student_name).strip() != "":
-                                raw_names = str(viol.student_name).replace(';', ',').split(',')
-                                names = [n.strip().upper() for n in raw_names if n.strip()]
-                                
-                                # [THUẬT TOÁN CHIA ĐỀU BỘ ĐẾM]
-                                num_names = len(names)
-                                total_qty = int(viol.quantity) if viol.quantity else 1
-                                qty_per_student = max(1, total_qty // num_names) if num_names > 0 else total_qty
-                                
-                                for name in names:
-                                    # Gộp khóa bằng Tên Lớp + Tên Học sinh để phân biệt các lớp trùng tên HS
-                                    key = (score.branch.name, name.title())
-                                    student_viol_counts[key] = student_viol_counts.get(key, 0) + qty_per_student
-                        
-                    # Nếu ai >= 3 lỗi, ném ngay ra bảng phong thần
-                    for (b_name, s_name), count in student_viol_counts.items():
-                        if count >= 3:
-                            # Cấp huy hiệu theo mức độ vi phạm
-                            badge_class = "danger" if count >= 5 else "warning text-dark"
-                            badge_label = "Báo Động Đỏ" if count >= 5 else "Cảnh Báo Vàng"
-                            
-                            global_warnings.append({
-                                'branch_name': b_name,
-                                'student_name': s_name,
-                                'count': count,
-                                'badge_class': badge_class,
-                                'badge_label': badge_label
-                            })
-                    
-                    # Xếp người vi phạm nhiều nhất lên đầu
-                    global_warnings.sort(key=lambda x: x['count'], reverse=True)
-
                 if session.get('role') != 'Giáo viên chủ nhiệm':
                     appeals = db_session.query(WeeklyScore).join(Branch).filter(
                         Branch.school_year_id == active_year.id,
